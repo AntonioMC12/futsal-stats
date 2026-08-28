@@ -1,13 +1,20 @@
-import { isCompleteLineup, lineupId } from '../../../core/utils/lineup-id';
+import { lineupId } from '../../../core/utils/lineup-id';
 import { Match } from '../../../shared/models/match';
 import { MatchEvent } from '../../../shared/models/match-event';
-import { selectActiveEvents } from './derived-match-state';
+import { deriveMatchState, selectActiveEvents } from './derived-match-state';
+import { deriveDisciplinaryState } from './discipline';
 import { derivePlayerPlayingTimes, PlayerPlayingTime } from './player-playing-time';
 
 export interface PlayerMatchStatistics extends PlayerPlayingTime {
+  goals: number;
   goalsForOnCourt: number;
   goalsAgainstOnCourt: number;
   plusMinus: number;
+  fouls: number;
+  yellowCards: number;
+  secondYellowSendOffs: number;
+  directRedCards: number;
+  sendOffs: number;
 }
 
 export interface LineupStatistics {
@@ -35,9 +42,15 @@ export function deriveMatchStatistics(
       playerId,
       {
         ...time,
+        goals: 0,
         goalsForOnCourt: 0,
         goalsAgainstOnCourt: 0,
         plusMinus: 0,
+        fouls: 0,
+        yellowCards: 0,
+        secondYellowSendOffs: 0,
+        directRedCards: 0,
+        sendOffs: 0,
       },
     ]),
   );
@@ -47,7 +60,11 @@ export function deriveMatchStatistics(
   let segmentRemainingMs: number | null = null;
 
   const ensureLineup = (playerIds: readonly string[]): LineupStatistics | null => {
-    if (!isCompleteLineup(playerIds)) {
+    if (
+      playerIds.length < 3 ||
+      playerIds.length > 5 ||
+      new Set(playerIds).size !== playerIds.length
+    ) {
       return null;
     }
     const id = lineupId(playerIds);
@@ -108,8 +125,27 @@ export function deriveMatchStatistics(
         currentLineup.delete(event.outPlayerId);
         currentLineup.add(event.inPlayerId);
         break;
+      case 'FOUL':
+        if (
+          event.team === 'home' &&
+          event.playerId &&
+          (event.disciplinaryAction === 'secondYellow' || event.disciplinaryAction === 'directRed')
+        ) {
+          accumulateUntil(event.gameClockMs);
+          currentLineup.delete(event.playerId);
+        }
+        break;
+      case 'RED_CARD_REPLACEMENT':
+        if (event.team === 'home' && event.playerId) {
+          accumulateUntil(event.gameClockMs);
+          currentLineup.add(event.playerId);
+        }
+        break;
       case 'GOAL_FOR':
         addGoal(players, ensureLineup(event.lineupPlayerIds), event.lineupPlayerIds, 'for');
+        if (event.scorerPlayerId && players[event.scorerPlayerId]) {
+          players[event.scorerPlayerId].goals += 1;
+        }
         break;
       case 'GOAL_AGAINST':
         addGoal(players, ensureLineup(event.lineupPlayerIds), event.lineupPlayerIds, 'against');
@@ -121,15 +157,24 @@ export function deriveMatchStatistics(
         break;
       case 'MATCH_STARTED':
       case 'PERIOD_STARTED':
-      case 'FOUL':
       case 'EVENT_UNDONE':
         break;
     }
   }
 
   accumulateUntil(currentRemainingMs);
+  const state = deriveMatchState(match, events);
+  const currentSegment =
+    state.clockRunning && state.runningSegmentStartedAtGameClockMs !== null
+      ? Math.max(0, state.runningSegmentStartedAtGameClockMs - currentRemainingMs)
+      : 0;
+  const discipline = deriveDisciplinaryState(events, state.completedElapsedMs + currentSegment);
   for (const player of Object.values(players)) {
     player.plusMinus = player.goalsForOnCourt - player.goalsAgainstOnCourt;
+  }
+  for (const [playerId, disciplinary] of Object.entries(discipline.players)) {
+    const player = players[playerId];
+    if (player) Object.assign(player, disciplinary);
   }
   for (const lineup of lineups.values()) {
     lineup.plusMinus = lineup.goalsFor - lineup.goalsAgainst;

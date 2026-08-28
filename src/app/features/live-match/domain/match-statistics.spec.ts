@@ -37,6 +37,7 @@ function goal(
   gameClockMs: number,
   type: 'GOAL_FOR' | 'GOAL_AGAINST',
   playerIds: string[],
+  scorerPlayerId?: string,
 ): MatchEvent {
   return {
     ...base(id, sequence, gameClockMs),
@@ -44,6 +45,7 @@ function goal(
     lineupPlayerIds: playerIds,
     scoreBefore: { home: 0, away: 0 },
     scoreAfter: type === 'GOAL_FOR' ? { home: 1, away: 0 } : { home: 0, away: 1 },
+    ...(type === 'GOAL_FOR' && scorerPlayerId ? { scorerPlayerId } : {}),
   };
 }
 
@@ -57,7 +59,7 @@ function scenario(): MatchEvent[] {
       playerId,
     })),
     { ...base('clock', 6, 1_200_000), type: 'CLOCK_STARTED' },
-    goal('goal-for-1', 7, 1_080_000, 'GOAL_FOR', first),
+    goal('goal-for-1', 7, 1_080_000, 'GOAL_FOR', first, 'a'),
     {
       ...base('change', 8, 900_000),
       type: 'SUBSTITUTION',
@@ -65,7 +67,7 @@ function scenario(): MatchEvent[] {
       inPlayerId: 'f',
     },
     goal('goal-against', 9, 720_000, 'GOAL_AGAINST', second),
-    goal('goal-for-2', 10, 600_000, 'GOAL_FOR', second),
+    goal('goal-for-2', 10, 600_000, 'GOAL_FOR', second, 'f'),
     { ...base('stop', 11, 300_000), type: 'CLOCK_STOPPED' },
   ];
 }
@@ -77,25 +79,43 @@ describe('match statistics', () => {
       playedMs: 300_000,
       entries: 1,
       percentage: (300_000 / 900_000) * 100,
+      goals: 1,
       goalsForOnCourt: 1,
       goalsAgainstOnCourt: 0,
       plusMinus: 1,
+      fouls: 0,
+      yellowCards: 0,
+      secondYellowSendOffs: 0,
+      directRedCards: 0,
+      sendOffs: 0,
     });
     expect(statistics.players['b']).toEqual({
       playedMs: 900_000,
       entries: 1,
       percentage: 100,
+      goals: 0,
       goalsForOnCourt: 2,
       goalsAgainstOnCourt: 1,
       plusMinus: 1,
+      fouls: 0,
+      yellowCards: 0,
+      secondYellowSendOffs: 0,
+      directRedCards: 0,
+      sendOffs: 0,
     });
     expect(statistics.players['f']).toEqual({
       playedMs: 600_000,
       entries: 1,
       percentage: (600_000 / 900_000) * 100,
+      goals: 1,
       goalsForOnCourt: 1,
       goalsAgainstOnCourt: 1,
       plusMinus: 0,
+      fouls: 0,
+      yellowCards: 0,
+      secondYellowSendOffs: 0,
+      directRedCards: 0,
+      sendOffs: 0,
     });
   });
 
@@ -151,6 +171,7 @@ describe('match statistics', () => {
     ];
     const statistics = deriveMatchStatistics(match, events, 300_000);
     expect(statistics.players['f']?.goalsForOnCourt).toBe(0);
+    expect(statistics.players['f']?.goals).toBe(0);
     expect(statistics.players['f']?.plusMinus).toBe(-1);
     expect(statistics.lineups.find((lineup) => lineup.id === 'b|c|d|e|f')).toMatchObject({
       goalsFor: 0,

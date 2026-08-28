@@ -50,6 +50,9 @@ describe('foul domain', () => {
       team: 'home',
       playerId: 'p4',
       periodFoulNumber: 4,
+      accumulated: true,
+      disciplinaryAction: 'none',
+      matchElapsedMs: 0,
     });
     expect(result.value.match.updatedAt).toBe(10_000);
   });
@@ -95,6 +98,86 @@ describe('foul domain', () => {
     expect(registerFoul(input({ team: 'away', playerId: 'p1' }))).toEqual({
       ok: false,
       error: 'No se puede asignar un jugador propio a una falta rival.',
+    });
+  });
+
+  it('requires the home player to be on court', () => {
+    expect(
+      registerFoul(
+        input({ playerId: 'p6', currentLineupPlayerIds: ['p1', 'p2', 'p3', 'p4', 'p5'] }),
+      ),
+    ).toEqual({
+      ok: false,
+      error: 'La falta solo se puede asignar a un jugador que está en pista.',
+    });
+  });
+
+  it('enforces the second-yellow sequence in the domain', () => {
+    expect(registerFoul(input({ playerId: 'p4', disciplinaryAction: 'secondYellow' }))).toEqual({
+      ok: false,
+      error: 'La segunda amarilla requiere una amarilla previa.',
+    });
+    expect(
+      registerFoul(input({ playerId: 'p4', disciplinaryAction: 'yellow', playerYellowCards: 1 })),
+    ).toEqual({
+      ok: false,
+      error: 'La siguiente amarilla debe registrarse como segunda amarilla.',
+    });
+    expect(
+      registerFoul(
+        input({ playerId: 'p4', disciplinaryAction: 'secondYellow', playerYellowCards: 1 }),
+      ).ok,
+    ).toBe(true);
+  });
+
+  it('requires and validates a rival jersey number for cards', () => {
+    expect(registerFoul(input({ team: 'away', disciplinaryAction: 'yellow' }))).toEqual({
+      ok: false,
+      error: 'Indica el dorsal del jugador rival que recibe la tarjeta.',
+    });
+    for (const opponentPlayerNumber of [-1, 2.5, 0, 1_000]) {
+      expect(
+        registerFoul(input({ team: 'away', disciplinaryAction: 'yellow', opponentPlayerNumber }))
+          .ok,
+      ).toBe(false);
+    }
+    expect(
+      registerFoul(input({ team: 'away', disciplinaryAction: 'yellow', opponentPlayerNumber: 23 }))
+        .ok,
+    ).toBe(true);
+  });
+
+  it('validates rival second yellow and blocks sent-off numbers', () => {
+    expect(
+      registerFoul(
+        input({ team: 'away', disciplinaryAction: 'secondYellow', opponentPlayerNumber: 7 }),
+      ),
+    ).toEqual({
+      ok: false,
+      error: 'La segunda amarilla rival requiere una amarilla previa para ese dorsal.',
+    });
+    expect(
+      registerFoul(
+        input({
+          team: 'away',
+          disciplinaryAction: 'secondYellow',
+          opponentPlayerNumber: 7,
+          opponentPlayerYellowCards: 1,
+        }),
+      ).ok,
+    ).toBe(true);
+    expect(
+      registerFoul(
+        input({
+          team: 'away',
+          disciplinaryAction: 'directRed',
+          opponentPlayerNumber: 10,
+          sentOffOpponentPlayerNumbers: [10],
+        }),
+      ),
+    ).toEqual({
+      ok: false,
+      error: 'No se pueden registrar más acciones para un rival expulsado.',
     });
   });
 });

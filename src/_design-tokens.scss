@@ -1,0 +1,83 @@
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --ds-space-1: 0.25rem;
+  --ds-space-2: 0.5rem;
+  --ds-space-3: 0.75rem;
+  --ds-space-4: 1rem;
+  --ds-space-5: 1.5rem;
+  --ds-space-6: 2rem;
+
+  --ds-radius-sm: 0.5rem;
+  --ds-radius-md: 0.75rem;
+  --ds-radius-lg: 1rem;
+  --ds-radius-xl: 1.25rem;
+  --ds-radius-pill: 999px;
+
+  --ds-font-xs: 0.75rem;
+  --ds-font-sm: 0.875rem;
+  --ds-font-md: 1rem;
+  --ds-font-lg: 1.125rem;
+  --ds-font-xl: 1.5rem;
+
+  --ds-bg: #071018;
+  --ds-surface: #101c29;
+  --ds-surface-raised: #172638;
+  --ds-surface-strong: #20334a;
+  --ds-border: #30465f;
+  --ds-border-strong: #48627e;
+  --ds-text: #f7fafc;
+  --ds-text-muted: #aebed0;
+  --ds-primary: #39d98a;
+  --ds-on-primary: #03291a;
+  --ds-primary-soft: rgb(57 217 138 / 16%);
+  --ds-success: #39d98a;
+  --ds-warning: #ffc857;
+  --ds-warning-soft: rgb(255 200 87 / 16%);
+  --ds-danger: #ff7b86;
+  --ds-danger-soft: rgb(255 123 134 / 16%);
+  --ds-disabled: #718096;
+  --ds-focus: #66d9ff;
+  --ds-shadow-sm: 0 0.25rem 0.8rem rgb(0 0 0 / 24%);
+  --ds-shadow-lg: 0 1rem 3rem rgb(0 0 0 / 46%);
+
+  --ds-touch-min: 2.75rem;
+  --ds-touch-primary: 3.5rem;
+
+  /* Compatibility aliases used by screens not migrated yet. */
+  --color-bg: var(--ds-bg);
+  --color-surface: var(--ds-surface);
+  --color-text: var(--ds-text);
+  --color-text-muted: var(--ds-text-muted);
+  --color-border: var(--ds-border);
+  --color-accent: var(--ds-primary);
+  --color-on-accent: var(--ds-on-primary);
+  --color-accent-soft: var(--ds-primary-soft);
+  --color-danger: var(--ds-danger);
+  --color-danger-soft: var(--ds-danger-soft);
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --ds-bg: #eef3f7;
+  --ds-surface: #ffffff;
+  --ds-surface-raised: #f7fafc;
+  --ds-surface-strong: #e4edf4;
+  --ds-border: #c7d3df;
+  --ds-border-strong: #91a5b8;
+  --ds-text: #102235;
+  --ds-text-muted: #51677b;
+  --ds-primary: #087a4b;
+  --ds-on-primary: #ffffff;
+  --ds-primary-soft: rgb(8 122 75 / 12%);
+  --ds-success: #087a4b;
+  --ds-warning: #8a5a00;
+  --ds-warning-soft: rgb(177 112 0 / 12%);
+  --ds-danger: #b42332;
+  --ds-danger-soft: rgb(180 35 50 / 10%);
+  --ds-disabled: #7d8994;
+  --ds-focus: #006da3;
+  --ds-shadow-sm: 0 0.25rem 0.8rem rgb(31 50 68 / 12%);
+  --ds-shadow-lg: 0 1rem 3rem rgb(31 50 68 / 22%);
+}

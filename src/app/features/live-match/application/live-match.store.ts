@@ -10,9 +10,10 @@ import { PlayerRepository } from '../../../core/persistence/player.repository';
 import { createId } from '../../../core/utils/id';
 import { DomainResult } from '../../../core/utils/result';
 import { Match } from '../../../shared/models/match';
-import { FoulTeam, MatchEvent } from '../../../shared/models/match-event';
+import { DisciplinaryAction, FoulTeam, MatchEvent } from '../../../shared/models/match-event';
 import { Player } from '../../../shared/models/player';
 import { deriveMatchState } from '../domain/derived-match-state';
+import { deriveDisciplinaryState, registerRedCardReplacement } from '../domain/discipline';
 import { registerFoul as createFoul } from '../domain/foul';
 import { GoalSide, registerGoal as createGoal } from '../domain/goal';
 import {
@@ -61,10 +62,20 @@ export class LiveMatchStore {
     const match = this.match();
     return match ? deriveMatchState(match, this.events()) : null;
   });
+  readonly disciplinaryState = computed(() => {
+    const state = this.derivedState();
+    if (!state) return deriveDisciplinaryState([], 0);
+    const currentSegment =
+      state.clockRunning && state.runningSegmentStartedAtGameClockMs !== null
+        ? Math.max(0, state.runningSegmentStartedAtGameClockMs - this.remainingMs())
+        : 0;
+    return deriveDisciplinaryState(this.events(), state.completedElapsedMs + currentSegment);
+  });
   readonly timeline = computed(() =>
     createMatchTimeline(
       this.events(),
       Object.fromEntries(this.players().map((player) => [player.id, player.name])),
+      Object.fromEntries(this.players().map((player) => [player.id, player.number])),
     ),
   );
   readonly lastUndoableEvent = computed(() => findLastUndoableEvent(this.events()));
@@ -84,8 +95,28 @@ export class LiveMatchStore {
   });
   readonly benchPlayers = computed(() => {
     const lineupIds = new Set(this.lineupPlayerIds());
-    return this.players().filter((player) => !lineupIds.has(player.id));
+    const sentOffIds = new Set(this.disciplinaryState().sentOffPlayerIds);
+    return this.players().filter(
+      (player) => !lineupIds.has(player.id) && !sentOffIds.has(player.id),
+    );
   });
+  readonly sentOffPlayers = computed(() => {
+    const sentOffIds = new Set(this.disciplinaryState().sentOffPlayerIds);
+    return this.players().filter((player) => sentOffIds.has(player.id));
+  });
+  readonly ourReductions = computed(() =>
+    this.disciplinaryState().reductions.filter(
+      (reduction) => reduction.team === 'home' && reduction.status !== 'replacementCompleted',
+    ),
+  );
+  readonly opponentReductions = computed(() =>
+    this.disciplinaryState().reductions.filter(
+      (reduction) => reduction.team === 'away' && reduction.status !== 'replacementCompleted',
+    ),
+  );
+  readonly knownOpponentPlayers = computed(() =>
+    this.disciplinaryState().opponentPlayers.map((player) => player.jerseyNumber),
+  );
   readonly statistics = computed<MatchStatistics>(() => {
     const match = this.match();
     return match
@@ -102,7 +133,9 @@ export class LiveMatchStore {
   readonly canRegisterGoal = computed(() => {
     const status = this.match()?.status;
     return (
-      (status === 'firstHalf' || status === 'secondHalf') && this.lineupPlayerIds().length === 5
+      (status === 'firstHalf' || status === 'secondHalf') &&
+      this.lineupPlayerIds().length >= 3 &&
+      this.lineupPlayerIds().length <= 5
     );
   });
   readonly currentPeriodFouls = computed(() => {
@@ -125,6 +158,10 @@ export class LiveMatchStore {
     const status = this.match()?.status;
     return status === 'firstHalf' || status === 'secondHalf';
   });
+  readonly canStartClock = computed(
+    () =>
+      this.lineupPlayerIds().length >= 3 && this.disciplinaryState().onCourtPlayerCounts.away >= 3,
+  );
   readonly matchElapsedMs = computed(() => {
     const state = this.derivedState();
     if (!state) {
@@ -136,6 +173,22 @@ export class LiveMatchStore {
         : 0;
     return state.completedElapsedMs + currentSegment;
   });
+
+  opponentYellowCardsByNumber(number: number): number {
+    return this.opponentDiscipline(number)?.yellowCards ?? 0;
+  }
+
+  opponentDirectRedsByNumber(number: number): number {
+    return this.opponentDiscipline(number)?.directRedCards ?? 0;
+  }
+
+  opponentSecondYellowSendOffsByNumber(number: number): number {
+    return this.opponentDiscipline(number)?.secondYellowSendOffs ?? 0;
+  }
+
+  isOpponentPlayerSentOff(number: number): boolean {
+    return this.opponentDiscipline(number)?.sentOff ?? false;
+  }
 
   constructor() {
     this.timer = setInterval(() => this.tick(), 200);
@@ -193,6 +246,10 @@ export class LiveMatchStore {
   }
 
   startClock(): Promise<void> {
+    if (!this.canStartClock()) {
+      this.error.set('El partido no puede reanudarse con menos de 3 jugadores en un equipo.');
+      return Promise.resolve();
+    }
     return this.execute(startMatchClock, 'START_CLOCK');
   }
 
@@ -234,6 +291,7 @@ export class LiveMatchStore {
         timestamp,
         sequence: this.nextSequence(this.events()),
         eventId: createId(),
+        sentOffPlayerIds: this.disciplinaryState().sentOffPlayerIds,
       });
       if (!result.ok) {
         this.error.set(result.error);
@@ -254,20 +312,69 @@ export class LiveMatchStore {
     }
   }
 
-  registerGoalFor(): Promise<boolean> {
-    return this.registerGoal('for');
+  registerGoalFor(scorerPlayerId?: string): Promise<boolean> {
+    return this.registerGoal('for', scorerPlayerId);
   }
 
   registerGoalAgainst(): Promise<boolean> {
     return this.registerGoal('against');
   }
 
-  registerTeamFoul(playerId?: string): Promise<boolean> {
-    return this.registerFoul('home', playerId);
+  registerTeamFoul(
+    playerId?: string,
+    disciplinaryAction: DisciplinaryAction = 'none',
+  ): Promise<boolean> {
+    return this.registerFoul('home', disciplinaryAction, playerId);
   }
 
-  registerOpponentFoul(): Promise<boolean> {
-    return this.registerFoul('away');
+  registerOpponentFoul(
+    disciplinaryAction: DisciplinaryAction = 'none',
+    opponentPlayerNumber?: number,
+  ): Promise<boolean> {
+    return this.registerFoul('away', disciplinaryAction, undefined, opponentPlayerNumber);
+  }
+
+  async replaceSentOffPlayer(reductionEventId: string, playerId?: string): Promise<boolean> {
+    const match = this.match();
+    if (!match || this.commandInProgress) return false;
+
+    this.commandInProgress = true;
+    this.saving.set(true);
+    this.error.set(null);
+    this.notice.set(null);
+    const timestamp = Date.now();
+    try {
+      const result = registerRedCardReplacement({
+        match,
+        reduction: this.disciplinaryState().reductions.find(
+          (reduction) => reduction.eventId === reductionEventId,
+        ),
+        currentLineupPlayerIds: this.lineupPlayerIds(),
+        sentOffPlayerIds: this.disciplinaryState().sentOffPlayerIds,
+        playerId,
+        gameClockMs: projectRemaining(match.clock, timestamp),
+        matchElapsedMs: this.matchElapsedAt(timestamp),
+        timestamp,
+        sequence: this.nextSequence(this.events()),
+        eventId: createId(),
+      });
+      if (!result.ok) {
+        this.error.set(result.error);
+        return false;
+      }
+
+      await this.eventStore.commit(result.value.match, [result.value.event]);
+      this.now.set(timestamp);
+      this.match.set(result.value.match);
+      this.events.update((events) => [...events, result.value.event]);
+      return true;
+    } catch {
+      this.error.set('No se ha podido guardar la reposición.');
+      return false;
+    } finally {
+      this.commandInProgress = false;
+      this.saving.set(false);
+    }
   }
 
   async undoLastEvent(): Promise<boolean> {
@@ -353,7 +460,7 @@ export class LiveMatchStore {
     }
   }
 
-  private async registerGoal(side: GoalSide): Promise<boolean> {
+  private async registerGoal(side: GoalSide, scorerPlayerId?: string): Promise<boolean> {
     const match = this.match();
     const state = this.derivedState();
     if (!match || !state || this.commandInProgress) {
@@ -369,12 +476,14 @@ export class LiveMatchStore {
       const result = createGoal({
         match,
         side,
+        scorerPlayerId,
         currentLineupPlayerIds: state.currentLineupPlayerIds,
         score: state.score,
         gameClockMs: projectRemaining(match.clock, timestamp),
         timestamp,
         sequence: this.nextSequence(this.events()),
         eventId: createId(),
+        matchElapsedMs: this.matchElapsedAt(timestamp),
       });
       if (!result.ok) {
         this.error.set(result.error);
@@ -395,7 +504,12 @@ export class LiveMatchStore {
     }
   }
 
-  private async registerFoul(team: FoulTeam, playerId?: string): Promise<boolean> {
+  private async registerFoul(
+    team: FoulTeam,
+    disciplinaryAction: DisciplinaryAction,
+    playerId?: string,
+    opponentPlayerNumber?: number,
+  ): Promise<boolean> {
     const match = this.match();
     if (!match || this.commandInProgress) {
       return false;
@@ -412,6 +526,21 @@ export class LiveMatchStore {
         team,
         currentPeriodFoulCount: this.currentPeriodFouls()[team],
         playerId,
+        opponentPlayerNumber,
+        opponentPlayerYellowCards:
+          this.disciplinaryState().opponentPlayers.find(
+            (player) => player.jerseyNumber === opponentPlayerNumber,
+          )?.yellowCards ?? 0,
+        sentOffOpponentPlayerNumbers: this.disciplinaryState()
+          .opponentPlayers.filter((player) => player.sentOff)
+          .map((player) => player.jerseyNumber),
+        currentLineupPlayerIds: this.lineupPlayerIds(),
+        sentOffPlayerIds: this.disciplinaryState().sentOffPlayerIds,
+        playerYellowCards: playerId
+          ? (this.disciplinaryState().players[playerId]?.yellowCards ?? 0)
+          : 0,
+        disciplinaryAction,
+        matchElapsedMs: this.matchElapsedAt(timestamp),
         gameClockMs: projectRemaining(match.clock, timestamp),
         timestamp,
         sequence: this.nextSequence(this.events()),
@@ -490,6 +619,24 @@ export class LiveMatchStore {
   private nextSequence(currentEvents: readonly MatchEvent[]): number {
     return currentEvents.reduce((maximum, event) => Math.max(maximum, event.sequence), 0) + 1;
   }
+
+  private matchElapsedAt(timestamp: number): number {
+    const state = this.derivedState();
+    const match = this.match();
+    if (!state || !match) return 0;
+    const remainingMs = projectRemaining(match.clock, timestamp);
+    const currentSegment =
+      state.clockRunning && state.runningSegmentStartedAtGameClockMs !== null
+        ? Math.max(0, state.runningSegmentStartedAtGameClockMs - remainingMs)
+        : 0;
+    return state.completedElapsedMs + currentSegment;
+  }
+
+  private opponentDiscipline(number: number) {
+    return this.disciplinaryState().opponentPlayers.find(
+      (player) => player.jerseyNumber === number,
+    );
+  }
 }
 
 function undoLabel(type: MatchEvent['type']): string {
@@ -502,6 +649,8 @@ function undoLabel(type: MatchEvent['type']): string {
       return 'falta';
     case 'SUBSTITUTION':
       return 'sustitución';
+    case 'RED_CARD_REPLACEMENT':
+      return 'reposición tras expulsión';
     default:
       return 'última acción';
   }

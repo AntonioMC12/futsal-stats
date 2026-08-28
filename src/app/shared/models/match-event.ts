@@ -9,6 +9,7 @@ export const MATCH_EVENT_TYPES = [
   'PLAYER_LEFT',
   'SUBSTITUTION',
   'FOUL',
+  'RED_CARD_REPLACEMENT',
   'GOAL_FOR',
   'GOAL_AGAINST',
   'EVENT_UNDONE',
@@ -18,6 +19,7 @@ export const MATCH_EVENT_TYPES = [
 export type MatchEventType = (typeof MATCH_EVENT_TYPES)[number];
 
 export type FoulTeam = 'home' | 'away';
+export type DisciplinaryAction = 'none' | 'yellow' | 'secondYellow' | 'directRed';
 
 export interface MatchEventBase {
   id: string;
@@ -74,14 +76,28 @@ export interface FoulEvent extends MatchEventBase {
   type: 'FOUL';
   team: FoulTeam;
   playerId?: string;
+  opponentPlayerNumber?: number;
   periodFoulNumber: number;
+  accumulated?: boolean;
+  disciplinaryAction?: DisciplinaryAction;
+  matchElapsedMs?: number;
+}
+
+export interface RedCardReplacementEvent extends MatchEventBase {
+  type: 'RED_CARD_REPLACEMENT';
+  team: FoulTeam;
+  reductionEventId: string;
+  playerId?: string;
+  matchElapsedMs: number;
 }
 
 export interface GoalForEvent extends MatchEventBase {
   type: 'GOAL_FOR';
+  scorerPlayerId?: string;
   lineupPlayerIds: string[];
   scoreBefore: ScoreSnapshot;
   scoreAfter: ScoreSnapshot;
+  matchElapsedMs?: number;
 }
 
 export interface GoalAgainstEvent extends MatchEventBase {
@@ -89,6 +105,7 @@ export interface GoalAgainstEvent extends MatchEventBase {
   lineupPlayerIds: string[];
   scoreBefore: ScoreSnapshot;
   scoreAfter: ScoreSnapshot;
+  matchElapsedMs?: number;
 }
 
 export interface EventUndoneEvent extends MatchEventBase {
@@ -116,6 +133,7 @@ export type MatchEvent =
   | PlayerLeftEvent
   | SubstitutionEvent
   | FoulEvent
+  | RedCardReplacementEvent
   | GoalForEvent
   | GoalAgainstEvent
   | EventUndoneEvent

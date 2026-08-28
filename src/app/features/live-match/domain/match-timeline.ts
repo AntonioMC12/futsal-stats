@@ -1,6 +1,7 @@
 import { formatGameClock } from '../../../core/clock/match-clock';
 import { MatchEvent } from '../../../shared/models/match-event';
 import { selectActiveEvents } from './derived-match-state';
+import { deriveDisciplinaryState } from './discipline';
 
 export interface MatchTimelineItem {
   eventId: string;
@@ -13,7 +14,9 @@ export interface MatchTimelineItem {
 export function createMatchTimeline(
   events: readonly MatchEvent[],
   playerNames: Readonly<Record<string, string>> = {},
+  playerNumbers: Readonly<Record<string, number>> = {},
 ): MatchTimelineItem[] {
+  const discipline = deriveDisciplinaryState(events, 0);
   return selectActiveEvents(events)
     .filter((event) => event.type !== 'EVENT_UNDONE')
     .reverse()
@@ -22,11 +25,21 @@ export function createMatchTimeline(
       type: event.type,
       period: event.period,
       gameClock: formatGameClock(event.gameClockMs),
-      label: eventLabel(event, playerNames),
+      label: eventLabel(
+        event,
+        playerNames,
+        playerNumbers,
+        discipline.goalReleaseEventIds.has(event.id),
+      ),
     }));
 }
 
-function eventLabel(event: MatchEvent, playerNames: Readonly<Record<string, string>>): string {
+function eventLabel(
+  event: MatchEvent,
+  playerNames: Readonly<Record<string, string>>,
+  playerNumbers: Readonly<Record<string, number>>,
+  releasedReduction: boolean,
+): string {
   switch (event.type) {
     case 'MATCH_STARTED':
       return 'Partido iniciado';
@@ -47,11 +60,15 @@ function eventLabel(event: MatchEvent, playerNames: Readonly<Record<string, stri
     case 'SUBSTITUTION':
       return `Cambio: ${playerName(event.outPlayerId, playerNames)} → ${playerName(event.inPlayerId, playerNames)}`;
     case 'FOUL':
-      return `${event.team === 'home' ? 'Falta propia' : 'Falta rival'} · ${event.periodFoulNumber}ª`;
+      return foulLabel(event, playerNames);
+    case 'RED_CARD_REPLACEMENT':
+      return event.team === 'home'
+        ? `${playerName(event.playerId ?? '', playerNames)} entra tras expulsión`
+        : 'Rival repone jugador tras expulsión';
     case 'GOAL_FOR':
-      return `Gol a favor · ${event.scoreAfter.home}-${event.scoreAfter.away}`;
+      return `${event.scorerPlayerId ? `Gol ${playerLabel(event.scorerPlayerId, playerNames, playerNumbers)}` : 'Gol a favor'} · ${event.scoreAfter.home}-${event.scoreAfter.away}${releasedReduction ? ' · finaliza inferioridad rival' : ''}`;
     case 'GOAL_AGAINST':
-      return `Gol en contra · ${event.scoreAfter.home}-${event.scoreAfter.away}`;
+      return `Gol en contra · ${event.scoreAfter.home}-${event.scoreAfter.away}${releasedReduction ? ' · finaliza inferioridad' : ''}`;
     case 'MATCH_FINISHED':
       return 'Partido finalizado';
     case 'EVENT_UNDONE':
@@ -59,6 +76,41 @@ function eventLabel(event: MatchEvent, playerNames: Readonly<Record<string, stri
   }
 }
 
+function foulLabel(
+  event: Extract<MatchEvent, { type: 'FOUL' }>,
+  playerNames: Readonly<Record<string, string>>,
+): string {
+  if (!event.playerId && (event.disciplinaryAction ?? 'none') === 'none') {
+    return `${event.team === 'home' ? 'Falta propia' : 'Falta rival'} · ${event.periodFoulNumber}ª`;
+  }
+  const who =
+    event.team === 'home'
+      ? playerName(event.playerId ?? '', playerNames)
+      : `rival${event.opponentPlayerNumber === undefined ? '' : ` #${event.opponentPlayerNumber}`}`;
+  const action = event.disciplinaryAction ?? 'none';
+  const prefix =
+    action === 'yellow'
+      ? '🟨 Amarilla'
+      : action === 'secondYellow'
+        ? '🟨🟨 Segunda amarilla · expulsado'
+        : action === 'directRed'
+          ? '🟥 Roja directa'
+          : event.team === 'home'
+            ? 'Falta propia'
+            : 'Falta rival';
+  return `${prefix} ${who} · ${event.periodFoulNumber}ª`;
+}
+
 function playerName(playerId: string, playerNames: Readonly<Record<string, string>>): string {
   return playerNames[playerId] ?? 'Jugador';
+}
+
+function playerLabel(
+  playerId: string,
+  playerNames: Readonly<Record<string, string>>,
+  playerNumbers: Readonly<Record<string, number>>,
+): string {
+  const number = playerNumbers[playerId];
+  const name = playerName(playerId, playerNames);
+  return number === undefined ? name : `#${number} ${name}`;
 }

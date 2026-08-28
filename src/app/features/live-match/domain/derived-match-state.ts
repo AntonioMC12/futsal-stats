@@ -70,13 +70,25 @@ export function deriveMatchState(match: Match, events: readonly MatchEvent[]): D
         lineup.add(event.inPlayerId);
         break;
       case 'FOUL': {
-        const fouls = foulsByPeriod[event.period] ?? { home: 0, away: 0 };
-        foulsByPeriod[event.period] = {
-          ...fouls,
-          [event.team]: fouls[event.team] + 1,
-        };
+        if (event.accumulated !== false) {
+          const fouls = foulsByPeriod[event.period] ?? { home: 0, away: 0 };
+          foulsByPeriod[event.period] = {
+            ...fouls,
+            [event.team]: fouls[event.team] + 1,
+          };
+        }
+        if (
+          event.team === 'home' &&
+          event.playerId &&
+          (event.disciplinaryAction === 'secondYellow' || event.disciplinaryAction === 'directRed')
+        ) {
+          lineup.delete(event.playerId);
+        }
         break;
       }
+      case 'RED_CARD_REPLACEMENT':
+        if (event.team === 'home' && event.playerId) lineup.add(event.playerId);
+        break;
       case 'GOAL_FOR':
         score = { ...score, home: score.home + 1 };
         break;

@@ -1,4 +1,3 @@
-import { isCompleteLineup } from '../../../core/utils/lineup-id';
 import { DomainResult, fail, ok } from '../../../core/utils/result';
 import { Match } from '../../../shared/models/match';
 import { SubstitutionEvent } from '../../../shared/models/match-event';
@@ -12,6 +11,7 @@ export interface SubstitutionInput {
   timestamp: number;
   sequence: number;
   eventId: string;
+  sentOffPlayerIds?: readonly string[];
 }
 
 export interface SubstitutionResult {
@@ -23,8 +23,8 @@ export function makeSubstitution(input: SubstitutionInput): DomainResult<Substit
   if (!['firstHalf', 'halftime', 'secondHalf'].includes(input.match.status)) {
     return fail('Las sustituciones solo están disponibles durante el partido.');
   }
-  if (!isCompleteLineup(input.currentLineupPlayerIds)) {
-    return fail('El quinteto actual debe tener exactamente 5 jugadores.');
+  if (!isValidPlayingLineup(input.currentLineupPlayerIds)) {
+    return fail('Debe haber entre 3 y 5 jugadores diferentes en pista.');
   }
   if (input.outPlayerId === input.inPlayerId) {
     return fail('Selecciona dos jugadores diferentes.');
@@ -39,6 +39,9 @@ export function makeSubstitution(input: SubstitutionInput): DomainResult<Substit
   }
   if (lineup.has(input.inPlayerId)) {
     return fail('El jugador que entra ya está en pista.');
+  }
+  if (input.sentOffPlayerIds?.includes(input.inPlayerId)) {
+    return fail('Un jugador expulsado no puede volver a entrar.');
   }
 
   return ok({
@@ -56,4 +59,10 @@ export function makeSubstitution(input: SubstitutionInput): DomainResult<Substit
       inPlayerId: input.inPlayerId,
     },
   });
+}
+
+function isValidPlayingLineup(playerIds: readonly string[]): boolean {
+  return (
+    playerIds.length >= 3 && playerIds.length <= 5 && new Set(playerIds).size === playerIds.length
+  );
 }

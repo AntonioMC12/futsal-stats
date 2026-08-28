@@ -71,6 +71,25 @@ export function derivePlayerPlayingTimes(
           ensurePlayer(times, event.inPlayerId).entries += 1;
         }
         break;
+      case 'FOUL':
+        if (
+          event.team === 'home' &&
+          event.playerId &&
+          (event.disciplinaryAction === 'secondYellow' || event.disciplinaryAction === 'directRed')
+        ) {
+          accumulateUntil(event.gameClockMs);
+          lineup.delete(event.playerId);
+        }
+        break;
+      case 'RED_CARD_REPLACEMENT':
+        if (event.team === 'home' && event.playerId) {
+          accumulateUntil(event.gameClockMs);
+          if (!lineup.has(event.playerId)) {
+            lineup.add(event.playerId);
+            ensurePlayer(times, event.playerId).entries += 1;
+          }
+        }
+        break;
       case 'MATCH_FINISHED':
         accumulateUntil(event.gameClockMs);
         clockRunning = false;
@@ -78,7 +97,6 @@ export function derivePlayerPlayingTimes(
         break;
       case 'MATCH_STARTED':
       case 'PERIOD_STARTED':
-      case 'FOUL':
       case 'GOAL_FOR':
       case 'GOAL_AGAINST':
       case 'EVENT_UNDONE':

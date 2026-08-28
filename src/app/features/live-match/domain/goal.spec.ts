@@ -37,7 +37,9 @@ describe('goal domain', () => {
   it('registers a goal for with score and lineup snapshots', () => {
     const currentLineup = ['p1', 'p2', 'p3', 'p4', 'p5'];
     const score = { home: 2, away: 1 };
-    const result = registerGoal(input({ currentLineupPlayerIds: currentLineup, score }));
+    const result = registerGoal(
+      input({ currentLineupPlayerIds: currentLineup, score, scorerPlayerId: 'p3' }),
+    );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -45,6 +47,7 @@ describe('goal domain', () => {
       id: 'goal-20',
       matchId: 'match-1',
       type: 'GOAL_FOR',
+      scorerPlayerId: 'p3',
       period: 1,
       gameClockMs: 522_123,
       timestamp: 10_000,
@@ -53,6 +56,7 @@ describe('goal domain', () => {
       lineupPlayerIds: currentLineup,
       scoreBefore: { home: 2, away: 1 },
       scoreAfter: { home: 3, away: 1 },
+      matchElapsedMs: 0,
     });
     expect(result.value.match.updatedAt).toBe(10_000);
 
@@ -83,13 +87,39 @@ describe('goal domain', () => {
     },
   );
 
-  it('requires exactly five different players in the snapshot', () => {
+  it('requires between three and five different players in the snapshot', () => {
     expect(registerGoal(input({ currentLineupPlayerIds: ['p1', 'p2', 'p3', 'p4', 'p4'] }))).toEqual(
       {
         ok: false,
-        error: 'Debe haber exactamente 5 jugadores en pista para registrar un gol.',
+        error: 'Debe haber entre 3 y 5 jugadores diferentes en pista para registrar un gol.',
       },
     );
+  });
+
+  it('accepts a goal while playing in numerical inferiority', () => {
+    expect(registerGoal(input({ currentLineupPlayerIds: ['p1', 'p2', 'p3', 'p4'] })).ok).toBe(true);
+  });
+
+  it('registers a goal for without a scorer', () => {
+    const result = registerGoal(input());
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.event.type).toBe('GOAL_FOR');
+    expect('scorerPlayerId' in result.value.event).toBe(false);
+  });
+
+  it('rejects a scorer who is not in the lineup snapshot', () => {
+    expect(registerGoal(input({ scorerPlayerId: 'p6' }))).toEqual({
+      ok: false,
+      error: 'El goleador debe estar en pista al registrar el gol.',
+    });
+  });
+
+  it('rejects a scorer on a goal against', () => {
+    expect(registerGoal(input({ side: 'against', scorerPlayerId: 'p1' }))).toEqual({
+      ok: false,
+      error: 'Solo los goles a favor pueden tener goleador.',
+    });
   });
 
   it('rejects a lineup containing a player outside the squad', () => {

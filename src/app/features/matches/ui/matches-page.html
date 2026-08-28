@@ -8,6 +8,12 @@
   @if (store.error(); as message) {
     <p class="banner banner--warn" role="alert">{{ message }}</p>
   }
+  @if (csvExporter.error(); as message) {
+    <p class="banner banner--warn" role="alert">{{ message }}</p>
+  }
+  @if (csvExporter.notice(); as message) {
+    <p class="banner banner--ok" role="status">{{ message }}</p>
+  }
 
   @if (store.loading()) {
     <p class="empty" role="status">Cargando partidos…</p>
@@ -29,6 +35,14 @@
           </a>
           <details class="secondary-actions">
             <summary>Opciones del partido</summary>
+            <button
+              class="text-action export-csv"
+              type="button"
+              [disabled]="csvExporter.isExporting()"
+              (click)="csvExporter.export(active.match.id)"
+            >
+              {{ csvExporter.isExporting() ? 'Exportando…' : 'Exportar CSV' }}
+            </button>
             <button class="text-danger" type="button" (click)="requestDelete(active)">
               Abandonar partido
             </button>
@@ -64,6 +78,14 @@
               </div>
               <details class="secondary-actions secondary-actions--compact">
                 <summary aria-label="Opciones del partido">•••</summary>
+                <button
+                  class="text-action export-csv"
+                  type="button"
+                  [disabled]="csvExporter.isExporting()"
+                  (click)="csvExporter.export(summary.match.id)"
+                >
+                  {{ csvExporter.isExporting() ? 'Exportando…' : 'Exportar CSV' }}
+                </button>
                 <button class="text-danger" type="button" (click)="requestDelete(summary)">
                   Eliminar
                 </button>

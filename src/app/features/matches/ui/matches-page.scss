@@ -94,7 +94,8 @@
   font-weight: 700;
 }
 
-.text-danger {
+.text-danger,
+.text-action {
   min-height: 2.75rem;
   border: 0;
   background: transparent;
@@ -102,6 +103,15 @@
   font: inherit;
   font-weight: 800;
   cursor: pointer;
+}
+
+.text-action {
+  color: var(--color-accent);
+}
+
+.text-action:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 
 .empty-state {

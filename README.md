@@ -27,7 +27,10 @@ La aplicación funciona de forma local y no necesita backend: equipos, jugadores
 - Control flotante del reloj optimizado para uso táctil.
 - Sustituciones rápidas pulsando sobre el jugador que sale y seleccionando al jugador que entra.
 - Registro de goles a favor y en contra.
+- Selección opcional del goleador entre los jugadores en pista, con goles individuales derivados del historial.
 - Registro de faltas propias y del rival por periodo.
+- Tarjetas, expulsiones e inferioridades de dos minutos de tiempo efectivo con reposición manual.
+- Identificación rápida por dorsal de jugadores rivales sancionados, reutilizable durante el partido.
 - Marcador y cronología de eventos actualizados inmediatamente.
 - Deshacer goles, faltas y sustituciones sin eliminar el historial original.
 
@@ -38,6 +41,7 @@ La aplicación funciona de forma local y no necesita backend: equipos, jugadores
 - Plus/minus por jugador.
 - Tiempo, goles y plus/minus por quinteto.
 - Snapshot del quinteto presente en cada gol.
+- Exportación CSV de estadísticas legibles, sin identificadores internos, en cualquier estado del partido.
 
 ## PWA y funcionamiento offline
 

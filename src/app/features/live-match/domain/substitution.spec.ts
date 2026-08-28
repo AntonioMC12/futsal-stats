@@ -61,11 +61,28 @@ describe('substitution domain', () => {
     },
   );
 
-  it('requires a complete five-player lineup', () => {
+  it('requires at least three players in the current lineup', () => {
     expect(makeSubstitution(input({ currentLineupPlayerIds: ['p1', 'p2'] }))).toEqual({
       ok: false,
-      error: 'El quinteto actual debe tener exactamente 5 jugadores.',
+      error: 'Debe haber entre 3 y 5 jugadores diferentes en pista.',
     });
+  });
+
+  it('supports substitutions with four players and rejects sent-off players', () => {
+    expect(
+      makeSubstitution(
+        input({
+          currentLineupPlayerIds: ['p1', 'p2', 'p3', 'p4'],
+          outPlayerId: 'p4',
+          sentOffPlayerIds: ['p6'],
+        }),
+      ),
+    ).toEqual({ ok: false, error: 'Un jugador expulsado no puede volver a entrar.' });
+    expect(
+      makeSubstitution(
+        input({ currentLineupPlayerIds: ['p1', 'p2', 'p3', 'p4'], outPlayerId: 'p4' }),
+      ).ok,
+    ).toBe(true);
   });
 
   it('requires the outgoing player to be on court', () => {

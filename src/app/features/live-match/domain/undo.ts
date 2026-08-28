@@ -5,7 +5,7 @@ import { selectActiveEvents } from './derived-match-state';
 
 export type UndoableMatchEvent = Extract<
   MatchEvent,
-  { type: 'GOAL_FOR' | 'GOAL_AGAINST' | 'FOUL' | 'SUBSTITUTION' }
+  { type: 'GOAL_FOR' | 'GOAL_AGAINST' | 'FOUL' | 'SUBSTITUTION' | 'RED_CARD_REPLACEMENT' }
 >;
 
 export interface UndoLastEventInput {
@@ -64,6 +64,7 @@ function isUndoableEvent(event: MatchEvent): event is UndoableMatchEvent {
     event.type === 'GOAL_FOR' ||
     event.type === 'GOAL_AGAINST' ||
     event.type === 'FOUL' ||
-    event.type === 'SUBSTITUTION'
+    event.type === 'SUBSTITUTION' ||
+    event.type === 'RED_CARD_REPLACEMENT'
   );
 }

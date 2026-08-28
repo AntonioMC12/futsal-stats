@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { MatchSummary, MatchesStore } from '../application/matches.store';
+import { MatchCsvExportService } from '../application/match-csv-export.service';
 
 @Component({
   selector: 'app-matches-page',
@@ -11,6 +12,7 @@ import { MatchSummary, MatchesStore } from '../application/matches.store';
 })
 export class MatchesPage {
   protected readonly store = inject(MatchesStore);
+  protected readonly csvExporter = inject(MatchCsvExportService);
   private readonly router = inject(Router);
   protected readonly showActiveConflict = signal(false);
   protected readonly deleteCandidate = signal<MatchSummary | null>(null);
