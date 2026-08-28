@@ -9,6 +9,7 @@ La aplicación funciona de forma local y no necesita backend: equipos, jugadores
 ### Equipos y jugadores
 
 - Creación y edición de equipos.
+- Equipo Apaga preconfigurado con 16 jugadores, disponible automáticamente en cada instalación.
 - Gestión de dorsales, nombres, posiciones y estado de los jugadores.
 - Selección de convocatoria y quinteto inicial antes de cada partido.
 
@@ -49,7 +50,7 @@ Futsal Stats incluye manifiesto y Service Worker de Angular. En una compilación
 
 Los datos permanecen en el dispositivo mediante IndexedDB. No se envían a ningún servidor ni se sincronizan entre dispositivos.
 
-> Borrar los datos del sitio desde el navegador también elimina equipos, jugadores, partidos y eventos almacenados localmente.
+> Borrar los datos del sitio desde el navegador elimina equipos, jugadores, partidos y eventos almacenados localmente. El equipo incorporado Apaga vuelve a crearse en el siguiente arranque.
 
 ## Tecnologías
 

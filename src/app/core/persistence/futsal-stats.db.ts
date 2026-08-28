@@ -20,5 +20,11 @@ export class FutsalStatsDb extends Dexie {
       matches: 'id, status, date, updatedAt',
       events: 'id, matchId, sequence, type, timestamp',
     });
+    this.version(2).stores({
+      teams: 'id, name, updatedAt, &seedKey',
+      players: 'id, teamId, number, active',
+      matches: 'id, status, date, updatedAt',
+      events: 'id, matchId, sequence, type, timestamp',
+    });
   }
 }

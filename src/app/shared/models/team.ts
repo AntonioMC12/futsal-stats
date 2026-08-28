@@ -1,5 +1,6 @@
 export interface Team {
   id: string;
+  seedKey?: string;
   name: string;
   shortName: string;
   logo?: string;
