@@ -1,1176 +1,198 @@
-# Prompt maestro — Futsal Stats PWA
+# Futsal Stats
 
-Quiero desarrollar una aplicación llamada **Futsal Stats**, una **PWA con Angular 22**, orientada a recoger estadísticas de un partido de fútbol sala en tiempo real.
+Futsal Stats es una aplicación web progresiva para registrar y consultar estadísticas de partidos de fútbol sala en tiempo real. Está diseñada para entrenadores, analistas y miembros del cuerpo técnico que necesitan operar rápidamente desde un móvil, una tablet o un ordenador.
 
-El desarrollo se realizará mediante un flujo de trabajo **ChatGPT + Codex**, por lo que debes actuar como un **arquitecto de software senior, product engineer y experto en Angular**, proponiendo una arquitectura mantenible y después implementándola de manera incremental.
+La aplicación funciona de forma local y no necesita backend: equipos, jugadores, partidos y eventos se guardan en IndexedDB dentro del dispositivo.
 
-## 1. Objetivo del producto
+## Funcionalidades
 
-La aplicación debe permitir a un entrenador, analista o miembro del staff controlar un partido de fútbol sala desde un dispositivo móvil, tablet u ordenador y registrar eventos mientras se disputa el encuentro.
+### Equipos y jugadores
 
-Las funcionalidades principales del MVP son:
+- Creación y edición de equipos.
+- Gestión de dorsales, nombres, posiciones y estado de los jugadores.
+- Selección de convocatoria y quinteto inicial antes de cada partido.
 
-* Temporizador oficial del partido.
-* Control del quinteto que está actualmente en pista.
-* Registro del tiempo jugado por cada jugador.
-* Registro de sustituciones.
-* Registro de faltas.
-* Registro de goles a favor y en contra.
-* Saber qué quinteto estaba en pista cuando se produce cada gol.
-* Histórico cronológico de eventos del partido.
-* Posibilidad de corregir errores durante el partido.
-* Persistencia local para evitar perder datos.
-* Arquitectura preparada para añadir nuevas estadísticas en el futuro.
+### Gestión de partidos
 
-La prioridad absoluta de la aplicación es que sea **rápida y extremadamente sencilla de operar durante un partido**.
+- Un único partido activo simultáneamente.
+- Continuación de un partido en curso después de cerrar o recargar la aplicación.
+- Histórico de partidos finalizados con fecha y resultado.
+- Eliminación transaccional de partidos y sus eventos asociados.
+- Flujo para abandonar un partido y comenzar otro sin conservar estado residual.
 
----
+### Partido en directo
 
-# 2. Stack tecnológico
+- Reloj de dos periodos con inicio, parada, reanudación y cambio de periodo.
+- Cabecera compacta con tiempo, periodo y quinteto actual.
+- Control flotante del reloj optimizado para uso táctil.
+- Sustituciones rápidas pulsando sobre el jugador que sale y seleccionando al jugador que entra.
+- Registro de goles a favor y en contra.
+- Registro de faltas propias y del rival por periodo.
+- Marcador y cronología de eventos actualizados inmediatamente.
+- Deshacer goles, faltas y sustituciones sin eliminar el historial original.
 
-Utilizar:
+### Estadísticas derivadas
 
-* Angular 22
-* TypeScript
-* Standalone Components
-* Angular Signals como mecanismo principal de estado reactivo
-* Angular Router
-* Reactive Forms cuando sean necesarios
-* PWA / Service Worker
-* IndexedDB para persistencia local
-* CSS moderno o SCSS
-* Vitest para tests unitarios
-* Playwright para tests end-to-end
+- Minutos jugados y porcentaje de participación.
+- Goles a favor y en contra con cada jugador en pista.
+- Plus/minus por jugador.
+- Tiempo, goles y plus/minus por quinteto.
+- Snapshot del quinteto presente en cada gol.
 
-Evitar dependencias innecesarias.
+## PWA y funcionamiento offline
 
-No introducir NgRx salvo que exista una justificación técnica clara.
+Futsal Stats incluye manifiesto y Service Worker de Angular. En una compilación de producción, los recursos necesarios se precargan para poder utilizar la aplicación sin conexión después de la primera carga correcta.
 
-Preferir APIs y patrones nativos de Angular.
+Los datos permanecen en el dispositivo mediante IndexedDB. No se envían a ningún servidor ni se sincronizan entre dispositivos.
 
-Aplicar TypeScript estricto.
+> Borrar los datos del sitio desde el navegador también elimina equipos, jugadores, partidos y eventos almacenados localmente.
 
----
+## Tecnologías
 
-# 3. Enfoque arquitectónico
+- Angular 22 con componentes standalone.
+- TypeScript estricto.
+- Angular Signals para estado reactivo.
+- Angular Router y Reactive Forms.
+- Dexie sobre IndexedDB para persistencia.
+- Angular Service Worker para capacidades PWA.
+- SCSS responsive orientado a móvil y tablet.
+- Vitest y Angular Testing Utilities.
 
-Diseñar la aplicación siguiendo una arquitectura basada en dominio y features.
+## Requisitos
 
-Una estructura orientativa:
+- Node.js compatible con Angular 22.
+- npm. El proyecto declara `npm@12.0.2` como gestor recomendado.
 
+## Instalación
+
+```bash
+npm install
+```
+
+## Ejecutar en local
+
+```bash
+npm start
+```
+
+La aplicación estará disponible normalmente en:
+
+```text
+http://localhost:4200
+```
+
+## Tests
+
+```bash
+npm test
+```
+
+Los tests cubren reloj, ciclo de vida, eventos, sustituciones, goles, faltas, estadísticas, undo, recuperación, eliminación de partidos y flujos principales de UI.
+
+## Build de producción
+
+```bash
+npm run build
+```
+
+El resultado se genera en:
+
+```text
+dist/futsal-stats
+```
+
+Para comprobar la instalación PWA y el comportamiento offline hay que servir el contenido compilado con un servidor HTTP local o mediante HTTPS. El Service Worker no se activa con la configuración de desarrollo de `ng serve`.
+
+## Otros comandos
+
+```bash
+# Build continuo con configuración de desarrollo
+npm run watch
+
+# Ejecutar Angular CLI
+npm run ng -- <comando>
+```
+
+## Rutas principales
+
+| Ruta                  | Descripción                                    |
+| --------------------- | ---------------------------------------------- |
+| `/matches`            | Gestor de partidos activos y finalizados       |
+| `/matches/new`        | Preparación de convocatoria y quinteto inicial |
+| `/live/:matchId`      | Registro del partido en directo                |
+| `/teams`              | Listado de equipos                             |
+| `/teams/new`          | Creación de un equipo                          |
+| `/teams/:teamId`      | Plantilla de un equipo                         |
+| `/teams/:teamId/edit` | Edición de un equipo                           |
+
+El acceso directo a `/matches/new` se protege cuando ya existe un partido activo.
+
+## Arquitectura
+
+El código se organiza por features y separa la lógica de dominio, aplicación y presentación:
+
+```text
 src/app/
+├── core/
+│   ├── clock/          # Motor de reloj puro
+│   ├── connectivity/   # Estado online/offline
+│   ├── persistence/    # Dexie y repositorios
+│   └── utils/
+├── features/
+│   ├── teams/
+│   ├── match-setup/
+│   ├── matches/
+│   └── live-match/
+│       ├── application/
+│       ├── domain/
+│       └── ui/
+└── shared/
+    ├── components/
+    └── models/
+```
 
-core/
+### Persistencia
 
-* persistence/
-* services/
-* utils/
+La base de datos local contiene cuatro tablas:
 
-shared/
+- `teams`
+- `players`
+- `matches`
+- `events`
 
-* components/
-* models/
-* pipes/
+El reloj persistido forma parte del registro `Match`. Marcador, faltas, quintetos, minutos y estadísticas se calculan a partir de los eventos; no se guardan copias derivadas innecesarias.
 
-features/
+### Event Store
 
-teams/
+Las acciones relevantes se registran como `MatchEvent`. Los eventos son append-only y se ordenan mediante `sequence` y `timestamp`.
 
-* domain/
-* application/
-* ui/
+La operación de deshacer añade un evento compensatorio `EVENT_UNDONE`, manteniendo intacto el evento original. Esto permite reconstruir de manera determinista:
 
-players/
+- marcador;
+- faltas por periodo;
+- quinteto actual;
+- minutos jugados;
+- estadísticas de jugadores y quintetos;
+- timeline visible.
 
-* domain/
-* application/
-* ui/
+### Reloj
 
-matches/
+El reloj guarda un snapshot con tiempo restante, duración del periodo, estado de ejecución y timestamp de inicio. Mientras está en marcha, el tiempo visible se proyecta desde el timestamp real para evitar drift por intervalos retrasados.
 
-* domain/
-* application/
-* ui/
+Al recuperar un partido, el estado se sincroniza con el tiempo transcurrido y se persiste una parada automática si el periodo ya llegó a cero.
 
-live-match/
+### Eliminación de partidos
 
-* domain/
-* application/
-* ui/
+La eliminación de un partido y todos sus eventos se realiza dentro de una única transacción IndexedDB. Equipos y jugadores quedan fuera de esa transacción y pueden reutilizarse inmediatamente.
 
-statistics/
+El estado en memoria del partido en directo solo se limpia después de que IndexedDB confirme la eliminación. Si la operación falla, el partido continúa disponible y se informa al usuario.
 
-* domain/
-* application/
-* ui/
+## Principios del proyecto
 
-La lógica de negocio importante NO debe residir directamente en componentes visuales.
-
-Los componentes deben centrarse principalmente en:
-
-* representar estado;
-* recibir interacción;
-* llamar servicios/casos de uso.
-
-La lógica del partido debe poder probarse sin renderizar Angular.
-
----
-
-# 4. Modelo de dominio inicial
-
-Diseña tipos/interfaces para al menos las siguientes entidades.
-
-## Team
-
-* id
-* name
-* shortName
-* logo opcional
-
-## Player
-
-* id
-* teamId
-* number
-* name
-* position opcional
-* active
-
-## Match
-
-* id
-* homeTeam
-* awayTeam
-* date
-* status
-* currentPeriod
-* score
-* clock
-* events
-* createdAt
-* updatedAt
-
-Estados posibles:
-
-* setup
-* ready
-* firstHalf
-* halftime
-* secondHalf
-* finished
-
-## Lineup
-
-Representa el quinteto actual.
-
-Debe contener exactamente 5 jugadores cuando el partido está activo.
-
-También debe poder reconstruirse históricamente a partir de los eventos registrados.
-
----
-
-# 5. Modelo basado en eventos
-
-Una decisión arquitectónica importante:
-
-**el estado de un partido debe poder reconstruirse a partir de una secuencia cronológica de eventos.**
-
-Crear una abstracción MatchEvent.
-
-Todos los eventos deben contener:
-
-* id
-* matchId
-* type
-* period
-* gameClock
-* timestamp real
-* sequence
-* metadata
-
-Tipos iniciales de eventos:
-
-MATCH_STARTED
-
-CLOCK_STARTED
-
-CLOCK_STOPPED
-
-PERIOD_STARTED
-
-PERIOD_ENDED
-
-PLAYER_ENTERED
-
-PLAYER_LEFT
-
-SUBSTITUTION
-
-FOUL
-
-GOAL_FOR
-
-GOAL_AGAINST
-
-EVENT_UNDONE
-
-MATCH_FINISHED
-
-Diseñar el modelo para que en el futuro podamos añadir eventos como:
-
-* shot
-* shotOnTarget
-* save
-* corner
-* turnover
-* recovery
-* assist
-* yellowCard
-* redCard
-* timeout
-* penalty
-* tenMeterPenalty
-* customStatistic
-
-No construir todavía toda esa funcionalidad, pero asegurar que la arquitectura permita añadir nuevos tipos de evento fácilmente.
-
----
-
-# 6. Temporizador del partido
-
-Esta es una de las funcionalidades más importantes.
-
-En fútbol sala cada periodo empieza en:
-
-20:00
-
-y cuenta hacia atrás hasta:
-
-00:00.
-
-El reloj NO debe avanzar cuando el juego está detenido.
-
-Debe permitir:
-
-START
-
-STOP
-
-RESET
-
-FINALIZAR PERIODO
-
-INICIAR SEGUNDA PARTE
-
-El partido tendrá inicialmente:
-
-2 periodos de 20 minutos.
-
-El diseño debe permitir configurar en el futuro:
-
-* duración del periodo;
-* número de periodos;
-* prórroga.
-
-## Requisito crítico del reloj
-
-NO implementar el reloj simplemente restando 1 segundo mediante setInterval.
-
-Ese sistema genera drift y deja de ser fiable cuando:
-
-* el navegador pierde foco;
-* la aplicación pasa a segundo plano;
-* el dispositivo reduce timers;
-* la app se reanuda.
-
-Implementar el reloj utilizando timestamps.
-
-Cuando el reloj empieza, guardar algo equivalente a:
-
-startedAt = performance.now()
-
-y calcular:
-
-remainingTime = baseRemainingTime - elapsedTime
-
-Al detenerlo:
-
-actualizar baseRemainingTime
-
-y eliminar startedAt.
-
-El tiempo mostrado debe ser una proyección del estado real del reloj, no la fuente de verdad.
-
-El tiempo debe conservarse correctamente incluso si la aplicación pierde el foco.
-
----
-
-# 7. Representación del tiempo
-
-Internamente almacenar el tiempo preferiblemente en milisegundos.
-
-Ejemplo:
-
-20 minutos = 1_200_000 ms.
-
-Crear utilidades puras para:
-
-formatGameClock()
-
-parseGameClock()
-
-remainingToElapsed()
-
-elapsedToRemaining()
-
-Ejemplo visual:
-
-19:43
-
-03:12
-
-00:00
-
-Registrar cada evento con el tiempo de partido exacto en el momento en que ocurre.
-
-Ejemplo:
-
-GOAL_FOR
-
-period: 1
-
-gameClock: 12:34
-
----
-
-# 8. Quinteto actual
-
-La aplicación debe mostrar siempre claramente los 5 jugadores que están actualmente en pista.
-
-Vista sugerida:
-
-EN PISTA
-
-#1 Juan
-#4 Pedro
-#7 Alex
-#10 Carlos
-#12 David
-
-BANQUILLO
-
-#2 Pablo
-#3 Mario
-#5 Luis
-...
-
-Para hacer un cambio:
-
-1. seleccionar jugador que sale;
-2. seleccionar jugador que entra;
-3. confirmar sustitución.
-
-Al confirmar debe registrarse un evento SUBSTITUTION.
-
-El estado debe actualizarse inmediatamente.
-
-La aplicación debe impedir:
-
-* más de 5 jugadores en pista;
-* menos de 5 jugadores durante juego activo, salvo estados transitorios controlados;
-* introducir un jugador que ya está en pista;
-* sacar un jugador que no está en pista.
-
-La UX debe minimizar el número de pulsaciones.
-
----
-
-# 9. Minutos jugados
-
-Los minutos jugados NO deberían almacenarse como un contador independiente que se incremente cada segundo.
-
-Deben calcularse principalmente a partir de:
-
-* PLAYER_ENTERED
-* PLAYER_LEFT
-* SUBSTITUTION
-* comienzo/parada de periodos
-* reloj del partido
-
-De esta forma podremos reconstruir los minutos exactos de cada jugador.
-
-Para cada jugador mostrar:
-
-* minutos totales;
-* segundos totales;
-* número de entradas en pista;
-* porcentaje de minutos disponibles.
-
-Ejemplo:
-
-Jugador | Minutos
-Juan | 18:32
-Pedro | 16:41
-Alex | 12:09
-
-Los jugadores que están actualmente en pista deben seguir acumulando tiempo en función del reloj activo.
-
----
-
-# 10. Goles
-
-Debe existir una acción muy visible:
-
-* GOL A FAVOR
-
-y
-
-* GOL EN CONTRA
-
-Al registrar un gol guardar:
-
-* periodo;
-* tiempo del reloj;
-* quinteto actual;
-* marcador antes;
-* marcador después.
-
-Ejemplo:
-
-GOAL_FOR
-
-period: 1
-
-gameClock: 08:42
-
-lineup:
-
-[player1, player4, player7, player10, player12]
-
-scoreBefore:
-
-2-1
-
-scoreAfter:
-
-3-1
-
-Esto permitirá calcular posteriormente estadísticas como:
-
-+/- por jugador
-
-goles a favor estando en pista
-
-goles en contra estando en pista
-
-diferencial de goles
-
-efectividad de quintetos.
-
----
-
-# 11. Faltas
-
-Añadir acciones rápidas:
-
-* FALTA PROPIA
-
-* FALTA RIVAL
-
-Guardar:
-
-* periodo;
-* tiempo;
-* equipo;
-* jugador opcional;
-* número de falta acumulada del periodo.
-
-Mostrar claramente el número de faltas acumuladas.
-
-Ejemplo:
-
-NOSOTROS
-
-4 faltas
-
-RIVAL
-
-3 faltas
-
-Las faltas deben reiniciarse por periodo según las reglas configuradas.
-
----
-
-# 12. Timeline del partido
-
-Mantener un historial cronológico de eventos.
-
-Ejemplo:
-
-18:42 — Cambio: Juan OUT → Pedro IN
-
-17:31 — Falta propia
-
-14:08 — Gol a favor — 1-0
-
-12:55 — Cambio: Alex OUT → Luis IN
-
-10:21 — Gol en contra — 1-1
-
-El usuario debe poder tocar un evento para:
-
-* ver detalles;
-* editarlo cuando sea posible;
-* eliminarlo;
-* deshacerlo.
-
-Preferir un sistema de undo basado en eventos.
-
-No borrar silenciosamente información si puede conservarse el histórico mediante EVENT_UNDONE.
-
----
-
-# 13. Corrección de errores
-
-Durante un partido es muy fácil pulsar algo incorrecto.
-
-Por ello debe existir una acción:
-
-DESHACER
-
-que revierta el último evento relevante.
-
-Ejemplo:
-
-se registra por error un gol.
-
-DESHACER
-
-El marcador vuelve al estado anterior y el evento queda marcado como revertido.
-
-Diseñar esta funcionalidad desde el principio.
-
----
-
-# 14. Pantalla principal del partido
-
-Debe estar diseñada principalmente para uso táctil.
-
-Distribución conceptual:
-
----
-
-PRIMERA PARTE
-
-12:43
-
-[ PARAR ]
-
-MARCADOR
-
-NOSOTROS 2 - 1 RIVAL
-
----
-
-QUINTETO
-
-#1 #4 #7 #10 #12
-
-[ HACER CAMBIO ]
-
----
-
-[ + GOL ]
-[ - GOL EN CONTRA ]
-
-[ + FALTA ]
-[ FALTA RIVAL ]
-
----
-
-FALTAS
-
-NOSOTROS 3 | RIVAL 2
-
----
-
-ÚLTIMOS EVENTOS
-
-14:21 Gol a favor
-13:58 Cambio
-12:44 Falta
-
----
-
-Priorizar botones grandes.
-
-Evitar menús complejos mientras el partido está activo.
-
----
-
-# 15. Estados derivados
-
-Crear selectors o computed signals para calcular:
-
-currentLineup
-
-benchPlayers
-
-score
-
-teamFouls
-
-opponentFouls
-
-playerPlayingTime
-
-activePlayersPlayingTime
-
-goalsForByPlayer
-
-goalsAgainstByPlayer
-
-plusMinusByPlayer
-
-lineupStatistics
-
-currentGameClock
-
-matchElapsedTime
-
-Todas estas estadísticas deberían derivarse del estado/eventos siempre que sea razonable.
-
----
-
-# 16. Estadísticas de quintetos
-
-Preparar la arquitectura para calcular estadísticas por quinteto.
-
-Un quinteto es una combinación única de 5 jugadores.
-
-Para cada quinteto podremos calcular:
-
-* tiempo total en pista;
-* goles a favor;
-* goles en contra;
-* diferencial;
-* número de posesiones en el futuro.
-
-Ejemplo:
-
-Quinteto:
-
-1-4-7-10-12
-
-Tiempo:
-
-04:32
-
-GF:
-
-2
-
-GC:
-
-0
-
-+/-:
-
-+2
-
-Crear una función que genere un identificador estable del quinteto ordenando los IDs de los jugadores.
-
----
-
-# 17. Persistencia
-
-La aplicación debe funcionar sin conexión.
-
-Utilizar IndexedDB.
-
-Persistir como mínimo:
-
-* equipos;
-* jugadores;
-* partidos;
-* eventos;
-* estado actual del reloj.
-
-La aplicación debe poder cerrarse accidentalmente y recuperar el partido.
-
-Al volver a abrir:
-
-mostrar opción:
-
-CONTINUAR PARTIDO
-
-Nunca perder los eventos ya registrados.
-
----
-
-# 18. PWA
-
-Configurar la aplicación como Progressive Web App.
-
-Debe poder:
-
-* instalarse en móvil;
-* funcionar offline;
-* recuperar un partido;
-* adaptarse a móvil y tablet.
-
-La interfaz debe funcionar correctamente en:
-
-375px
-
-768px
-
-1024px
-
-Desktop.
-
-La prioridad es smartphone y tablet.
-
----
-
-# 19. Arquitectura extensible de estadísticas
-
-Crear un sistema que permita añadir nuevas estadísticas sin reestructurar la aplicación.
-
-Evitar estructuras rígidas como:
-
-match.shots
-match.corners
-match.saves
-match.turnovers
-
-Preferir eventos tipados.
-
-Ejemplo:
-
-type MatchEvent =
-| GoalEvent
-| SubstitutionEvent
-| FoulEvent
-| ShotEvent
-| SaveEvent
-| CustomStatisticEvent;
-
-El estado derivado se obtiene procesando eventos.
-
----
-
-# 20. Testing
-
-Crear tests desde el principio.
-
-Especial atención a la lógica del reloj.
-
-Tests necesarios:
-
-## Clock
-
-* empieza en 20:00;
-* baja correctamente;
-* STOP congela el tiempo;
-* START continúa desde el tiempo correcto;
-* múltiples start/stop no generan drift;
-* nunca baja de 00:00.
-
-## Sustituciones
-
-* siempre hay 5 jugadores;
-* jugador que sale deja de acumular tiempo;
-* jugador que entra empieza a acumular;
-* no se puede meter un jugador ya activo.
-
-## Goles
-
-* actualiza marcador;
-* captura quinteto;
-* captura tiempo;
-* undo restaura marcador.
-
-## Minutos
-
-Comprobar cálculo de tiempo con escenarios como:
-
-Jugador A:
-
-entra 20:00
-
-sale 15:00
-
-entra 10:00
-
-sale 05:00
-
-resultado:
-
-10 minutos jugados.
-
----
-
-# 21. UX durante el partido
-
-La interfaz debe diseñarse pensando en que una persona está mirando el partido y dispone de pocos segundos para interactuar.
-
-Principios:
-
-* botones grandes;
-* pocas pulsaciones;
-* feedback visual inmediato;
-* confirmaciones solo cuando sean realmente necesarias;
-* undo accesible;
-* interfaz limpia;
-* alto contraste;
-* reloj extremadamente visible.
-
-No utilizar modales para todo.
-
-Preferir bottom sheets o paneles rápidos en dispositivos móviles.
-
----
-
-# 22. Flujo inicial de usuario
-
-## Crear equipo
-
-Nombre del equipo.
-
-Añadir jugadores:
-
-número
-nombre
-
-## Crear partido
-
-Seleccionar equipo.
-
-Introducir rival.
-
-Seleccionar jugadores convocados.
-
-Elegir quinteto inicial.
-
-## Empezar partido
-
-Reloj:
-
-20:00
-
-Botón:
-
-INICIAR PARTIDO
-
-Al iniciar:
-
-* registrar PERIOD_STARTED;
-* registrar quinteto inicial;
-* iniciar reloj.
-
----
-
-# 23. Final del periodo
-
-Cuando el reloj llega a:
-
-00:00
-
-detener automáticamente el reloj.
-
-Mostrar:
-
-FINALIZAR PRIMERA PARTE
-
-Después:
-
-DESCANSO
-
-y posteriormente:
-
-INICIAR SEGUNDA PARTE
-
-Segunda parte:
-
-20:00
-
-Las estadísticas del partido continúan acumulándose.
-
----
-
-# 24. Estado global del partido
-
-Crear un servicio/fachada equivalente a:
-
-LiveMatchStore
-
-utilizando Angular Signals.
-
-Responsabilidades:
-
-* mantener partido activo;
-* recibir comandos;
-* crear eventos;
-* calcular estado derivado;
-* persistir cambios.
-
-Ejemplo conceptual:
-
-startClock()
-
-stopClock()
-
-registerGoalFor()
-
-registerGoalAgainst()
-
-registerFoul()
-
-makeSubstitution()
-
-undoLastEvent()
-
-startPeriod()
-
-finishPeriod()
-
-finishMatch()
-
-No acoplar los componentes directamente a IndexedDB.
-
----
-
-# 25. Separación Command / Event
-
-Cuando sea útil aplicar una separación conceptual:
-
-UI
-
-↓
-
-Command
-
-↓
-
-Domain validation
-
-↓
-
-MatchEvent
-
-↓
-
-Event Store
-
-↓
-
-Derived State
-
-Ejemplo:
-
-UI:
-
-makeSubstitution(outPlayer, inPlayer)
-
-Dominio valida:
-
-outPlayer está en pista.
-
-inPlayer está en banquillo.
-
-Después genera:
-
-SUBSTITUTION
-
-El estado se recalcula.
-
----
-
-# 26. Identificadores
-
-Usar UUIDs mediante:
-
-crypto.randomUUID()
-
-cuando esté disponible.
-
-Evitar IDs incrementales dependientes de base de datos.
-
----
-
-# 27. Calidad del código
-
-Requisitos:
-
-* TypeScript strict;
-* evitar any;
-* funciones pequeñas;
-* lógica de dominio pura cuando sea posible;
-* componentes Angular pequeños;
-* Signals y computed;
-* evitar subscriptions manuales innecesarias;
-* nombres claros;
-* evitar overengineering;
-* documentar decisiones arquitectónicas importantes.
-
-No generar abstracciones innecesarias antes de necesitarlas.
-
----
-
-# 28. Git y flujo de trabajo ChatGPT + Codex
-
-Trabajaremos mediante pequeños incrementos.
-
-Nunca intentes construir toda la aplicación de una sola vez.
-
-Para cada iteración:
-
-1. analiza el estado actual del repositorio;
-2. explica brevemente qué se va a implementar;
-3. identifica los archivos afectados;
-4. implementa únicamente el alcance solicitado;
-5. ejecuta tests;
-6. ejecuta lint/build;
-7. corrige los errores encontrados;
-8. resume los cambios realizados;
-9. propone el siguiente incremento lógico.
-
-Evitar cambios masivos no relacionados con la tarea actual.
-
-No modificar código que funcione sin una razón clara.
-
----
-
-# 29. Roadmap inicial
-
-Propón el desarrollo en estas fases.
-
-## Fase 1 — Skeleton
-
-Angular 22.
-
-PWA.
-
-Routing.
-
-Layout principal.
-
-IndexedDB.
-
-Modelos básicos.
-
-## Fase 2 — Equipos y jugadores
-
-Crear equipo.
-
-Añadir jugadores.
-
-Editar jugadores.
-
-Lista de plantilla.
-
-## Fase 3 — Crear partido
-
-Seleccionar jugadores.
-
-Seleccionar quinteto inicial.
-
-Crear partido.
-
-## Fase 4 — Motor de reloj
-
-Implementar MatchClock.
-
-Tests exhaustivos.
-
-START / STOP.
-
-Cambio de periodo.
-
-## Fase 5 — Motor de eventos
-
-MatchEvent.
-
-Event Store.
-
-Derived State.
-
-Timeline.
-
-## Fase 6 — Quinteto
-
-Quinteto actual.
-
-Banquillo.
-
-Sustituciones.
-
-Minutos jugados.
-
-## Fase 7 — Goles
-
-Goles a favor.
-
-Goles en contra.
-
-Marcador.
-
-Snapshot del quinteto.
-
-## Fase 8 — Faltas
-
-Faltas acumuladas.
-
-Faltas por periodo.
-
-## Fase 9 — Estadísticas
-
-Minutos.
-
-+/-
-
-GF estando en pista.
-
-GC estando en pista.
-
-Estadísticas por quinteto.
-
-## Fase 10 — UX y resiliencia
-
-Undo.
-
-Recuperación del partido.
-
-Offline completo.
-
-Optimización móvil.
-
----
-
-# 30. Primera tarea
-
-Antes de escribir código:
-
-1. analiza los requisitos;
-2. propón la arquitectura final;
-3. define el modelo de dominio;
-4. define el sistema de eventos;
-5. define cómo se implementará el reloj sin drift;
-6. propone la estructura de carpetas;
-7. identifica decisiones técnicas importantes;
-8. identifica posibles errores de diseño;
-9. crea un roadmap técnico por pequeños incrementos.
-
-No empieces todavía a implementar toda la aplicación.
-
-Después de presentar la arquitectura, comienza únicamente con el **primer incremento mínimo**, dejando el proyecto compilando y con tests verdes.
-
-Cada decisión debe priorizar:
-
-1. fiabilidad durante el partido;
-2. rapidez de uso;
-3. integridad de los datos;
-4. capacidad de corregir errores;
-5. extensibilidad futura;
-6. simplicidad del código.
+- Experiencia mobile-first y controles táctiles grandes.
+- Un solo partido activo para evitar ambigüedades.
+- IndexedDB como fuente persistente local.
+- Eventos como fuente de verdad de las estadísticas.
+- Cálculos de dominio puros y cubiertos por tests.
+- Operaciones críticas transaccionales.
+- Sin NgRx, backend ni dependencias visuales innecesarias.
