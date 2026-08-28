@@ -1,0 +1,78 @@
+<section class="stack">
+  <a class="back" routerLink="/teams">← Equipos</a>
+
+  @if (loadFailed()) {
+    <p class="banner banner--warn" role="alert">No se ha podido cargar el equipo.</p>
+  } @else if (missing()) {
+    <p class="banner banner--warn">Este equipo no existe.</p>
+  } @else if (team(); as current) {
+    <div class="page-head">
+      <div>
+        <p class="eyebrow">{{ current.shortName }}</p>
+        <h1>{{ current.name }}</h1>
+      </div>
+      <a class="btn btn--secondary" [routerLink]="['/teams', current.id, 'edit']">Editar</a>
+    </div>
+
+    <h2>Plantilla</h2>
+
+    @if (roster().length === 0) {
+      <p class="empty">Añade al menos 5 jugadores para poder alinear un quinteto.</p>
+    } @else {
+      <ul class="roster">
+        @for (player of roster(); track player.id) {
+          <li>
+            <button
+              type="button"
+              class="roster__item"
+              [class.is-selected]="selectedPlayerId() === player.id"
+              (click)="selectPlayer(player)"
+            >
+              <span class="dorsal">#{{ player.number }}</span>
+              <span>
+                <strong>{{ player.name }}</strong>
+                @if (player.position) {
+                  <em>{{ player.position }}</em>
+                }
+              </span>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+
+    <form class="panel" [formGroup]="playerForm" (ngSubmit)="savePlayer()">
+      <h2>{{ editing() ? 'Editar jugador' : 'Añadir jugador' }}</h2>
+      <div class="row">
+        <label class="field field--narrow">
+          Dorsal
+          <input formControlName="number" inputmode="numeric" maxlength="2" autocomplete="off" />
+        </label>
+        <label class="field">
+          Nombre
+          <input formControlName="name" type="text" maxlength="40" autocomplete="off" />
+        </label>
+      </div>
+      <label class="field">
+        Posición (opcional)
+        <input formControlName="position" type="text" maxlength="20" autocomplete="off" />
+      </label>
+
+      @if (error(); as message) {
+        <p class="banner banner--warn" role="alert">{{ message }}</p>
+      }
+
+      <div class="actions">
+        <button class="btn btn--primary" type="submit" [disabled]="saving()">
+          {{ editing() ? 'Guardar' : 'Añadir' }}
+        </button>
+        @if (editing()) {
+          <button class="btn btn--secondary" type="button" (click)="cancelEdit()">Cancelar</button>
+          <button class="btn btn--danger" type="button" (click)="removePlayer()" [disabled]="saving()">
+            Quitar
+          </button>
+        }
+      </div>
+    </form>
+  }
+</section>

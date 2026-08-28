@@ -1,0 +1,23 @@
+<section class="home">
+  <h1>Partido</h1>
+  <p class="lede">Controla un partido de fútbol sala desde el móvil, la tablet o el ordenador.</p>
+
+  @if (loadFailed()) {
+    <p class="banner banner--warn" role="alert">No se ha podido leer el almacenamiento local.</p>
+  }
+
+  @if (loading()) {
+    <p class="empty" role="status">Buscando un partido guardado…</p>
+  } @else if (activeMatch(); as match) {
+    <a class="btn btn--primary" [routerLink]="['/live', match.id]">Continuar partido</a>
+    <p class="meta">
+      Recuperado del almacenamiento local · {{ match.homeTeam.shortName }} vs
+      {{ match.awayTeam.shortName }}
+    </p>
+  } @else {
+    <p class="empty">No hay ningún partido en curso.</p>
+    <a class="btn btn--primary" routerLink="/matches/new">Crear partido</a>
+  }
+
+  <a class="btn btn--secondary" routerLink="/teams">Equipos</a>
+</section>

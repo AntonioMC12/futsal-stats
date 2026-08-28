@@ -1,0 +1,361 @@
+<section class="live-match">
+  <a class="back" routerLink="/matches">← Partidos</a>
+
+  @if (store.loading()) {
+    <p class="empty">Cargando partido…</p>
+  } @else if (store.match(); as match) {
+    <section class="live-overview" aria-label="Tiempo y quinteto en pista">
+      <header class="match-head">
+        <h1>{{ match.homeTeam.shortName }} vs {{ match.awayTeam.shortName }}</h1>
+        <div class="clock-line">
+          <strong class="clock" role="timer" aria-live="off">{{ store.formattedClock() }}</strong>
+          <span aria-hidden="true">·</span>
+          <span class="period">{{ compactPeriodLabel() }}</span>
+        </div>
+      </header>
+
+      <div class="court-five" aria-label="Quinteto actual">
+        @for (slot of [0, 1, 2, 3, 4]; track slot) {
+          @if (store.currentLineup()[slot]; as player) {
+            <button
+              class="court-player"
+              type="button"
+              [title]="player.name"
+              [disabled]="!store.canSubstitute() || store.saving()"
+              [attr.aria-label]="'Cambiar jugador ' + player.number + ', ' + player.name"
+              (click)="selectOutPlayer(player.id, $event)"
+            >
+              <strong>#{{ player.number }}</strong>
+              <span>{{ player.name }}</span>
+            </button>
+          } @else {
+            <span class="court-player court-player--empty" aria-label="Posición sin jugador"
+              >—</span
+            >
+          }
+        }
+      </div>
+    </section>
+
+    @switch (match.status) {
+      @case ('firstHalf') {
+        @if (!store.clockRunning() && store.remainingMs() === 0) {
+          <button
+            class="btn btn--primary period-action"
+            type="button"
+            (click)="store.finishPeriod()"
+          >
+            Finalizar primera parte
+          </button>
+        } @else if (!store.clockRunning()) {
+          <button class="period-reset" type="button" (click)="store.resetClock()">
+            Reiniciar periodo
+          </button>
+        }
+      }
+      @case ('halftime') {
+        <button
+          class="btn btn--primary period-action"
+          type="button"
+          (click)="store.startNextPeriod()"
+        >
+          Iniciar segunda parte
+        </button>
+      }
+      @case ('secondHalf') {
+        @if (!store.clockRunning() && store.remainingMs() === 0) {
+          <button
+            class="btn btn--primary period-action"
+            type="button"
+            (click)="store.finishPeriod()"
+          >
+            Finalizar partido
+          </button>
+        } @else if (!store.clockRunning()) {
+          <button class="period-reset" type="button" (click)="store.resetClock()">
+            Reiniciar periodo
+          </button>
+        }
+      }
+    }
+
+    <section class="scoreboard" aria-label="Marcador" aria-live="polite">
+      <div class="scoreboard__team">
+        <span>{{ match.homeTeam.shortName }}</span>
+        <strong>{{ store.score().home }}</strong>
+      </div>
+      <span class="scoreboard__separator">-</span>
+      <div class="scoreboard__team">
+        <span>{{ match.awayTeam.shortName }}</span>
+        <strong>{{ store.score().away }}</strong>
+      </div>
+    </section>
+
+    <div class="goal-actions">
+      <button
+        class="btn btn--primary btn--goal"
+        type="button"
+        [disabled]="!store.canRegisterGoal() || store.saving()"
+        (click)="store.registerGoalFor()"
+      >
+        + Gol a favor
+      </button>
+      <button
+        class="btn btn--danger btn--goal"
+        type="button"
+        [disabled]="!store.canRegisterGoal() || store.saving()"
+        (click)="store.registerGoalAgainst()"
+      >
+        Gol en contra
+      </button>
+    </div>
+
+    <div class="undo-action">
+      <button
+        class="btn btn--secondary"
+        type="button"
+        [disabled]="!store.canUndo()"
+        (click)="store.undoLastEvent()"
+      >
+        Deshacer última acción
+      </button>
+    </div>
+
+    <section class="fouls-panel" aria-labelledby="fouls-title">
+      <h2 id="fouls-title">Faltas · Periodo {{ match.currentPeriod }}</h2>
+      <div class="fouls-panel__score">
+        <div>
+          <span>Nosotros</span>
+          <strong [class.is-warning]="store.currentPeriodFouls().home >= 5">
+            {{ store.currentPeriodFouls().home }}
+          </strong>
+        </div>
+        <div>
+          <span>Rival</span>
+          <strong [class.is-warning]="store.currentPeriodFouls().away >= 5">
+            {{ store.currentPeriodFouls().away }}
+          </strong>
+        </div>
+      </div>
+      <div class="foul-actions">
+        <button
+          class="btn btn--secondary"
+          type="button"
+          [disabled]="!store.canRegisterFoul() || store.saving()"
+          (click)="store.registerTeamFoul()"
+        >
+          + Falta propia
+        </button>
+        <button
+          class="btn btn--secondary"
+          type="button"
+          [disabled]="!store.canRegisterFoul() || store.saving()"
+          (click)="store.registerOpponentFoul()"
+        >
+          + Falta rival
+        </button>
+      </div>
+      <div class="period-fouls" aria-label="Faltas por periodo">
+        @for (item of store.foulsByPeriod(); track item.period) {
+          <span>P{{ item.period }}: nosotros {{ item.home }} · rival {{ item.away }}</span>
+        }
+      </div>
+    </section>
+
+    <section class="statistics-panel" aria-labelledby="player-stats-title">
+      <h2 id="player-stats-title">Estadísticas de jugadores</h2>
+      <div class="statistics-table-wrap">
+        <table class="statistics-table">
+          <thead>
+            <tr>
+              <th scope="col">Jugador</th>
+              <th scope="col">Min</th>
+              <th scope="col">GF</th>
+              <th scope="col">GC</th>
+              <th scope="col">+/-</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (player of store.players(); track player.id) {
+              @if (store.statistics().players[player.id]; as stats) {
+                <tr>
+                  <th scope="row">#{{ player.number }} {{ player.name }}</th>
+                  <td>{{ formatDuration(stats.playedMs) }}</td>
+                  <td>{{ stats.goalsForOnCourt }}</td>
+                  <td>{{ stats.goalsAgainstOnCourt }}</td>
+                  <td
+                    [class.is-positive]="stats.plusMinus > 0"
+                    [class.is-negative]="stats.plusMinus < 0"
+                  >
+                    {{ signed(stats.plusMinus) }}
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="statistics-panel" aria-labelledby="lineup-stats-title">
+      <h2 id="lineup-stats-title">Estadísticas de quintetos</h2>
+      @if (store.lineupStatistics().length === 0) {
+        <p class="empty">Las estadísticas aparecerán al iniciar el partido.</p>
+      } @else {
+        <div class="lineup-stat-list">
+          @for (lineup of store.lineupStatistics(); track lineup.id) {
+            <article class="lineup-stat">
+              <strong>{{ lineupPlayers(lineup.playerIds) }}</strong>
+              <span>
+                {{ formatDuration(lineup.playedMs) }} · GF {{ lineup.goalsFor }} · GC
+                {{ lineup.goalsAgainst }} ·
+                <b
+                  [class.is-positive]="lineup.plusMinus > 0"
+                  [class.is-negative]="lineup.plusMinus < 0"
+                >
+                  {{ signed(lineup.plusMinus) }}
+                </b>
+              </span>
+            </article>
+          }
+        </div>
+      }
+    </section>
+
+    @if (store.saving()) {
+      <p class="saving">Guardando…</p>
+    }
+
+    @if (store.notice(); as message) {
+      <p class="banner banner--ok" role="status">{{ message }}</p>
+    }
+
+    <section class="timeline" aria-labelledby="timeline-title">
+      <h2 id="timeline-title">Últimos eventos</h2>
+      @if (store.timeline().length === 0) {
+        <p class="empty">El partido todavía no tiene eventos.</p>
+      } @else {
+        <ol class="timeline__list">
+          @for (item of store.timeline().slice(0, 12); track item.eventId) {
+            <li class="timeline__item">
+              <time>{{ item.gameClock }}</time>
+              <span>{{ item.label }}</span>
+              <small>P{{ item.period }}</small>
+            </li>
+          }
+        </ol>
+      }
+    </section>
+
+    <details class="statistics-panel">
+      <summary>Opciones del partido</summary>
+      <p>Estas acciones no se usan durante el registro habitual.</p>
+      <button class="btn btn--danger" type="button" (click)="confirmAbandon.set(true)">
+        Abandonar partido
+      </button>
+    </details>
+
+    @if (clockFabVisible()) {
+      <button
+        class="clock-fab"
+        [class.clock-fab--running]="store.clockRunning()"
+        type="button"
+        [disabled]="store.saving()"
+        [attr.aria-label]="clockFabLabel()"
+        [title]="clockFabLabel()"
+        (click)="toggleClock()"
+      >
+        <span aria-hidden="true">{{ store.clockRunning() ? '❚❚' : '▶' }}</span>
+      </button>
+    }
+  }
+
+  @if (store.error(); as message) {
+    <p class="banner banner--warn" role="alert">{{ message }}</p>
+  }
+
+  @if (selectedOutPlayerId() && substitutionOutPlayer(); as outPlayer) {
+    <div class="substitution-backdrop" (click)="cancelSubstitution()">
+      <dialog
+        class="substitution-sheet"
+        open
+        aria-labelledby="substitution-title"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <header>
+          <p class="sheet-kicker">Sale</p>
+          <h2 id="substitution-title">#{{ outPlayer.number }} {{ outPlayer.name }}</h2>
+        </header>
+
+        <p class="sheet-kicker">Entra</p>
+        @if (store.benchPlayers().length === 0) {
+          <p class="empty">No hay jugadores disponibles para realizar el cambio.</p>
+        } @else {
+          <div class="bench-options">
+            @for (player of store.benchPlayers(); track player.id) {
+              <button
+                class="bench-option"
+                type="button"
+                [title]="player.name"
+                [disabled]="substituting() || store.saving()"
+                [attr.aria-label]="'Entra jugador ' + player.number + ', ' + player.name"
+                (click)="substituteWith(player.id)"
+              >
+                <strong>#{{ player.number }}</strong>
+                <span>{{ player.name }}</span>
+              </button>
+            }
+          </div>
+        }
+
+        @if (store.error(); as message) {
+          <p class="banner banner--warn" role="alert">{{ message }}</p>
+        }
+        <button
+          class="btn btn--secondary sheet-cancel"
+          type="button"
+          [disabled]="substituting()"
+          autofocus
+          (click)="cancelSubstitution()"
+        >
+          {{ substituting() ? 'Guardando cambio…' : 'Cancelar' }}
+        </button>
+      </dialog>
+    </div>
+  }
+
+  @if (confirmAbandon() && store.match(); as match) {
+    <div class="dialog-backdrop">
+      <dialog class="confirm-dialog" open aria-labelledby="abandon-title">
+        <h2 id="abandon-title">¿Abandonar este partido?</h2>
+        <p>{{ match.homeTeam.shortName }} vs {{ match.awayTeam.shortName }}</p>
+        <p>
+          Se eliminarán el partido y todos los eventos registrados. Esta acción no se puede
+          deshacer.
+        </p>
+        @if (store.error(); as message) {
+          <p class="banner banner--warn" role="alert">{{ message }}</p>
+        }
+        <div class="dialog-actions">
+          <button
+            class="btn btn--secondary"
+            type="button"
+            [disabled]="store.deleting()"
+            (click)="confirmAbandon.set(false)"
+          >
+            Cancelar
+          </button>
+          <button
+            class="btn btn--danger"
+            type="button"
+            [disabled]="store.deleting()"
+            (click)="abandonMatch()"
+          >
+            {{ store.deleting() ? 'Eliminando…' : 'Eliminar partido' }}
+          </button>
+        </div>
+      </dialog>
+    </div>
+  }
+</section>

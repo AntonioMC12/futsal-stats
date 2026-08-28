@@ -1,0 +1,39 @@
+<section class="stack">
+  <a class="back" routerLink="/teams">← Equipos</a>
+  <h1>{{ isEdit() ? 'Editar equipo' : 'Nuevo equipo' }}</h1>
+
+  @if (missing()) {
+    <p class="banner banner--warn">Este equipo no existe.</p>
+  } @else {
+    <form class="stack" [formGroup]="form" (ngSubmit)="save()">
+      <label class="field">
+        Nombre
+        <input
+          formControlName="name"
+          type="text"
+          maxlength="40"
+          autocomplete="organization"
+          [attr.aria-invalid]="form.controls.name.invalid && form.controls.name.touched"
+        />
+      </label>
+      <label class="field">
+        Siglas
+        <input
+          formControlName="shortName"
+          type="text"
+          maxlength="5"
+          placeholder="Se generan si las dejas vacías"
+          autocomplete="off"
+        />
+      </label>
+
+      @if (error(); as message) {
+        <p class="banner banner--warn" role="alert">{{ message }}</p>
+      }
+
+      <button class="btn btn--primary" type="submit" [disabled]="saving()">
+        {{ isEdit() ? 'Guardar' : 'Crear equipo' }}
+      </button>
+    </form>
+  }
+</section>

@@ -1,1 +1,302 @@
-/* You can add global styles to this file, and also import other style files */
+:root {
+  color-scheme: dark;
+  --color-bg: #0b1220;
+  --color-surface: #121a2b;
+  --color-text: #f4f7fb;
+  --color-text-muted: #c5d0e0;
+  --color-border: #2a3954;
+  --color-accent: #f5c518;
+  --color-on-accent: #111827;
+  --color-accent-soft: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  --color-danger: #ffb4ab;
+  --color-danger-soft: color-mix(in srgb, #ff6b6b 24%, transparent);
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1 {
+  font-size: clamp(1.5rem, 4vw, 2.1rem);
+  letter-spacing: -0.04em;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.empty,
+.lede,
+.meta {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.banner {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-weight: 700;
+}
+
+.banner--warn {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.banner--ok {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 700;
+}
+
+.field input {
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.85rem;
+  border: 2px solid var(--color-border);
+  background: var(--color-bg);
+  color: inherit;
+  font: inherit;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.25rem;
+  padding: 0 1.25rem;
+  border-radius: 0.9rem;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: none;
+  text-align: center;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.btn--secondary {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.btn--danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  border-color: transparent;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  padding: 1rem;
+  background: rgb(0 0 0 / 72%);
+  display: grid;
+  place-items: center;
+}
+
+.confirm-dialog {
+  width: min(100%, 30rem);
+  margin: 0;
+  padding: 1.25rem;
+  border: 2px solid var(--color-border);
+  border-radius: 1rem;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.65rem;
+}
+
+@media (max-width: 520px) {
+  .dialog-actions {
+    flex-direction: column-reverse;
+  }
+
+  .dialog-actions .btn {
+    width: 100%;
+  }
+}
+
+.clock-fab {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  z-index: 15;
+  width: 3.75rem;
+  height: 3.75rem;
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0.45rem 1.2rem rgb(0 0 0 / 40%);
+  font: inherit;
+  font-size: 1.35rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    background-color 120ms ease;
+}
+
+.clock-fab--running {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.clock-fab:active {
+  transform: scale(0.94);
+}
+
+.clock-fab:disabled,
+.bench-option:disabled {
+  opacity: 0.6;
+}
+
+.substitution-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  padding-top: 1rem;
+  background: rgb(0 0 0 / 68%);
+  display: flex;
+  align-items: flex-end;
+}
+
+.substitution-sheet {
+  position: relative;
+  width: min(100%, 38rem);
+  max-height: 82dvh;
+  margin: 0 auto;
+  padding: 0.65rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  border: 2px solid var(--color-border);
+  border-bottom: 0;
+  border-radius: 1.25rem 1.25rem 0 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  text-align: left;
+}
+
+.substitution-sheet h2 {
+  margin: 0 0 1rem;
+}
+
+.sheet-handle {
+  width: 3rem;
+  height: 0.3rem;
+  margin: 0 auto 0.75rem;
+  border-radius: 999px;
+  background: var(--color-border);
+}
+
+.sheet-kicker {
+  margin: 0 0 0.35rem;
+  color: var(--color-accent);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bench-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.bench-option {
+  min-width: 0;
+  min-height: 3.25rem;
+  padding: 0.55rem 0.7rem;
+  border: 2px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bench-option strong {
+  color: var(--color-accent);
+  font-size: 1.1rem;
+}
+
+.bench-option span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-cancel {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+@media (min-width: 700px) {
+  .substitution-backdrop {
+    align-items: center;
+    padding: 1rem;
+  }
+
+  .substitution-sheet {
+    border-bottom: 2px solid var(--color-border);
+    border-radius: 1.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clock-fab {
+    transition: none;
+  }
+}

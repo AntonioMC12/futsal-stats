@@ -1,0 +1,145 @@
+.matches-page {
+  width: min(100%, 46rem);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.matches-page h1,
+.matches-page h2,
+.matches-page p {
+  margin-top: 0;
+}
+
+.eyebrow,
+.active-section > h2,
+.history > h2 {
+  margin-bottom: 0.35rem;
+  color: var(--color-accent);
+  font-size: 0.85rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.active-card,
+.empty-state,
+.history-item {
+  border: 2px solid var(--color-border);
+  border-radius: 1rem;
+  background: var(--color-surface);
+}
+
+.active-card {
+  padding: 1.25rem;
+  border-color: var(--color-accent);
+  text-align: center;
+}
+
+.match-name {
+  margin-bottom: 0.75rem;
+  font-size: 1.2rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.score {
+  margin-bottom: 0.5rem;
+  font-size: clamp(3rem, 16vw, 5rem);
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.score span,
+.match-date,
+.match-state,
+.history-item time {
+  color: var(--color-text-muted);
+}
+
+.match-state {
+  margin-bottom: 0.25rem;
+  font-size: 1.05rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.match-date {
+  margin-bottom: 1rem;
+}
+
+.btn--wide,
+.new-match {
+  width: 100%;
+}
+
+.new-match {
+  min-height: 4rem;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+}
+
+.secondary-actions {
+  margin-top: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.secondary-actions summary {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.text-danger {
+  min-height: 2.75rem;
+  border: 0;
+  background: transparent;
+  color: var(--color-danger);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.empty-state {
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.empty-state h2,
+.empty-state p {
+  margin-bottom: 0.35rem;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.history-item {
+  min-height: 5rem;
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.history-item p {
+  margin: 0.25rem 0 0;
+}
+
+.history-item strong {
+  margin-inline: 0.4rem;
+  color: var(--color-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.secondary-actions--compact {
+  margin: 0;
+  text-align: right;
+}

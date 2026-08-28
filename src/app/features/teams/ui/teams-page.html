@@ -1,0 +1,28 @@
+<section class="stack">
+  <div class="page-head">
+    <h1>Equipos</h1>
+    <a class="btn btn--primary" routerLink="/teams/new">Nuevo equipo</a>
+  </div>
+
+  @if (loadFailed()) {
+    <p class="banner banner--warn" role="alert">No se han podido cargar los equipos.</p>
+  }
+
+  @if (summaries().length === 0 && !loadFailed()) {
+    <p class="empty">Crea tu equipo y añade la plantilla antes del partido.</p>
+  } @else {
+    <ul class="card-list">
+      @for (item of summaries(); track item.team.id) {
+        <li>
+          <a class="card" [routerLink]="['/teams', item.team.id]">
+            <span class="card__badge">{{ item.team.shortName }}</span>
+            <span class="card__body">
+              <strong>{{ item.team.name }}</strong>
+              <span>{{ item.playerCount }} jugadores</span>
+            </span>
+          </a>
+        </li>
+      }
+    </ul>
+  }
+</section>

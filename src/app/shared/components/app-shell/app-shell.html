@@ -1,0 +1,15 @@
+<div class="shell">
+  <header class="shell__header">
+    <a class="shell__brand" routerLink="/">Futsal Stats</a>
+    <span class="offline-status" role="status" [hidden]="connectivity.online()">
+      Sin conexión · guardado local
+    </span>
+    <nav class="shell__nav" aria-label="Principal">
+      <a routerLink="/matches" routerLinkActive="is-active">Partidos</a>
+      <a routerLink="/teams" routerLinkActive="is-active">Equipos</a>
+    </nav>
+  </header>
+  <main class="shell__main">
+    <router-outlet></router-outlet>
+  </main>
+</div>

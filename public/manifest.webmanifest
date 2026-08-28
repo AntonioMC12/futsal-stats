@@ -1,9 +1,13 @@
 {
-  "name": "futsal-stats",
-  "short_name": "futsal-stats",
+  "name": "Futsal Stats",
+  "short_name": "Futsal Stats",
+  "description": "Estadísticas de fútbol sala en tiempo real",
   "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
   "scope": "./",
   "start_url": "./",
+  "lang": "es",
   "icons": [
     {
       "src": "icons/icon-72x72.png",

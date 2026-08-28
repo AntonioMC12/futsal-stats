@@ -1,0 +1,88 @@
+<section class="stack">
+  <a class="back" routerLink="/matches">← Partidos</a>
+  <div>
+    <h1>Crear partido</h1>
+    <p class="lede">Prepara la convocatoria y el quinteto inicial.</p>
+  </div>
+
+  @if (loadFailed()) {
+    <p class="banner banner--warn" role="alert">No se han podido cargar los equipos.</p>
+  } @else if (teams().length === 0) {
+    <div class="empty-state">
+      <p>No hay equipos disponibles.</p>
+      <a class="btn btn--secondary" routerLink="/teams/new">Crear equipo</a>
+    </div>
+  } @else {
+    <form class="stack" [formGroup]="form" (ngSubmit)="save()">
+      <fieldset class="panel">
+        <legend>1. Datos del partido</legend>
+        <label class="field">
+          Mi equipo
+          <select formControlName="teamId" (change)="selectTeam()">
+            <option value="">Selecciona un equipo</option>
+            @for (item of teams(); track item.team.id) {
+              <option [value]="item.team.id" [disabled]="item.playerCount < 5">
+                {{ item.team.name }} ({{ item.playerCount }} jugadores)
+              </option>
+            }
+          </select>
+        </label>
+        <label class="field">
+          Rival
+          <input formControlName="awayTeamName" maxlength="60" placeholder="Nombre del rival" />
+        </label>
+      </fieldset>
+
+      @if (loadingPlayers()) {
+        <p class="empty">Cargando plantilla…</p>
+      } @else if (form.controls.teamId.value && players().length > 0) {
+        <fieldset class="panel">
+          <legend>2. Seleccionar jugadores</legend>
+          <p class="hint">Convocados: {{ selectedCount() }}. Selecciona al menos 5.</p>
+          <div class="player-grid">
+            @for (player of players(); track player.id) {
+              <label class="player" [class.player--selected]="isSelected(player.id)">
+                <input
+                  type="checkbox"
+                  [checked]="isSelected(player.id)"
+                  (change)="toggleSquad(player.id)"
+                />
+                <span class="number">{{ player.number }}</span>
+                <span>{{ player.name }}</span>
+              </label>
+            }
+          </div>
+        </fieldset>
+
+        <fieldset class="panel" [disabled]="selectedCount() < 5">
+          <legend>3. Quinteto inicial</legend>
+          <p class="hint">Titulares: {{ lineupCount() }}/5.</p>
+          <div class="player-grid">
+            @for (player of players(); track player.id) {
+              @if (isSelected(player.id)) {
+                <label class="player" [class.player--starter]="isStarter(player.id)">
+                  <input
+                    type="checkbox"
+                    [checked]="isStarter(player.id)"
+                    [disabled]="!isStarter(player.id) && lineupCount() >= 5"
+                    (change)="toggleLineup(player.id)"
+                  />
+                  <span class="number">{{ player.number }}</span>
+                  <span>{{ player.name }}</span>
+                </label>
+              }
+            }
+          </div>
+        </fieldset>
+      }
+
+      @if (error(); as message) {
+        <p class="banner banner--warn" role="alert">{{ message }}</p>
+      }
+
+      <button class="btn btn--primary" type="submit" [disabled]="saving() || !canSave()">
+        {{ saving() ? 'Creando…' : 'Crear partido' }}
+      </button>
+    </form>
+  }
+</section>

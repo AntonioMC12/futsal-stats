@@ -1,0 +1,136 @@
+<section class="matches-page">
+  <header>
+    <p class="eyebrow">Futsal Stats</p>
+    <h1>Partidos</h1>
+    <p class="lede">Crea, continúa y consulta tus partidos guardados.</p>
+  </header>
+
+  @if (store.error(); as message) {
+    <p class="banner banner--warn" role="alert">{{ message }}</p>
+  }
+
+  @if (store.loading()) {
+    <p class="empty" role="status">Cargando partidos…</p>
+  } @else {
+    @if (store.activeMatch(); as active) {
+      <section class="active-section" aria-labelledby="active-title">
+        <h2 id="active-title">Partido en curso</h2>
+        <article class="active-card">
+          <p class="match-name">
+            {{ active.match.homeTeam.shortName }} vs {{ active.match.awayTeam.shortName }}
+          </p>
+          <p class="score" aria-label="Marcador">
+            {{ active.score.home }} <span>-</span> {{ active.score.away }}
+          </p>
+          <p class="match-state">{{ store.activePeriod() }} · {{ store.activeClock() }}</p>
+          <p class="match-date">{{ formatDate(active.match.date) }}</p>
+          <a class="btn btn--primary btn--wide" [routerLink]="['/live', active.match.id]">
+            Continuar partido
+          </a>
+          <details class="secondary-actions">
+            <summary>Opciones del partido</summary>
+            <button class="text-danger" type="button" (click)="requestDelete(active)">
+              Abandonar partido
+            </button>
+          </details>
+        </article>
+      </section>
+    } @else {
+      <section class="empty-state">
+        <h2>No hay ningún partido en curso</h2>
+        <p>Cuando crees uno aparecerá aquí para poder continuarlo.</p>
+      </section>
+    }
+
+    <button class="btn btn--primary new-match" type="button" (click)="newMatch()">
+      + Nuevo partido
+    </button>
+
+    <section class="history" aria-labelledby="history-title">
+      <h2 id="history-title">Finalizados</h2>
+      @if (store.finishedMatches().length === 0) {
+        <p class="empty">Todavía no hay partidos finalizados.</p>
+      } @else {
+        <div class="history-list">
+          @for (summary of store.finishedMatches(); track summary.match.id) {
+            <article class="history-item">
+              <div>
+                <time>{{ formatDate(summary.match.date) }}</time>
+                <p>
+                  {{ summary.match.homeTeam.shortName }}
+                  <strong>{{ summary.score.home }} - {{ summary.score.away }}</strong>
+                  {{ summary.match.awayTeam.shortName }}
+                </p>
+              </div>
+              <details class="secondary-actions secondary-actions--compact">
+                <summary aria-label="Opciones del partido">•••</summary>
+                <button class="text-danger" type="button" (click)="requestDelete(summary)">
+                  Eliminar
+                </button>
+              </details>
+            </article>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  @if (showActiveConflict() && store.activeMatch(); as active) {
+    <div class="dialog-backdrop">
+      <dialog class="confirm-dialog" open aria-labelledby="conflict-title">
+        <h2 id="conflict-title">Ya existe un partido en curso</h2>
+        <p>{{ active.match.homeTeam.shortName }} vs {{ active.match.awayTeam.shortName }}</p>
+        <p>Continúa ese partido o abandónalo para empezar uno nuevo.</p>
+        <div class="dialog-actions">
+          <button class="btn btn--secondary" type="button" (click)="showActiveConflict.set(false)">
+            Cancelar
+          </button>
+          <a class="btn btn--primary" [routerLink]="['/live', active.match.id]">Continuar</a>
+          <button class="btn btn--danger" type="button" (click)="abandonAndCreate()">
+            Abandonar y crear nuevo
+          </button>
+        </div>
+      </dialog>
+    </div>
+  }
+
+  @if (deleteCandidate(); as candidate) {
+    <div class="dialog-backdrop">
+      <dialog class="confirm-dialog" open aria-labelledby="delete-title">
+        <h2 id="delete-title">
+          {{
+            candidate.match.status === 'finished'
+              ? '¿Eliminar este partido?'
+              : '¿Abandonar este partido?'
+          }}
+        </h2>
+        <p>{{ candidate.match.homeTeam.shortName }} vs {{ candidate.match.awayTeam.shortName }}</p>
+        <p>
+          Se eliminarán permanentemente el partido y todos sus eventos y estadísticas. Esta acción
+          no se puede deshacer.
+        </p>
+        @if (store.error(); as message) {
+          <p class="banner banner--warn" role="alert">{{ message }}</p>
+        }
+        <div class="dialog-actions">
+          <button
+            class="btn btn--secondary"
+            type="button"
+            [disabled]="store.deletingId() !== null"
+            (click)="cancelDelete()"
+          >
+            Cancelar
+          </button>
+          <button
+            class="btn btn--danger"
+            type="button"
+            [disabled]="store.deletingId() !== null"
+            (click)="confirmDelete()"
+          >
+            {{ store.deletingId() ? 'Eliminando…' : 'Eliminar partido' }}
+          </button>
+        </div>
+      </dialog>
+    </div>
+  }
+</section>
