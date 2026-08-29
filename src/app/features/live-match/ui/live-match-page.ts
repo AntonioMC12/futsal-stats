@@ -5,6 +5,8 @@ import { DisciplinaryAction, FoulTeam, MatchEventType } from '../../../shared/mo
 import { LiveMatchStore } from '../application/live-match.store';
 import { MatchCsvExportService } from '../../matches/application/match-csv-export.service';
 
+type MatchOverlay = 'statistics' | 'events' | 'discipline' | 'more';
+
 @Component({
   selector: 'app-live-match-page',
   imports: [RouterLink],
@@ -28,6 +30,7 @@ export class LiveMatchPage {
   protected readonly goalSelectorOpen = signal(false);
   protected readonly goalSaving = signal(false);
   protected readonly actionFeedback = signal<string | null>(null);
+  protected readonly activeOverlay = signal<MatchOverlay | null>(null);
   private substitutionTrigger: HTMLElement | null = null;
   private goalTrigger: HTMLElement | null = null;
   readonly matchId = input.required<string>();
@@ -56,7 +59,7 @@ export class LiveMatchPage {
     );
   });
   protected readonly clockFabLabel = computed(() =>
-    this.store.clockRunning() ? 'Parar reloj' : 'Iniciar reloj',
+    this.store.clockRunning() ? 'Pausar reloj' : 'Iniciar reloj',
   );
   protected readonly compactPeriodLabel = computed(() => {
     switch (this.store.match()?.status) {
@@ -77,6 +80,12 @@ export class LiveMatchPage {
 
   constructor() {
     effect(() => void this.store.load(this.matchId()));
+    effect((onCleanup) => {
+      if (!this.actionFeedback()) return;
+
+      const timeoutId = setTimeout(() => this.actionFeedback.set(null), 3_000);
+      onCleanup(() => clearTimeout(timeoutId));
+    });
   }
 
   protected selectOutPlayer(playerId: string, event: Event): void {
@@ -258,7 +267,9 @@ export class LiveMatchPage {
 
   @HostListener('document:keydown.escape')
   protected closeSubstitutionOnEscape(): void {
-    if (this.goalSelectorOpen() && !this.goalSaving()) {
+    if (this.activeOverlay()) {
+      this.activeOverlay.set(null);
+    } else if (this.goalSelectorOpen() && !this.goalSaving()) {
       this.cancelGoalSelector();
     } else if (this.selectedOutPlayerId() && !this.substituting()) {
       this.cancelSubstitution();

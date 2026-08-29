@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ConnectivityService } from '../../../core/connectivity/connectivity.service';
 
 @Component({
@@ -10,4 +10,9 @@ import { ConnectivityService } from '../../../core/connectivity/connectivity.ser
 })
 export class AppShell {
   readonly connectivity = inject(ConnectivityService);
+  private readonly router = inject(Router);
+
+  get liveMatchActive(): boolean {
+    return this.router.url.startsWith('/live/');
+  }
 }

@@ -94,6 +94,12 @@ describe('LiveMatchPage', () => {
       '.court-player:not(.court-player--empty)',
     );
     expect(courtPlayers).toHaveLength(5);
+    const court = fixture.nativeElement.querySelector('.futsal-court') as HTMLElement;
+    expect(court.getAttribute('aria-label')).toContain('Formación');
+    expect(court.querySelector('.court-markings')).not.toBeNull();
+    expect(
+      [...court.querySelectorAll('.court-player')].map((player) => player.getAttribute('data-slot')),
+    ).toEqual(['1', '2', '3', '4', '5']);
 
     const makeSubstitution = vi.spyOn(store, 'makeSubstitution').mockResolvedValue(true);
     (courtPlayers[2] as HTMLButtonElement).click();
@@ -120,6 +126,34 @@ describe('LiveMatchPage', () => {
     fixture.destroy();
   });
 
+  it('hides the action toast after three seconds', async () => {
+    const { fixture, store } = await createPage();
+    vi.useFakeTimers();
+    try {
+      const registerGoalAgainst = vi.spyOn(store, 'registerGoalAgainst').mockResolvedValue(true);
+      const goalAgainstButton = fixture.nativeElement.querySelectorAll(
+        '.primary-actions .btn',
+      )[1] as HTMLButtonElement;
+
+      goalAgainstButton.click();
+      await Promise.resolve();
+      fixture.detectChanges();
+      expect(registerGoalAgainst).toHaveBeenCalledOnce();
+      expect(fixture.nativeElement.querySelector('.action-toast')).not.toBeNull();
+
+      await vi.advanceTimersByTimeAsync(2_999);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.action-toast')).not.toBeNull();
+
+      await vi.advanceTimersByTimeAsync(1);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.action-toast')).toBeNull();
+    } finally {
+      fixture.destroy();
+      vi.useRealTimers();
+    }
+  });
+
   it('uses the same clock commands from the floating button', async () => {
     const { fixture, store } = await createPage();
     const startClock = vi.spyOn(store, 'startClock').mockResolvedValue();
@@ -139,11 +173,28 @@ describe('LiveMatchPage', () => {
     fixture.detectChanges();
     const stopClock = vi.spyOn(store, 'stopClock').mockResolvedValue();
     fab = fixture.nativeElement.querySelector('.clock-fab') as HTMLButtonElement;
-    expect(fab.getAttribute('aria-label')).toBe('Parar reloj');
-    expect(fab.textContent).toContain('STOP');
+    expect(fab.getAttribute('aria-label')).toBe('Pausar reloj');
+    expect(fab.textContent).toContain('PAUSA');
+    expect(fab.querySelectorAll('svg rect')).toHaveLength(2);
 
     fab.click();
     expect(stopClock).toHaveBeenCalledOnce();
+    fixture.destroy();
+  });
+
+  it('integrates the only visible clock and period into the scoreboard panel', async () => {
+    const { fixture, store } = await createPage();
+    const timers = fixture.nativeElement.querySelectorAll('[role="timer"]') as NodeListOf<HTMLElement>;
+    const matchState = fixture.nativeElement.querySelector('.match-state') as HTMLElement;
+
+    expect(timers).toHaveLength(1);
+    expect(matchState.contains(timers[0])).toBe(true);
+    expect(timers[0]?.textContent).toBe(store.formattedClock());
+    expect(matchState.textContent).toContain('1.ª parte');
+    expect(matchState.textContent).toContain('Detenido');
+    expect(matchState.textContent).toContain('INT');
+    expect(matchState.textContent).toContain('RIV');
+    expect(fixture.nativeElement.querySelector('.match-topbar [role="timer"]')).toBeNull();
     fixture.destroy();
   });
 
@@ -181,10 +232,10 @@ describe('LiveMatchPage', () => {
 
     expect(actions).toHaveLength(4);
     expect([...actions].map((button) => button.textContent?.trim().replace(/\s+/g, ' '))).toEqual([
-      '⚽ Gol',
-      '⚽ Gol rival',
-      '⚠ Falta',
-      '⚠ Falta rival',
+      '+1 Gol',
+      '+1 Gol rival',
+      '! Falta',
+      '! Falta rival',
     ]);
     fixture.destroy();
   });
@@ -221,13 +272,15 @@ describe('LiveMatchPage', () => {
     fixture.destroy();
   });
 
-  it('exports from the existing statistics panel using the shared loading state', async () => {
+  it('opens statistics as an overlay and exports with the shared loading state', async () => {
     const { csvExporter, fixture } = await createPage();
-    const button = fixture.nativeElement.querySelector(
-      'details.statistics-panel .export-csv',
-    ) as HTMLButtonElement;
+    expect(fixture.nativeElement.querySelector('.statistics-table')).toBeNull();
+    (fixture.nativeElement.querySelectorAll('.match-nav button')[0] as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('.match-overlay .export-csv') as HTMLButtonElement;
 
     expect(button).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.statistics-table')).not.toBeNull();
     expect(button.textContent).toContain('Exportar CSV');
     button.click();
     expect(csvExporter.export).toHaveBeenCalledOnce();
@@ -237,6 +290,44 @@ describe('LiveMatchPage', () => {
     fixture.detectChanges();
     expect(button.disabled).toBe(true);
     expect(button.textContent).toContain('Exportando');
+    fixture.destroy();
+  });
+
+  it('renders the tablet statistics summary and expands it in the existing overlay', async () => {
+    const { fixture } = await createPage();
+    const summary = fixture.nativeElement.querySelector('.tablet-statistics') as HTMLElement;
+
+    expect(summary.textContent).toContain('Estadísticas');
+    expect(summary.querySelectorAll('tbody tr')).toHaveLength(players.length);
+    expect(summary.textContent).toContain('#1');
+    expect(summary.textContent).toContain('Jugador 1');
+
+    (summary.querySelector('.panel-heading button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.match-overlay .statistics-table')).not.toBeNull();
+    fixture.destroy();
+  });
+
+  it('opens events and secondary actions without changing the dashboard', async () => {
+    const { fixture } = await createPage();
+    const navigation = fixture.nativeElement.querySelectorAll(
+      '.match-nav button',
+    ) as NodeListOf<HTMLButtonElement>;
+
+    navigation[1]?.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.match-overlay').textContent).toContain(
+      'Timeline completo',
+    );
+    (fixture.nativeElement.querySelector('.overlay-close') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    navigation[3]?.click();
+    fixture.detectChanges();
+    const moreOverlay = fixture.nativeElement.querySelector('.match-overlay') as HTMLElement;
+    expect(moreOverlay.textContent).toContain('Exportar CSV');
+    expect(moreOverlay.textContent).toContain('Abandonar partido');
+    expect(fixture.nativeElement.querySelector('.match-dashboard')).not.toBeNull();
     fixture.destroy();
   });
 
@@ -264,8 +355,13 @@ describe('LiveMatchPage', () => {
     expect(store.currentLineup()).toHaveLength(4);
     expect(store.sentOffPlayers().map((player) => player.id)).toEqual(['p3']);
     expect(store.benchPlayers().map((player) => player.id)).toEqual(['p6']);
-    expect(fixture.nativeElement.querySelector('.court-player--reduction').textContent).toContain(
-      '02:00',
+    const reductionSlot = fixture.nativeElement.querySelector(
+      '.court-player--reduction',
+    ) as HTMLElement;
+    expect(reductionSlot.textContent).toContain('02:00');
+    expect(reductionSlot.getAttribute('data-slot')).toBe('5');
+    expect((reductionSlot.closest('.futsal-court') as HTMLElement).contains(reductionSlot)).toBe(
+      true,
     );
     expect(fixture.nativeElement.querySelector('.foul-sheet')).toBeNull();
     fixture.destroy();

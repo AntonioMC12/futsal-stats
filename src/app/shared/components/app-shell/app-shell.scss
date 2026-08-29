@@ -71,6 +71,25 @@
   box-sizing: border-box;
 }
 
+.shell--live-match {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.shell--live-match .shell__header {
+  display: none;
+}
+
+.shell--live-match .shell__main {
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 @media (max-width: 560px) {
   .shell__header {
     gap: 0.45rem;

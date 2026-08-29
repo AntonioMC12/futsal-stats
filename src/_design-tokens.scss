@@ -20,10 +20,14 @@
   --ds-font-md: 1rem;
   --ds-font-lg: 1.125rem;
   --ds-font-xl: 1.5rem;
+  --ds-font-score: clamp(2rem, 10vw, 3.5rem);
+  --ds-weight-medium: 700;
+  --ds-weight-strong: 900;
 
   --ds-bg: #071018;
   --ds-surface: #101c29;
   --ds-surface-raised: #172638;
+  --ds-surface-interactive: #20334a;
   --ds-surface-strong: #20334a;
   --ds-border: #30465f;
   --ds-border-strong: #48627e;
@@ -63,6 +67,7 @@
   --ds-bg: #eef3f7;
   --ds-surface: #ffffff;
   --ds-surface-raised: #f7fafc;
+  --ds-surface-interactive: #eaf1f6;
   --ds-surface-strong: #e4edf4;
   --ds-border: #c7d3df;
   --ds-border-strong: #91a5b8;
