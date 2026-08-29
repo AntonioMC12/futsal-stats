@@ -1,9 +1,11 @@
 :host {
   display: block;
+  min-height: 100vh;
   min-height: 100dvh;
 }
 
 .shell {
+  min-height: 100vh;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -72,6 +74,7 @@
 }
 
 .shell--live-match {
+  height: 100vh;
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
@@ -84,6 +87,7 @@
 .shell--live-match .shell__main {
   width: 100%;
   max-width: none;
+  height: 100vh;
   height: 100dvh;
   min-height: 0;
   padding: 0;

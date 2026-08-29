@@ -35,6 +35,7 @@ export interface NumericalReduction {
   eventId: string;
   team: FoulTeam;
   playerId?: string;
+  opponentPlayerNumber?: number;
   source: 'secondYellow' | 'directRed';
   startedAtMatchElapsedMs: number;
   status: 'active' | 'replacementAllowed' | 'replacementCompleted';
@@ -104,6 +105,7 @@ export function deriveDisciplinaryState(
           eventId: event.id,
           team: event.team,
           playerId: event.playerId,
+          opponentPlayerNumber: event.opponentPlayerNumber,
           source: action,
           startedAtMatchElapsedMs: event.matchElapsedMs ?? 0,
           status: 'active',

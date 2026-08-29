@@ -52,6 +52,35 @@ function lineupEvents(): MatchEvent[] {
   }));
 }
 
+function foulEvent(
+  id: string,
+  sequence: number,
+  team: 'home' | 'away',
+  options: {
+    playerId?: string;
+    opponentPlayerNumber?: number;
+    action?: 'none' | 'yellow' | 'secondYellow' | 'directRed';
+  } = {},
+): MatchEvent {
+  return {
+    id,
+    matchId: 'match-1',
+    type: 'FOUL',
+    team,
+    playerId: options.playerId,
+    opponentPlayerNumber: options.opponentPlayerNumber,
+    accumulated: true,
+    disciplinaryAction: options.action ?? 'none',
+    periodFoulNumber: sequence - 5,
+    period: 1,
+    gameClockMs: 1_200_000 - sequence * 1_000,
+    matchElapsedMs: sequence * 1_000,
+    timestamp: sequence,
+    sequence,
+    undone: false,
+  };
+}
+
 describe('LiveMatchPage', () => {
   afterEach(() => TestBed.resetTestingModule());
 
@@ -421,6 +450,55 @@ describe('LiveMatchPage', () => {
     expect(store.opponentDirectRedsByNumber(7)).toBe(0);
     expect(store.isOpponentPlayerSentOff(7)).toBe(true);
     expect(store.opponentReductions()).toHaveLength(1);
+    fixture.destroy();
+  });
+
+  it('renders detailed discipline for players, rival numbers and unattributed fouls', async () => {
+    const { fixture, store } = await createPage();
+    store.events.set([
+      ...store.events(),
+      foulEvent('p1-foul', 6, 'home', { playerId: 'p1' }),
+      foulEvent('p1-yellow', 7, 'home', { playerId: 'p1', action: 'yellow' }),
+      foulEvent('p2-yellow', 8, 'home', { playerId: 'p2', action: 'yellow' }),
+      foulEvent('p2-second', 9, 'home', { playerId: 'p2', action: 'secondYellow' }),
+      foulEvent('p3-red', 10, 'home', { playerId: 'p3', action: 'directRed' }),
+      foulEvent('rival-seven', 11, 'away', { opponentPlayerNumber: 7, action: 'yellow' }),
+      foulEvent('rival-unknown-1', 12, 'away'),
+      foulEvent('rival-unknown-2', 13, 'away'),
+    ]);
+    fixture.detectChanges();
+
+    const navButtons = fixture.nativeElement.querySelectorAll(
+      '.match-nav button',
+    ) as NodeListOf<HTMLButtonElement>;
+    navButtons[2]?.click();
+    fixture.detectChanges();
+
+    const panel = fixture.nativeElement.querySelector('.discipline-panel') as HTMLElement;
+    expect(panel.querySelectorAll('.discipline-summary-card')).toHaveLength(2);
+    expect(panel.textContent).toContain('Jugador 1');
+    expect(panel.textContent).toContain('2 faltas');
+    expect(panel.textContent).toContain('Amarilla');
+    expect(panel.textContent).toContain('Segunda amarilla · Expulsado');
+    expect(panel.textContent).toContain('Roja directa · Expulsado');
+    expect(panel.textContent).toContain('#7');
+    expect(panel.textContent).toContain('Faltas sin jugador identificado: 2');
+    expect(panel.querySelectorAll('.sanction-card')).toHaveLength(2);
+    fixture.destroy();
+  });
+
+  it('shows a useful discipline empty state', async () => {
+    const { fixture } = await createPage();
+    const navButtons = fixture.nativeElement.querySelectorAll(
+      '.match-nav button',
+    ) as NodeListOf<HTMLButtonElement>;
+    navButtons[2]?.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('.discipline-empty')).toHaveLength(2);
+    expect(fixture.nativeElement.querySelector('.discipline-panel').textContent).toContain(
+      'Sin faltas ni tarjetas registradas.',
+    );
     fixture.destroy();
   });
 });

@@ -191,7 +191,7 @@
 
     @if (activeOverlay(); as overlay) {
       <div class="match-overlay-backdrop" (click)="activeOverlay.set(null)">
-        <dialog class="match-overlay" [class.match-overlay--compact]="overlay === 'more'" open (click)="$event.stopPropagation()" [attr.aria-labelledby]="overlay + '-overlay-title'">
+        <dialog class="match-overlay" [class.match-overlay--compact]="overlay === 'more'" [class.match-overlay--discipline]="overlay === 'discipline'" open (click)="$event.stopPropagation()" [attr.aria-labelledby]="overlay + '-overlay-title'">
           <header class="overlay-header">
             <div><span class="section-label">{{ match.homeTeam.shortName }} · {{ match.awayTeam.shortName }}</span>
               <h2 [id]="overlay + '-overlay-title'">@switch (overlay) { @case ('statistics') { Estadísticas } @case ('events') { Eventos } @case ('discipline') { Disciplina } @case ('more') { Más opciones } }</h2>
@@ -219,9 +219,113 @@
                 </section>
               }
               @case ('discipline') {
-                <section class="overlay-section discipline-panel"><div class="discipline-grid"><section><h3>Nosotros</h3><span>Faltas {{ store.disciplinaryState().teams.home.fouls }}</span><span>Amarillas {{ store.disciplinaryState().teams.home.yellowCards }}</span><span>Expulsiones {{ store.disciplinaryState().teams.home.sendOffs }}</span></section><section><h3>Rival</h3><span>Faltas {{ store.disciplinaryState().teams.away.fouls }}</span><span>Amarillas {{ store.disciplinaryState().teams.away.yellowCards }}</span><span>Expulsiones {{ store.disciplinaryState().teams.away.sendOffs }}</span></section></div>
-                  @for (reduction of store.ourReductions(); track reduction.eventId) { <div class="reduction-row"><span>{{ reduction.status === 'active' ? 'Inferioridad · ' + formatDuration(reduction.remainingMs) : 'Reposición propia disponible' }}</span>@if (reduction.status === 'replacementAllowed') { <button class="btn btn--secondary" type="button" [disabled]="store.saving()" (click)="openReplacement(reduction.eventId); activeOverlay.set(null)">+ Reponer jugador</button> }</div> }
-                  @for (reduction of store.opponentReductions(); track reduction.eventId) { <div class="reduction-row"><span>{{ reduction.status === 'active' ? 'Superioridad · ' + formatDuration(reduction.remainingMs) : 'El rival ya puede reponer' }}</span>@if (reduction.status === 'replacementAllowed') { <button class="btn btn--secondary" type="button" [disabled]="store.saving()" (click)="store.replaceSentOffPlayer(reduction.eventId)">Rival repone</button> }</div> }
+                <section class="overlay-section discipline-panel">
+                  <div class="discipline-summary" aria-label="Resumen disciplinario por equipo">
+                    <article class="discipline-summary-card">
+                      <header><span>Nosotros</span><small>{{ match.homeTeam.shortName }}</small></header>
+                      <dl>
+                        <div [class.is-foul-warning]="store.disciplineView().home.totals.fouls >= 5"><dt>Faltas · P{{ match.currentPeriod }}</dt><dd>{{ store.disciplineView().home.totals.fouls }}</dd></div>
+                        <div><dt>Amarillas</dt><dd><i class="card-mark card-mark--yellow" aria-hidden="true"></i>{{ store.disciplineView().home.totals.yellowCards }}</dd></div>
+                        <div><dt>Expulsiones</dt><dd><i class="card-mark card-mark--red" aria-hidden="true"></i>{{ store.disciplineView().home.totals.sendOffs }}</dd></div>
+                      </dl>
+                      @if (store.disciplineView().home.totals.fouls >= 6) { <p class="foul-limit">6+ · tiro sin barrera</p> }
+                      @else if (store.disciplineView().home.totals.fouls === 5) { <p class="foul-limit">Atención · próxima falta sancionable</p> }
+                    </article>
+                    <article class="discipline-summary-card">
+                      <header><span>Rival</span><small>{{ match.awayTeam.shortName }}</small></header>
+                      <dl>
+                        <div [class.is-foul-warning]="store.disciplineView().away.totals.fouls >= 5"><dt>Faltas · P{{ match.currentPeriod }}</dt><dd>{{ store.disciplineView().away.totals.fouls }}</dd></div>
+                        <div><dt>Amarillas</dt><dd><i class="card-mark card-mark--yellow" aria-hidden="true"></i>{{ store.disciplineView().away.totals.yellowCards }}</dd></div>
+                        <div><dt>Expulsiones</dt><dd><i class="card-mark card-mark--red" aria-hidden="true"></i>{{ store.disciplineView().away.totals.sendOffs }}</dd></div>
+                      </dl>
+                      @if (store.disciplineView().away.totals.fouls >= 6) { <p class="foul-limit">6+ · tiro sin barrera</p> }
+                      @else if (store.disciplineView().away.totals.fouls === 5) { <p class="foul-limit">Atención · próxima falta sancionable</p> }
+                    </article>
+                  </div>
+
+                  @if (store.disciplineView().activeSanctions.length > 0) {
+                    <section class="active-sanctions" aria-labelledby="active-sanctions-title">
+                      <h3 id="active-sanctions-title">Sanciones activas</h3>
+                      <div class="sanction-list">
+                        @for (sanction of store.disciplineView().activeSanctions; track sanction.eventId) {
+                          <article class="sanction-card" [class.sanction-card--opponent]="sanction.team === 'away'">
+                            <div class="sanction-card__icon" aria-hidden="true">
+                              @if (sanction.source === 'secondYellow') { <i class="card-mark card-mark--yellow"></i><i class="card-mark card-mark--yellow"></i> }
+                              @else { <i class="card-mark card-mark--red"></i> }
+                            </div>
+                            <div class="sanction-card__body">
+                              <span>{{ sanction.team === 'home' ? 'Nosotros · Inferioridad' : 'Rival · Superioridad' }}</span>
+                              <strong>@if (sanction.number) { #{{ sanction.number }} } @if (sanction.name) { {{ sanction.name }} }</strong>
+                              <small>{{ sanction.source === 'secondYellow' ? 'Segunda amarilla' : 'Roja directa' }}</small>
+                            </div>
+                            <div class="sanction-card__state">
+                              @if (sanction.status === 'active') { <strong>{{ formatDuration(sanction.remainingMs) }}</strong><small>restantes</small> }
+                              @else { <strong>Reposición</strong><small>disponible</small> }
+                            </div>
+                            @if (sanction.status === 'replacementAllowed' && sanction.team === 'home') {
+                              <button class="btn btn--secondary" type="button" [disabled]="store.saving()" (click)="openReplacement(sanction.eventId); activeOverlay.set(null)">+ Reponer</button>
+                            } @else if (sanction.status === 'replacementAllowed') {
+                              <button class="btn btn--secondary" type="button" [disabled]="store.saving()" (click)="store.replaceSentOffPlayer(sanction.eventId)">Rival repone</button>
+                            }
+                          </article>
+                        }
+                      </div>
+                    </section>
+                  }
+
+                  <div class="discipline-participants">
+                    <section class="discipline-side" aria-labelledby="home-discipline-title">
+                      <header><div><span class="section-label">Nosotros</span><h3 id="home-discipline-title">Jugadores</h3></div><small>Actividad disciplinaria</small></header>
+                      @if (store.disciplineView().home.participants.length === 0) {
+                        <p class="discipline-empty">Sin faltas ni tarjetas registradas.</p>
+                      } @else {
+                        <div class="discipline-player-list">
+                          @for (player of store.disciplineView().home.participants; track player.id) {
+                            <article class="discipline-player-row" [class.is-sent-off]="player.sentOff">
+                              <div class="discipline-player-identity"><strong>#{{ player.number }}</strong><span>{{ player.name }}</span></div>
+                              <div class="discipline-player-detail">
+                                @if (player.fouls > 0) { <span>{{ player.fouls }} {{ player.fouls === 1 ? 'falta' : 'faltas' }}</span> }
+                                <div class="discipline-badges">
+                                  @if (player.ordinaryYellowCards > 0) { <span class="discipline-badge discipline-badge--yellow"><i class="card-mark card-mark--yellow" aria-hidden="true"></i>Amarilla</span> }
+                                  @if (player.secondYellowSendOffs > 0) { <span class="discipline-badge discipline-badge--yellow"><i class="card-mark card-mark--yellow" aria-hidden="true"></i><i class="card-mark card-mark--yellow" aria-hidden="true"></i>Segunda amarilla · Expulsado</span> }
+                                  @if (player.directRedCards > 0) { <span class="discipline-badge discipline-badge--red"><i class="card-mark card-mark--red" aria-hidden="true"></i>Roja directa · Expulsado</span> }
+                                </div>
+                              </div>
+                            </article>
+                          }
+                        </div>
+                      }
+                    </section>
+
+                    <section class="discipline-side" aria-labelledby="away-discipline-title">
+                      <header><div><span class="section-label">Rival</span><h3 id="away-discipline-title">Dorsales</h3></div><small>Solo dorsales registrados</small></header>
+                      @if (store.disciplineView().away.participants.length === 0 && store.disciplineView().away.unattributedFouls === 0) {
+                        <p class="discipline-empty">Sin faltas ni tarjetas registradas.</p>
+                      } @else {
+                        <div class="discipline-player-list">
+                          @for (player of store.disciplineView().away.participants; track player.id) {
+                            <article class="discipline-player-row" [class.is-sent-off]="player.sentOff">
+                              <div class="discipline-player-identity"><strong>#{{ player.number }}</strong></div>
+                              <div class="discipline-player-detail">
+                                @if (player.fouls > 0) { <span>{{ player.fouls }} {{ player.fouls === 1 ? 'falta' : 'faltas' }}</span> }
+                                <div class="discipline-badges">
+                                  @if (player.ordinaryYellowCards > 0) { <span class="discipline-badge discipline-badge--yellow"><i class="card-mark card-mark--yellow" aria-hidden="true"></i>Amarilla</span> }
+                                  @if (player.secondYellowSendOffs > 0) { <span class="discipline-badge discipline-badge--yellow"><i class="card-mark card-mark--yellow" aria-hidden="true"></i><i class="card-mark card-mark--yellow" aria-hidden="true"></i>Segunda amarilla · Expulsado</span> }
+                                  @if (player.directRedCards > 0) { <span class="discipline-badge discipline-badge--red"><i class="card-mark card-mark--red" aria-hidden="true"></i>Roja directa · Expulsado</span> }
+                                </div>
+                              </div>
+                            </article>
+                          }
+                          @if (store.disciplineView().away.unattributedFouls > 0) {
+                            <article class="discipline-player-row discipline-player-row--unattributed">
+                              <div class="discipline-player-identity"><strong>Sin dorsal</strong></div>
+                              <div class="discipline-player-detail"><span>Faltas sin jugador identificado: {{ store.disciplineView().away.unattributedFouls }}</span></div>
+                            </article>
+                          }
+                        </div>
+                      }
+                    </section>
+                  </div>
                 </section>
               }
               @case ('more') {

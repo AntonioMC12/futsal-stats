@@ -14,6 +14,7 @@ import { DisciplinaryAction, FoulTeam, MatchEvent } from '../../../shared/models
 import { Player } from '../../../shared/models/player';
 import { deriveMatchState } from '../domain/derived-match-state';
 import { deriveDisciplinaryState, registerRedCardReplacement } from '../domain/discipline';
+import { createDisciplineView } from '../domain/discipline-view';
 import { registerFoul as createFoul } from '../domain/foul';
 import { GoalSide, registerGoal as createGoal } from '../domain/goal';
 import {
@@ -71,6 +72,14 @@ export class LiveMatchStore {
         : 0;
     return deriveDisciplinaryState(this.events(), state.completedElapsedMs + currentSegment);
   });
+  readonly disciplineView = computed(() =>
+    createDisciplineView(
+      this.disciplinaryState(),
+      this.players(),
+      this.events(),
+      this.match()?.currentPeriod ?? 1,
+    ),
+  );
   readonly timeline = computed(() =>
     createMatchTimeline(
       this.events(),

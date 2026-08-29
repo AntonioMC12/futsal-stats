@@ -31,6 +31,15 @@ export class MatchSetupPage {
     teamId: ['', Validators.required],
     awayTeamName: ['', [Validators.required, Validators.maxLength(60)]],
   });
+  protected readonly availablePlayers = computed(() => {
+    const teamId = this.form.controls.teamId.value;
+    return this.players().filter((player) => player.active && player.teamId === teamId);
+  });
+  protected readonly allPlayersSelected = computed(() => {
+    const available = this.availablePlayers();
+    const squad = this.squadIds();
+    return available.length > 0 && available.every((player) => squad.has(player.id));
+  });
 
   constructor() {
     void this.loadTeams();
@@ -67,6 +76,16 @@ export class MatchSetupPage {
     }
     this.squadIds.set(squad);
     this.lineupIds.set(lineup);
+  }
+
+  protected toggleAllPlayers(): void {
+    if (this.allPlayersSelected()) {
+      this.squadIds.set(new Set());
+      this.lineupIds.set(new Set());
+      return;
+    }
+
+    this.squadIds.set(new Set(this.availablePlayers().map((player) => player.id)));
   }
 
   protected toggleLineup(playerId: string): void {
