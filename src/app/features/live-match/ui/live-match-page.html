@@ -185,10 +185,6 @@
       </button>
     }
 
-    @if (actionFeedback(); as message) {
-      <div class="action-toast" role="status"><span><b aria-hidden="true">✓</b> {{ message }}</span><button type="button" [disabled]="!store.canUndo()" (click)="undoLastAction()">Deshacer</button></div>
-    }
-
     @if (activeOverlay(); as overlay) {
       <div class="match-overlay-backdrop" (click)="activeOverlay.set(null)">
         <dialog class="match-overlay" [class.match-overlay--compact]="overlay === 'more'" [class.match-overlay--discipline]="overlay === 'discipline'" open (click)="$event.stopPropagation()" [attr.aria-labelledby]="overlay + '-overlay-title'">
@@ -340,7 +336,6 @@
 
   @if (store.error(); as message) { <p class="system-banner banner banner--warn" role="alert">{{ message }}</p> }
   @if (csvExporter.error(); as message) { <p class="system-banner banner banner--warn" role="alert">{{ message }}</p> }
-  @if (csvExporter.notice(); as message) { <p class="system-banner banner banner--ok" role="status">{{ message }}</p> }
 
   @if (goalSelectorOpen()) {
     <div class="substitution-backdrop" (click)="cancelGoalSelector()">

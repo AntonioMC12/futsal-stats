@@ -1,10 +1,11 @@
 import { Component, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ConnectivityService } from '../../../core/connectivity/connectivity.service';
+import { SystemNotificationComponent } from '../system-notification/system-notification';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, SystemNotificationComponent],
   templateUrl: './app-shell.html',
   styleUrl: './app-shell.scss',
 })

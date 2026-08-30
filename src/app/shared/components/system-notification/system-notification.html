@@ -1,0 +1,30 @@
+<div class="system-notification-region">
+  @for (notification of activeNotifications(); track notification.id) {
+    <div
+      class="system-notification"
+      [class.system-notification--entering]="notifications.phase() === 'entering'"
+      [class.system-notification--leaving]="notifications.phase() === 'leaving'"
+      [class.system-notification--success]="notification.type === 'success'"
+      [class.system-notification--info]="notification.type === 'info'"
+      [class.system-notification--warning]="notification.type === 'warning'"
+      [class.system-notification--error]="notification.type === 'error'"
+      [attr.role]="liveRole(notification.type)"
+      [attr.aria-live]="notification.type === 'warning' || notification.type === 'error' ? 'assertive' : 'polite'"
+      aria-atomic="true"
+      (animationend)="animationDone($event, notification.id)"
+    >
+      <span class="system-notification__icon" aria-hidden="true">{{ icon(notification.type) }}</span>
+      <span class="system-notification__message">{{ notification.message }}</span>
+      @if (notification.action; as action) {
+        <button
+          class="system-notification__action"
+          type="button"
+          [disabled]="action.disabled?.() ?? false"
+          (click)="notifications.runAction(notification.id)"
+        >
+          {{ action.label }}
+        </button>
+      }
+    </div>
+  }
+</div>

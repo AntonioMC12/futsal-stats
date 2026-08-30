@@ -483,29 +483,6 @@
 .live-match .clock-fab--pulse { animation: play-pulse 1.7s ease-in-out infinite; }
 .live-match .clock-fab--pulse:active:not(:disabled) { animation: none; }
 
-.action-toast {
-  position: fixed;
-  left: 50%;
-  bottom: calc(5.75rem + env(safe-area-inset-bottom));
-  z-index: 40;
-  width: min(calc(100% - 1rem), 28rem);
-  min-height: var(--ds-touch-min);
-  padding: var(--ds-space-2) var(--ds-space-3);
-  border: 1px solid var(--ds-primary);
-  border-radius: var(--ds-radius-pill);
-  background: var(--ds-surface-strong);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ds-space-3);
-  box-shadow: var(--ds-shadow-lg);
-  transform: translateX(-50%);
-}
-
-.action-toast span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.action-toast b { color: var(--ds-success); }
-.action-toast button { min-height: var(--ds-touch-min); border: 0; background: transparent; color: var(--ds-primary); font: inherit; font-weight: 900; cursor: pointer; }
-
 .system-banner { position: fixed; top: calc(var(--ds-space-2) + env(safe-area-inset-top)); left: 50%; z-index: 45; width: min(calc(100% - 1rem), 34rem); box-shadow: var(--ds-shadow-lg); transform: translateX(-50%); }
 
 .match-overlay-backdrop { position: fixed; inset: 0; z-index: 30; padding-top: max(var(--ds-space-4), env(safe-area-inset-top)); background: rgb(0 0 0 / 72%); display: flex; align-items: flex-end; }

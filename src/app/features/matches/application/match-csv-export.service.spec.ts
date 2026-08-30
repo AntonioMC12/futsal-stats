@@ -6,6 +6,7 @@ import { PlayerRepository } from '../../../core/persistence/player.repository';
 import { Match } from '../../../shared/models/match';
 import { CsvFileDownloader } from './csv-file-downloader';
 import { MatchCsvExportService } from './match-csv-export.service';
+import { SystemNotificationService } from '../../../core/notifications/system-notification.service';
 
 function match(status: Match['status']): Match {
   return {
@@ -75,13 +76,15 @@ describe('MatchCsvExportService', () => {
     });
 
     const service = TestBed.inject(MatchCsvExportService);
+    const notifications = TestBed.inject(SystemNotificationService);
     const result = await service.export('match-1');
 
     expect(result.ok).toBe(true);
     expect(listByMatch).toHaveBeenCalledOnce();
     expect(download).toHaveBeenCalledOnce();
     expect(active.clock.running).toBe(true);
-    expect(service.notice()).toBe('CSV exportado');
+    expect(notifications.notification()?.message).toBe('CSV exportado');
+    expect(notifications.notification()?.type).toBe('success');
     expect(service.error()).toBeNull();
   });
 

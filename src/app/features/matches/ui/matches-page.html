@@ -11,10 +11,6 @@
   @if (csvExporter.error(); as message) {
     <p class="banner banner--warn" role="alert">{{ message }}</p>
   }
-  @if (csvExporter.notice(); as message) {
-    <p class="banner banner--ok" role="status">{{ message }}</p>
-  }
-
   @if (store.loading()) {
     <p class="empty" role="status">Cargando partidos…</p>
   } @else {

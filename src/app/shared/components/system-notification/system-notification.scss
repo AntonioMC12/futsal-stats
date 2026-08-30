@@ -1,0 +1,112 @@
+:host {
+  display: contents;
+}
+
+.system-notification-region {
+  position: fixed;
+  top: calc(var(--ds-space-2) + env(safe-area-inset-top));
+  left: 50%;
+  z-index: 40;
+  width: max-content;
+  max-width: calc(100vw - (2 * var(--ds-space-4)));
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.system-notification {
+  width: max-content;
+  max-width: min(34rem, calc(100vw - (2 * var(--ds-space-4))));
+  min-height: 2.75rem;
+  padding: var(--ds-space-2) var(--ds-space-3);
+  border: 1px solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface-strong);
+  color: var(--ds-text);
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  box-shadow: var(--ds-shadow-lg);
+  font-weight: var(--ds-weight-medium);
+  line-height: 1.35;
+  opacity: 1;
+}
+
+.system-notification--entering {
+  animation: notification-enter 220ms ease-out;
+}
+
+.system-notification--leaving {
+  animation: notification-leave 260ms ease-in forwards;
+}
+
+.system-notification--success { border-color: color-mix(in srgb, var(--ds-success) 58%, var(--ds-border)); }
+.system-notification--info { border-color: color-mix(in srgb, var(--ds-focus) 48%, var(--ds-border)); }
+.system-notification--warning { border-color: color-mix(in srgb, var(--ds-warning) 58%, var(--ds-border)); }
+.system-notification--error { border-color: color-mix(in srgb, var(--ds-danger) 58%, var(--ds-border)); }
+
+.system-notification__icon {
+  flex: 0 0 auto;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--ds-surface-raised);
+  font-size: var(--ds-font-sm);
+  font-weight: var(--ds-weight-strong);
+}
+
+.system-notification--success .system-notification__icon { color: var(--ds-success); }
+.system-notification--info .system-notification__icon { color: var(--ds-focus); }
+.system-notification--warning .system-notification__icon { color: var(--ds-warning); }
+.system-notification--error .system-notification__icon { color: var(--ds-danger); }
+
+.system-notification__message {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.system-notification__action {
+  min-height: var(--ds-touch-min);
+  margin: calc(-1 * var(--ds-space-2)) calc(-1 * var(--ds-space-2)) calc(-1 * var(--ds-space-2)) 0;
+  padding: 0 var(--ds-space-3);
+  border: 0;
+  background: transparent;
+  color: var(--ds-primary);
+  font: inherit;
+  font-weight: var(--ds-weight-strong);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.system-notification__action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@keyframes notification-enter {
+  from { opacity: 0; transform: translateY(-0.5rem) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes notification-leave {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-0.3rem) scale(0.98); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .system-notification--entering,
+  .system-notification--leaving {
+    animation-duration: 1ms;
+  }
+
+  @keyframes notification-enter {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes notification-leave {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+}

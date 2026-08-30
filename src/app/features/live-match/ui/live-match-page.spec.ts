@@ -5,6 +5,7 @@ import { createMatchClock } from '../../../core/clock/match-clock';
 import { MatchEventRepository } from '../../../core/persistence/match-event.repository';
 import { MatchRepository } from '../../../core/persistence/match.repository';
 import { PlayerRepository } from '../../../core/persistence/player.repository';
+import { SystemNotificationService } from '../../../core/notifications/system-notification.service';
 import { Match } from '../../../shared/models/match';
 import { MatchEvent } from '../../../shared/models/match-event';
 import { Player } from '../../../shared/models/player';
@@ -114,11 +115,12 @@ describe('LiveMatchPage', () => {
     const store = fixture.debugElement.injector.get(LiveMatchStore);
     await vi.waitFor(() => expect(store.loading()).toBe(false));
     fixture.detectChanges();
-    return { csvExporter, fixture, store };
+    const notifications = TestBed.inject(SystemNotificationService);
+    return { csvExporter, fixture, notifications, store };
   }
 
   it('renders five court players and substitutes directly with the only bench player', async () => {
-    const { fixture, store } = await createPage();
+    const { fixture, notifications, store } = await createPage();
     const courtPlayers = fixture.nativeElement.querySelectorAll(
       '.court-player:not(.court-player--empty)',
     );
@@ -151,14 +153,13 @@ describe('LiveMatchPage', () => {
     expect(makeSubstitution).toHaveBeenCalledOnce();
     expect(makeSubstitution).toHaveBeenCalledWith('p3', 'p6');
     expect(fixture.nativeElement.querySelector('.substitution-sheet')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.action-toast').textContent).toContain(
-      'Cambio realizado',
-    );
+    expect(notifications.notification()?.message).toBe('Cambio realizado');
+    expect(notifications.notification()?.action?.label).toBe('Deshacer');
     fixture.destroy();
   });
 
-  it('hides the action toast after three seconds', async () => {
-    const { fixture, store } = await createPage();
+  it('starts dismissing action feedback after its visible duration', async () => {
+    const { fixture, notifications, store } = await createPage();
     vi.useFakeTimers();
     try {
       const registerGoalAgainst = vi.spyOn(store, 'registerGoalAgainst').mockResolvedValue(true);
@@ -168,17 +169,17 @@ describe('LiveMatchPage', () => {
 
       goalAgainstButton.click();
       await Promise.resolve();
-      fixture.detectChanges();
       expect(registerGoalAgainst).toHaveBeenCalledOnce();
-      expect(fixture.nativeElement.querySelector('.action-toast')).not.toBeNull();
+      const id = notifications.notification()?.id;
+      expect(id).toBeDefined();
+      notifications.animationDone(id!);
+      expect(notifications.phase()).toBe('visible');
 
-      await vi.advanceTimersByTimeAsync(2_999);
-      fixture.detectChanges();
-      expect(fixture.nativeElement.querySelector('.action-toast')).not.toBeNull();
+      await vi.advanceTimersByTimeAsync(2_599);
+      expect(notifications.phase()).toBe('visible');
 
       await vi.advanceTimersByTimeAsync(1);
-      fixture.detectChanges();
-      expect(fixture.nativeElement.querySelector('.action-toast')).toBeNull();
+      expect(notifications.phase()).toBe('leaving');
     } finally {
       fixture.destroy();
       vi.useRealTimers();
@@ -413,7 +414,7 @@ describe('LiveMatchPage', () => {
   });
 
   it('opens the scorer selector with only current lineup players and registers one scorer', async () => {
-    const { fixture, store } = await createPage();
+    const { fixture, notifications, store } = await createPage();
     const registerGoalFor = vi.spyOn(store, 'registerGoalFor').mockResolvedValue(true);
     const goalButton = fixture.nativeElement.querySelector(
       '.goal-actions .btn--primary',
@@ -432,9 +433,7 @@ describe('LiveMatchPage', () => {
     expect(registerGoalFor).toHaveBeenCalledOnce();
     expect(registerGoalFor).toHaveBeenCalledWith('p3');
     expect(fixture.nativeElement.querySelector('.goal-sheet')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.action-toast').textContent).toContain(
-      'Gol registrado',
-    );
+    expect(notifications.notification()?.message).toBe('Gol registrado');
     fixture.destroy();
   });
 

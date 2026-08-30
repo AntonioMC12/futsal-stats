@@ -4,6 +4,7 @@ import { formatGameClock } from '../../../core/clock/match-clock';
 import { DisciplinaryAction, FoulTeam, MatchEventType } from '../../../shared/models/match-event';
 import { LiveMatchStore } from '../application/live-match.store';
 import { MatchCsvExportService } from '../../matches/application/match-csv-export.service';
+import { SystemNotificationService } from '../../../core/notifications/system-notification.service';
 
 type MatchOverlay = 'statistics' | 'events' | 'discipline' | 'more';
 
@@ -17,6 +18,7 @@ export class LiveMatchPage {
   protected readonly store = inject(LiveMatchStore);
   protected readonly csvExporter = inject(MatchCsvExportService);
   private readonly router = inject(Router);
+  private readonly notifications = inject(SystemNotificationService);
   protected readonly selectedOutPlayerId = signal<string | null>(null);
   protected readonly substituting = signal(false);
   protected readonly confirmAbandon = signal(false);
@@ -29,7 +31,6 @@ export class LiveMatchPage {
   protected readonly opponentNumberInput = signal('');
   protected readonly goalSelectorOpen = signal(false);
   protected readonly goalSaving = signal(false);
-  protected readonly actionFeedback = signal<string | null>(null);
   protected readonly activeOverlay = signal<MatchOverlay | null>(null);
   private substitutionTrigger: HTMLElement | null = null;
   private goalTrigger: HTMLElement | null = null;
@@ -88,12 +89,6 @@ export class LiveMatchPage {
 
   constructor() {
     effect(() => void this.store.load(this.matchId()));
-    effect((onCleanup) => {
-      if (!this.actionFeedback()) return;
-
-      const timeoutId = setTimeout(() => this.actionFeedback.set(null), 3_000);
-      onCleanup(() => clearTimeout(timeoutId));
-    });
   }
 
   protected selectOutPlayer(playerId: string, event: Event): void | Promise<void> {
@@ -116,7 +111,7 @@ export class LiveMatchPage {
     this.substituting.set(true);
     try {
       if (await this.store.makeSubstitution(outPlayerId, inPlayerId)) {
-        this.actionFeedback.set('Cambio realizado');
+        this.showActionFeedback('Cambio realizado');
         this.cancelSubstitution();
       }
     } finally {
@@ -156,7 +151,7 @@ export class LiveMatchPage {
     this.goalSaving.set(true);
     try {
       if (await this.store.registerGoalFor(scorerPlayerId)) {
-        this.actionFeedback.set('Gol registrado');
+        this.showActionFeedback('Gol registrado');
         this.closeGoalSelector();
       }
     } finally {
@@ -180,14 +175,14 @@ export class LiveMatchPage {
     if (!this.store.canRegisterGoal() || this.store.saving()) return;
     return this.runAfterClockStopped(async () => {
       if (await this.store.registerGoalAgainst()) {
-        this.actionFeedback.set('Gol rival registrado');
+        this.showActionFeedback('Gol rival registrado');
       }
     });
   }
 
   protected async undoLastAction(): Promise<void> {
     if (await this.store.undoLastEvent()) {
-      this.actionFeedback.set(null);
+      this.notifications.info(this.store.notice() ?? 'Acción deshecha');
     }
   }
 
@@ -256,7 +251,7 @@ export class LiveMatchPage {
           ? await this.store.registerTeamFoul(this.selectedFoulPlayerId() ?? undefined, action)
           : await this.store.registerOpponentFoul(action, opponentPlayerNumber);
       if (saved) {
-        this.actionFeedback.set(action === 'none' ? 'Falta registrada' : 'Tarjeta registrada');
+        this.showActionFeedback(action === 'none' ? 'Falta registrada' : 'Tarjeta registrada');
         this.cancelFoulAfterSave();
       }
     } finally {
@@ -349,6 +344,17 @@ export class LiveMatchPage {
     this.pendingOpponentAction.set(null);
     this.selectedOpponentNumber.set(null);
     this.opponentNumberInput.set('');
+  }
+
+  private showActionFeedback(message: string): void {
+    this.notifications.success(message, {
+      duration: 2_600,
+      action: {
+        label: 'Deshacer',
+        run: () => this.undoLastAction(),
+        disabled: () => !this.store.canUndo(),
+      },
+    });
   }
 
   private runAfterClockStopped(action: () => void | Promise<void>): void | Promise<void> {

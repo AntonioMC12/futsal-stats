@@ -1,4 +1,5 @@
 <div class="shell" [class.shell--live-match]="liveMatchActive">
+  <app-system-notification />
   <header class="shell__header">
     <a class="shell__brand" routerLink="/">Futsal Stats</a>
     <span class="offline-status" role="status" [hidden]="connectivity.online()">
