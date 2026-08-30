@@ -61,6 +61,14 @@ export class LiveMatchPage {
   protected readonly clockFabLabel = computed(() =>
     this.store.clockRunning() ? 'Pausar reloj' : 'Iniciar reloj',
   );
+  protected readonly clockFabPulsing = computed(
+    () => !this.store.clockRunning() && this.store.canStartClock() && !this.store.saving(),
+  );
+  protected readonly isLiveMatchPaused = computed(() => {
+    const match = this.store.match();
+    const isPlayablePeriod = match?.status === 'firstHalf' || match?.status === 'secondHalf';
+    return isPlayablePeriod && !this.store.clockRunning() && this.store.remainingMs() > 0;
+  });
   protected readonly compactPeriodLabel = computed(() => {
     switch (this.store.match()?.status) {
       case 'ready':
@@ -88,12 +96,15 @@ export class LiveMatchPage {
     });
   }
 
-  protected selectOutPlayer(playerId: string, event: Event): void {
-    if (!this.store.canSubstitute()) {
+  protected selectOutPlayer(playerId: string, event: Event): void | Promise<void> {
+    if (!this.store.canSubstitute() || this.store.saving()) {
       return;
     }
-    this.substitutionTrigger = event.currentTarget as HTMLElement;
-    this.selectedOutPlayerId.set(playerId);
+    const trigger = event.currentTarget as HTMLElement;
+    return this.runAfterClockStopped(() => {
+      this.substitutionTrigger = trigger;
+      this.selectedOutPlayerId.set(playerId);
+    });
   }
 
   protected async substituteWith(inPlayerId: string): Promise<void> {
@@ -131,10 +142,13 @@ export class LiveMatchPage {
     }
   }
 
-  protected openGoalSelector(event: Event): void {
+  protected openGoalSelector(event: Event): void | Promise<void> {
     if (!this.store.canRegisterGoal() || this.store.saving()) return;
-    this.goalTrigger = event.currentTarget as HTMLElement;
-    this.goalSelectorOpen.set(true);
+    const trigger = event.currentTarget as HTMLElement;
+    return this.runAfterClockStopped(() => {
+      this.goalTrigger = trigger;
+      this.goalSelectorOpen.set(true);
+    });
   }
 
   protected async submitGoal(scorerPlayerId?: string): Promise<void> {
@@ -162,10 +176,13 @@ export class LiveMatchPage {
     queueMicrotask(() => trigger?.focus());
   }
 
-  protected async registerGoalAgainst(): Promise<void> {
-    if (await this.store.registerGoalAgainst()) {
-      this.actionFeedback.set('Gol rival registrado');
-    }
+  protected registerGoalAgainst(): void | Promise<void> {
+    if (!this.store.canRegisterGoal() || this.store.saving()) return;
+    return this.runAfterClockStopped(async () => {
+      if (await this.store.registerGoalAgainst()) {
+        this.actionFeedback.set('Gol rival registrado');
+      }
+    });
   }
 
   protected async undoLastAction(): Promise<void> {
@@ -174,10 +191,13 @@ export class LiveMatchPage {
     }
   }
 
-  protected openFoul(team: FoulTeam): void {
-    this.selectedFoulPlayerId.set(null);
-    this.resetOpponentSelection();
-    this.foulTeam.set(team);
+  protected openFoul(team: FoulTeam): void | Promise<void> {
+    if (!this.store.canRegisterFoul() || this.store.saving()) return;
+    return this.runAfterClockStopped(() => {
+      this.selectedFoulPlayerId.set(null);
+      this.resetOpponentSelection();
+      this.foulTeam.set(team);
+    });
   }
 
   protected cancelFoul(): void {
@@ -244,8 +264,9 @@ export class LiveMatchPage {
     }
   }
 
-  protected openReplacement(reductionEventId: string): void {
-    this.replacingReductionId.set(reductionEventId);
+  protected openReplacement(reductionEventId: string): void | Promise<void> {
+    if (this.store.saving()) return;
+    return this.runAfterClockStopped(() => this.replacingReductionId.set(reductionEventId));
   }
 
   protected cancelReplacement(): void {
@@ -328,6 +349,16 @@ export class LiveMatchPage {
     this.pendingOpponentAction.set(null);
     this.selectedOpponentNumber.set(null);
     this.opponentNumberInput.set('');
+  }
+
+  private runAfterClockStopped(action: () => void | Promise<void>): void | Promise<void> {
+    if (!this.store.clockRunning()) return action();
+    return this.stopClockThen(action);
+  }
+
+  private async stopClockThen(action: () => void | Promise<void>): Promise<void> {
+    await this.store.stopClock();
+    if (!this.store.clockRunning()) await action();
   }
 
   protected lineupPlayers(playerIds: readonly string[]): string {

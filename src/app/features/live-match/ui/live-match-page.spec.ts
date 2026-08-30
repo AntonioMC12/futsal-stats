@@ -127,7 +127,9 @@ describe('LiveMatchPage', () => {
     expect(court.getAttribute('aria-label')).toContain('Formación');
     expect(court.querySelector('.court-markings')).not.toBeNull();
     expect(
-      [...court.querySelectorAll('.court-player')].map((player) => player.getAttribute('data-slot')),
+      [...court.querySelectorAll('.court-player')].map((player) =>
+        player.getAttribute('data-slot'),
+      ),
     ).toEqual(['1', '2', '3', '4', '5']);
 
     const makeSubstitution = vi.spyOn(store, 'makeSubstitution').mockResolvedValue(true);
@@ -211,9 +213,192 @@ describe('LiveMatchPage', () => {
     fixture.destroy();
   });
 
+  it('stops a running clock before opening the goal selector and keeps it stopped on cancel', async () => {
+    const { fixture, store } = await createPage();
+    await store.startClock();
+    fixture.detectChanges();
+    const stopClock = vi.spyOn(store, 'stopClock');
+
+    (
+      fixture.nativeElement.querySelector('.goal-actions .btn--primary') as HTMLButtonElement
+    ).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(stopClock).toHaveBeenCalledOnce();
+    expect(store.clockRunning()).toBe(false);
+    expect(store.events().filter((event) => event.type === 'CLOCK_STOPPED')).toHaveLength(1);
+    expect(fixture.nativeElement.querySelector('.goal-sheet')).not.toBeNull();
+    expect(
+      (fixture.nativeElement.querySelector('.live-match') as HTMLElement).classList.contains(
+        'is-paused',
+      ),
+    ).toBe(true);
+
+    (fixture.nativeElement.querySelector('.goal-sheet .sheet-cancel') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(store.clockRunning()).toBe(false);
+    expect(store.events().filter((event) => event.type === 'CLOCK_STOPPED')).toHaveLength(1);
+    expect(
+      (fixture.nativeElement.querySelector('.live-match') as HTMLElement).classList.contains(
+        'is-paused',
+      ),
+    ).toBe(true);
+    fixture.destroy();
+  });
+
+  it('does not request another clock stop when an action starts with the clock stopped', async () => {
+    const { fixture, store } = await createPage();
+    const stopClock = vi.spyOn(store, 'stopClock');
+
+    (
+      fixture.nativeElement.querySelector('.goal-actions .btn--primary') as HTMLButtonElement
+    ).click();
+    fixture.detectChanges();
+
+    expect(stopClock).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('.goal-sheet')).not.toBeNull();
+    fixture.destroy();
+  });
+
+  it('stops the clock before registering a rival goal', async () => {
+    const { fixture, store } = await createPage();
+    await store.startClock();
+    fixture.detectChanges();
+    const stopClock = vi.spyOn(store, 'stopClock');
+    const registerGoalAgainst = vi.spyOn(store, 'registerGoalAgainst').mockResolvedValue(true);
+
+    (
+      fixture.nativeElement.querySelector('.goal-actions .btn--danger') as HTMLButtonElement
+    ).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(stopClock).toHaveBeenCalledOnce();
+    expect(registerGoalAgainst).toHaveBeenCalledOnce();
+    expect(stopClock.mock.invocationCallOrder[0]).toBeLessThan(
+      registerGoalAgainst.mock.invocationCallOrder[0]!,
+    );
+    expect(store.clockRunning()).toBe(false);
+    fixture.destroy();
+  });
+
+  it('stops the clock before opening either foul flow', async () => {
+    const { fixture, store } = await createPage();
+    const stopClock = vi.spyOn(store, 'stopClock');
+    const foulButtons = fixture.nativeElement.querySelectorAll(
+      '.foul-actions button',
+    ) as NodeListOf<HTMLButtonElement>;
+
+    await store.startClock();
+    fixture.detectChanges();
+    foulButtons[0]?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(store.clockRunning()).toBe(false);
+    expect(fixture.nativeElement.querySelector('.foul-sheet')).not.toBeNull();
+    (fixture.nativeElement.querySelector('.foul-sheet .sheet-cancel') as HTMLButtonElement).click();
+
+    await store.startClock();
+    fixture.detectChanges();
+    foulButtons[1]?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(store.clockRunning()).toBe(false);
+    expect(fixture.nativeElement.querySelector('.foul-sheet')).not.toBeNull();
+    expect(stopClock).toHaveBeenCalledTimes(2);
+    fixture.destroy();
+  });
+
+  it('stops the clock before opening a substitution', async () => {
+    const { fixture, store } = await createPage();
+    await store.startClock();
+    fixture.detectChanges();
+    const stopClock = vi.spyOn(store, 'stopClock');
+
+    (
+      fixture.nativeElement.querySelector(
+        '.court-player:not(.court-player--empty)',
+      ) as HTMLButtonElement
+    ).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(stopClock).toHaveBeenCalledOnce();
+    expect(store.clockRunning()).toBe(false);
+    expect(fixture.nativeElement.querySelector('.substitution-sheet')).not.toBeNull();
+    fixture.destroy();
+  });
+
+  it('pulses only for an enabled stopped PLAY control', async () => {
+    const { fixture, store } = await createPage();
+    let fab = fixture.nativeElement.querySelector('.clock-fab') as HTMLButtonElement;
+    expect(fab.classList.contains('clock-fab--pulse')).toBe(true);
+    expect(fab.disabled).toBe(false);
+
+    await store.startClock();
+    fixture.detectChanges();
+    fab = fixture.nativeElement.querySelector('.clock-fab') as HTMLButtonElement;
+    expect(fab.classList.contains('clock-fab--pulse')).toBe(false);
+
+    await store.stopClock();
+    store.events.set(
+      store
+        .events()
+        .filter((event) => event.type !== 'PLAYER_ENTERED')
+        .slice(0, 2),
+    );
+    fixture.detectChanges();
+    fab = fixture.nativeElement.querySelector('.clock-fab') as HTMLButtonElement;
+    expect(store.canStartClock()).toBe(false);
+    expect(fab.disabled).toBe(true);
+    expect(fab.classList.contains('clock-fab--pulse')).toBe(false);
+    fixture.destroy();
+  });
+
+  it('shows the paused shell only during a stopped playable period with time remaining', async () => {
+    const { fixture, store } = await createPage();
+    const shellIsPaused = () =>
+      (fixture.nativeElement.querySelector('.live-match') as HTMLElement).classList.contains(
+        'is-paused',
+      );
+    const setState = (status: Match['status'], running: boolean, remainingMs = 1_000_000) => {
+      const match = store.match()!;
+      store.match.set({
+        ...match,
+        status,
+        clock: {
+          ...match.clock,
+          remainingMs,
+          running,
+          startedAtEpochMs: running ? Date.now() : null,
+        },
+      });
+      fixture.detectChanges();
+    };
+
+    setState('ready', false);
+    expect(shellIsPaused()).toBe(false);
+    setState('firstHalf', true);
+    expect(shellIsPaused()).toBe(false);
+    setState('firstHalf', false);
+    expect(shellIsPaused()).toBe(true);
+    setState('secondHalf', false);
+    expect(shellIsPaused()).toBe(true);
+    setState('halftime', false);
+    expect(shellIsPaused()).toBe(false);
+    setState('finished', false);
+    expect(shellIsPaused()).toBe(false);
+    setState('firstHalf', false, 0);
+    expect(shellIsPaused()).toBe(false);
+    fixture.destroy();
+  });
+
   it('integrates the only visible clock and period into the scoreboard panel', async () => {
     const { fixture, store } = await createPage();
-    const timers = fixture.nativeElement.querySelectorAll('[role="timer"]') as NodeListOf<HTMLElement>;
+    const timers = fixture.nativeElement.querySelectorAll(
+      '[role="timer"]',
+    ) as NodeListOf<HTMLElement>;
     const matchState = fixture.nativeElement.querySelector('.match-state') as HTMLElement;
 
     expect(timers).toHaveLength(1);
@@ -306,7 +491,9 @@ describe('LiveMatchPage', () => {
     expect(fixture.nativeElement.querySelector('.statistics-table')).toBeNull();
     (fixture.nativeElement.querySelectorAll('.match-nav button')[0] as HTMLButtonElement).click();
     fixture.detectChanges();
-    const button = fixture.nativeElement.querySelector('.match-overlay .export-csv') as HTMLButtonElement;
+    const button = fixture.nativeElement.querySelector(
+      '.match-overlay .export-csv',
+    ) as HTMLButtonElement;
 
     expect(button).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.statistics-table')).not.toBeNull();

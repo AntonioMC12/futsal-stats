@@ -1,13 +1,27 @@
 .live-match {
   position: relative;
+  isolation: isolate;
   width: 100%;
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
   padding: max(0.35rem, env(safe-area-inset-top)) max(0.5rem, env(safe-area-inset-right)) max(0.35rem, env(safe-area-inset-bottom)) max(0.5rem, env(safe-area-inset-left));
-  background: radial-gradient(circle at 50% -20%, rgb(57 217 138 / 14%), transparent 28rem), var(--ds-bg);
+  background: radial-gradient(circle at 50% -20%, rgb(57 217 138 / 14%), transparent 28rem), var(--ds-live-match-bg);
   color: var(--ds-text);
 }
+
+.live-match::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle at 50% -20%, var(--ds-live-match-paused-tint), transparent 32rem), var(--ds-live-match-paused-bg);
+  content: '';
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease;
+}
+
+.live-match.is-paused::before { opacity: 1; }
 
 .match-loading { height: 100%; display: grid; place-items: center; }
 
@@ -466,6 +480,8 @@
 .live-match .clock-fab:hover:not(:disabled) { filter: brightness(1.06); }
 .live-match .clock-fab:focus-visible { outline: 0.2rem solid var(--ds-focus); outline-offset: 0.22rem; }
 .live-match .clock-fab:active:not(:disabled) { transform: scale(0.96); }
+.live-match .clock-fab--pulse { animation: play-pulse 1.7s ease-in-out infinite; }
+.live-match .clock-fab--pulse:active:not(:disabled) { animation: none; }
 
 .action-toast {
   position: fixed;
@@ -695,6 +711,23 @@
 @media (prefers-reduced-motion: reduce) {
   .court-player,
   .match-overlay { animation: none; transition: none; }
+  .live-match::before { transition: none; }
+  .live-match .clock-fab--pulse {
+    animation: none;
+    box-shadow: 0 0.7rem 1.8rem rgb(0 0 0 / 42%), 0 0 0 0.3rem var(--ds-primary-soft);
+  }
+}
+
+@keyframes play-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0.7rem 1.8rem rgb(0 0 0 / 42%), 0 0 0 0.22rem var(--ds-bg);
+  }
+
+  50% {
+    transform: scale(1.055);
+    box-shadow: 0 0.85rem 2rem rgb(0 0 0 / 38%), 0 0 0 0.32rem var(--ds-primary-soft);
+  }
 }
 
 @keyframes sheet-enter { from { opacity: 0; transform: translateY(1rem); } }

@@ -1,4 +1,4 @@
-<section class="live-match">
+<section class="live-match" [class.is-paused]="isLiveMatchPaused()">
   @if (store.loading()) {
     <div class="match-loading"><p class="empty">Cargando partido…</p></div>
   } @else if (store.match(); as match) {
@@ -175,7 +175,7 @@
     </main>
 
     @if (clockFabVisible()) {
-      <button class="clock-fab" [class.clock-fab--running]="store.clockRunning()" type="button" [disabled]="store.saving() || (!store.clockRunning() && !store.canStartClock())" [attr.aria-label]="clockFabLabel()" [title]="clockFabLabel()" (click)="toggleClock()">
+      <button class="clock-fab" [class.clock-fab--running]="store.clockRunning()" [class.clock-fab--pulse]="clockFabPulsing()" type="button" [disabled]="store.saving() || (!store.clockRunning() && !store.canStartClock())" [attr.aria-label]="clockFabLabel()" [title]="clockFabLabel()" (click)="toggleClock()">
         @if (store.clockRunning()) {
           <svg class="clock-fab__icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="5" height="16" rx="1"/><rect x="14" y="4" width="5" height="16" rx="1"/></svg>
         } @else {
