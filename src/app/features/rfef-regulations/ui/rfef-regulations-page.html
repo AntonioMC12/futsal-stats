@@ -9,7 +9,7 @@
       ←
     </button>
     <div>
-      <p class="eyebrow">Consulta offline</p>
+      <p class="eyebrow">Consulta reglamentaria local</p>
       <h1 id="rfef-title">REGLAMENTO RFEF</h1>
       @if (manifest(); as installed) {
         <p class="installed-version">
@@ -21,51 +21,128 @@
     </div>
   </header>
 
+  <section class="assistant-card" aria-labelledby="assistant-title">
+    <div class="assistant-heading">
+      <div>
+        <p class="eyebrow">Opcional</p>
+        <h2 id="assistant-title">ASISTENTE IA</h2>
+      </div>
+      @if (llm.isInstalled) {
+        <span class="assistant-badge">✓ Instalado</span>
+      }
+    </div>
+    @switch (llm.state()) {
+      @case ('checking') {
+        <p role="status">Comprobando compatibilidad…</p>
+      }
+      @case ('unsupported') {
+        <p class="banner banner--warn">
+          No es posible ejecutar el asistente generativo en este dispositivo. El buscador RFEF sigue
+          disponible.
+        </p>
+      }
+      @case ('not-installed') {
+        <p>
+          <strong>No instalado.</strong> Descarga un modelo local para obtener explicaciones del
+          reglamento incluso sin conexión.
+        </p>
+        <p class="model-detail">
+          {{ model.label }} · {{ model.approximateDownload }} · {{ model.approximateVram }}
+        </p>
+        <button class="btn btn--primary" type="button" (click)="installAssistant()">
+          DESCARGAR ASISTENTE
+        </button>
+      }
+      @case ('installing') {
+        <p role="status"><strong>Descargando asistente</strong> · {{ llm.progress() }} %</p>
+        <progress [value]="llm.progress()" max="100">{{ llm.progress() }} %</progress>
+        <p class="model-detail">{{ llm.statusText() }}</p>
+      }
+      @case ('loading') {
+        <p role="status"><strong>Cargando el modelo local…</strong></p>
+        <progress [value]="llm.progress()" max="100">{{ llm.progress() }} %</progress>
+      }
+      @case ('generating') {
+        <p role="status"><strong>Generando explicación…</strong></p>
+        <button class="btn btn--secondary" type="button" (click)="llm.cancel()">Cancelar</button>
+      }
+      @case ('installed') {
+        <p><strong>✓ Asistente disponible en este dispositivo</strong></p>
+        <p class="privacy-note">Las consultas se procesan en este dispositivo.</p>
+        <button class="btn btn--secondary" type="button" (click)="removeAssistant()">
+          Eliminar modelo
+        </button>
+      }
+      @case ('error') {
+        <p class="banner banner--warn" role="alert">{{ llm.error() }}</p>
+        <button class="btn btn--secondary" type="button" (click)="installAssistant()">
+          Reintentar asistente
+        </button>
+      }
+    }
+  </section>
+
   <p class="search-capability" role="status">
     @switch (embeddings.state()) {
       @case ('loading') {
-        <span class="capability-dot is-loading" aria-hidden="true"></span>
-        Preparando búsqueda inteligente…
+        <span class="capability-dot is-loading" aria-hidden="true"></span> Preparando búsqueda
+        inteligente…
         @if (embeddings.progress() > 0 && embeddings.progress() < 100) {
           {{ embeddings.progress() }} %
         }
       }
       @case ('ready') {
-        <span class="capability-dot is-ready" aria-hidden="true"></span>
-        Búsqueda inteligente <strong>✓ Disponible</strong>
+        <span class="capability-dot is-ready" aria-hidden="true"></span> Búsqueda inteligente
+        <strong>✓ Disponible</strong>
         @if (embeddings.backend(); as backend) {
           <small>{{ backend === 'webgpu' ? 'WebGPU' : 'WASM' }}</small>
         }
       }
       @case ('unavailable') {
-        <span class="capability-dot" aria-hidden="true"></span>
-        <strong>Búsqueda básica.</strong> Usando búsqueda básica.
+        <span class="capability-dot" aria-hidden="true"></span> <strong>Búsqueda básica.</strong> El
+        asistente conserva el fallback textual.
       }
       @default {
-        <span class="capability-dot is-ready" aria-hidden="true"></span>
-        Búsqueda inteligente · disponible al buscar
+        <span class="capability-dot is-ready" aria-hidden="true"></span> Búsqueda inteligente ·
+        disponible al consultar
       }
     }
   </p>
 
+  @if (matchContext(); as context) {
+    <label class="match-context-option"
+      ><input
+        type="checkbox"
+        [checked]="useMatchContext()"
+        (change)="setUseMatchContext($event)"
+      /><span
+        ><strong>Usar situación actual</strong
+        ><small
+          >Periodo {{ context.period }} · {{ context.clock }} · faltas
+          {{ context.ownAccumulatedFouls }}–{{ context.opponentAccumulatedFouls }}. Estos datos no
+          son una fuente normativa.</small
+        ></span
+      ></label
+    >
+  }
+
   <form class="search-form" role="search" (submit)="submit($event)">
-    <label for="rfef-query">Buscar en la normativa instalada</label>
+    <label for="rfef-query">¿Qué quieres consultar?</label>
     <div class="search-row">
       <input
         id="rfef-query"
         name="query"
         type="search"
         autocomplete="off"
-        placeholder="Ej.: tarjeta roja al banquillo"
+        placeholder="Ej.: ¿una roja al entrenador suma falta?"
         [value]="query()"
         (input)="setQuery($event)"
-      />
-      <button
+      /><button
         class="btn btn--primary"
         type="submit"
         [disabled]="!query().trim() || searching() || loading()"
       >
-        {{ searching() ? 'Buscando…' : 'Buscar' }}
+        {{ searching() ? (llm.isInstalled ? 'Consultando…' : 'Buscando…') : 'Enviar' }}
       </button>
     </div>
   </form>
@@ -81,54 +158,69 @@
       </button>
     }
   </div>
-
   @if (error(); as message) {
     <p class="banner banner--warn" role="alert">{{ message }}</p>
   }
 
-  @if (searched() && results().length === 0 && !error()) {
-    <section class="empty-result" aria-live="polite">
-      <h2>Sin referencia suficiente</h2>
-      <p>No encuentro una referencia suficiente en la normativa RFEF 2026/27 instalada.</p>
-    </section>
-  } @else if (results().length > 0) {
-    <section class="results" aria-labelledby="results-title" aria-live="polite">
-      <h2 id="results-title">Referencias encontradas</h2>
-      <div class="result-list">
-        @for (result of results(); track result.id) {
-          <article class="result-card">
-            <div class="result-heading">
-              <p class="result-section">{{ result.section }}</p>
-              @if (result.relevance) {
-                <span class="relevance">{{
-                  result.relevance === 'high' ? 'Alta relevancia' : 'Relevancia media'
-                }}</span>
-              }
-            </div>
-            <p class="result-text">{{ result.text }}</p>
-            <footer>
-              <span
-                >{{ result.documentTitle }} · {{ result.documentDate }}
-                @if (result.page) {
-                  · pág. {{ result.page }}
-                }
-              </span>
-              <a
-                [href]="result.sourceUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-                [attr.aria-label]="'Abrir fuente oficial de ' + result.section"
-                >Fuente oficial RFEF ↗</a
-              >
-            </footer>
-          </article>
-        }
+  @if (answer(); as currentAnswer) {
+    <section class="answer-card" aria-labelledby="answer-title" aria-live="polite">
+      <div class="answer-heading">
+        <h2 id="answer-title">RESPUESTA</h2>
+        <span class="confidence"
+          >Confianza
+          {{
+            currentAnswer.confidence === 'high'
+              ? 'alta'
+              : currentAnswer.confidence === 'medium'
+                ? 'media'
+                : 'baja'
+          }}</span
+        >
       </div>
+      <p>{{ currentAnswer.text }}</p>
+      @if (currentAnswer.reason === 'not-installed') {
+        <button class="btn btn--secondary" type="button" (click)="installAssistant()">
+          Explicar con IA
+        </button>
+      }
     </section>
+    @if (currentAnswer.sources.length > 0) {
+      <section class="results" aria-labelledby="sources-title">
+        <h2 id="sources-title">FUENTES</h2>
+        <div class="result-list">
+          @for (result of currentAnswer.sources; track result.id) {
+            <article class="result-card">
+              <div class="result-heading">
+                <p class="result-section">{{ result.section }}</p>
+                @if (result.relevance) {
+                  <span class="relevance">{{
+                    result.relevance === 'high' ? 'Alta relevancia' : 'Relevancia media'
+                  }}</span>
+                }
+              </div>
+              <p class="result-text">{{ result.text }}</p>
+              <footer>
+                <span
+                  >{{ result.documentTitle }} · {{ result.documentDate }}
+                  @if (result.page) {
+                    · pág. {{ result.page }}
+                  }</span
+                ><a
+                  [href]="result.sourceUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  [attr.aria-label]="'Abrir fuente oficial de ' + result.section"
+                  >Ver fuente oficial RFEF ↗</a
+                >
+              </footer>
+            </article>
+          }
+        </div>
+      </section>
+    }
   }
-
   <p class="corpus-note">
-    El buscador recupera fragmentos exactos del corpus oficial instalado. No genera ni interpreta
-    respuestas.
+    Las respuestas usan fragmentos recuperados del corpus oficial. Las fuentes visibles nunca
+    proceden del modelo generativo.
   </p>
 </section>

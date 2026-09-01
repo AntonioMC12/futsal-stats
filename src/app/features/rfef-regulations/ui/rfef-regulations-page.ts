@@ -1,9 +1,13 @@
 import { Location } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { RfefAssistantService } from '../application/rfef-assistant.service';
 import { RfefCorpusService } from '../application/rfef-corpus.service';
 import { RfefEmbeddingService } from '../application/rfef-embedding.service';
-import { RfefSearchService } from '../application/rfef-search.service';
-import { RfefCorpusManifest, RfefSearchResult } from '../domain/rfef-corpus';
+import { RfefLocalLlmService } from '../application/rfef-local-llm.service';
+import { RfefMatchContextService } from '../application/rfef-match-context.service';
+import { RFEF_LOCAL_MODEL, RfefAnswer, RfefMatchContext } from '../domain/rfef-assistant';
+import { RfefCorpusManifest } from '../domain/rfef-corpus';
 
 @Component({
   selector: 'app-rfef-regulations-page',
@@ -11,8 +15,10 @@ import { RfefCorpusManifest, RfefSearchResult } from '../domain/rfef-corpus';
   styleUrl: './rfef-regulations-page.scss',
 })
 export class RfefRegulationsPage {
+  private readonly assistant = inject(RfefAssistantService);
   private readonly corpus = inject(RfefCorpusService);
-  private readonly searcher = inject(RfefSearchService);
+  private readonly matchContexts = inject(RfefMatchContextService);
+  private readonly route = inject(ActivatedRoute);
   private readonly location = inject(Location);
 
   protected readonly quickQueries = [
@@ -24,32 +30,45 @@ export class RfefRegulationsPage {
     'Portero-jugador',
   ] as const;
   protected readonly embeddings = inject(RfefEmbeddingService);
+  protected readonly llm = inject(RfefLocalLlmService);
+  protected readonly model = RFEF_LOCAL_MODEL;
   protected readonly query = signal('');
   protected readonly manifest = signal<RfefCorpusManifest | null>(null);
-  protected readonly results = signal<readonly RfefSearchResult[]>([]);
+  protected readonly answer = signal<RfefAnswer | null>(null);
+  protected readonly matchContext = signal<RfefMatchContext | null>(null);
+  protected readonly useMatchContext = signal(false);
   protected readonly loading = signal(true);
   protected readonly searching = signal(false);
   protected readonly searched = signal(false);
   protected readonly error = signal<string | null>(null);
 
   constructor() {
-    void this.loadCorpus();
+    void this.loadPage();
   }
 
   protected setQuery(event: Event): void {
     this.query.set((event.target as HTMLInputElement).value);
   }
-
+  protected setUseMatchContext(event: Event): void {
+    this.useMatchContext.set((event.target as HTMLInputElement).checked);
+  }
   protected submit(event?: Event): void {
     event?.preventDefault();
-    void this.runSearch();
+    void this.runQuestion();
   }
-
   protected useQuickQuery(query: string): void {
     this.query.set(query);
-    void this.runSearch();
+    void this.runQuestion();
   }
-
+  protected installAssistant(): void {
+    void (async () => {
+      await this.llm.install();
+      if (this.llm.isInstalled && this.searched()) await this.runQuestion();
+    })();
+  }
+  protected removeAssistant(): void {
+    void this.llm.remove();
+  }
   protected goBack(): void {
     this.location.back();
   }
@@ -65,25 +84,33 @@ export class RfefRegulationsPage {
     }).format(new Date(`${date}T00:00:00Z`));
   }
 
-  private async loadCorpus(): Promise<void> {
-    try {
-      this.manifest.set((await this.corpus.load()).manifest);
-    } catch {
-      this.error.set('No se ha podido cargar el corpus RFEF instalado.');
-    } finally {
-      this.loading.set(false);
-    }
+  private async loadPage(): Promise<void> {
+    const matchId = this.route.snapshot.queryParamMap.get('matchId');
+    const [corpusResult, context] = await Promise.all([
+      this.corpus.load().catch(() => null),
+      this.matchContexts.load(matchId).catch(() => null),
+      this.llm.refreshStatus(),
+    ]);
+    if (corpusResult) this.manifest.set(corpusResult.manifest);
+    else this.error.set('No se ha podido cargar el corpus RFEF instalado.');
+    this.matchContext.set(context);
+    this.loading.set(false);
   }
 
-  private async runSearch(): Promise<void> {
+  private async runQuestion(): Promise<void> {
     if (!this.query().trim() || this.searching()) return;
     this.searching.set(true);
     this.error.set(null);
     try {
-      this.results.set(await this.searcher.search(this.query()));
+      this.answer.set(
+        await this.assistant.ask(
+          this.query(),
+          this.useMatchContext() ? (this.matchContext() ?? undefined) : undefined,
+        ),
+      );
       this.searched.set(true);
     } catch {
-      this.results.set([]);
+      this.answer.set(null);
       this.error.set('No se ha podido consultar el corpus RFEF instalado.');
     } finally {
       this.searching.set(false);

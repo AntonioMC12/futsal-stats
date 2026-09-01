@@ -12,8 +12,16 @@
           "/index.html",
           "/manifest.webmanifest",
           "/*.css",
-          "/*.js"
+          "/main-*.js"
         ]
+      }
+    },
+    {
+      "name": "lazy-code",
+      "installMode": "lazy",
+      "updateMode": "lazy",
+      "resources": {
+        "files": ["/*.js", "!/main-*.js"]
       }
     },
     {
