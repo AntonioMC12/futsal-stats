@@ -5,6 +5,7 @@ import {
   FoulTeam,
   MatchEvent,
   RedCardReplacementEvent,
+  StaffRole,
 } from '../../../shared/models/match-event';
 import { selectActiveEvents } from './derived-match-state';
 
@@ -31,6 +32,14 @@ export interface OpponentPlayerDisciplineStatistics extends PlayerDisciplineStat
   sentOff: boolean;
 }
 
+export interface BenchStaffDisciplineStatistics extends PlayerDisciplineStatistics {
+  identityKey: string;
+  team: FoulTeam;
+  role: StaffRole;
+  name?: string;
+  sentOff: boolean;
+}
+
 export interface NumericalReduction {
   eventId: string;
   team: FoulTeam;
@@ -47,6 +56,7 @@ export interface NumericalReduction {
 export interface DisciplinaryState {
   players: Readonly<Record<string, PlayerDisciplineStatistics>>;
   opponentPlayers: OpponentPlayerDisciplineStatistics[];
+  staffMembers: BenchStaffDisciplineStatistics[];
   teams: Readonly<Record<FoulTeam, TeamDisciplineStatistics>>;
   sentOffPlayerIds: string[];
   reductions: NumericalReduction[];
@@ -65,6 +75,7 @@ export function deriveDisciplinaryState(
   };
   const sentOffPlayerIds = new Set<string>();
   const opponentPlayers = new Map<number, OpponentPlayerDisciplineStatistics>();
+  const staffMembers = new Map<string, BenchStaffDisciplineStatistics>();
   const reductions: NumericalReduction[] = [];
   const goalReleaseEventIds = new Set<string>();
 
@@ -111,6 +122,36 @@ export function deriveDisciplinaryState(
           status: 'active',
           remainingMs: NUMERICAL_REDUCTION_DURATION_MS,
         });
+      }
+      continue;
+    }
+
+    if (event.type === 'BENCH_DISCIPLINE') {
+      const action = event.disciplinaryAction;
+      if (event.countsAsAccumulatedFoul) teams[event.team].fouls += 1;
+      applyAction(teams[event.team], action);
+
+      if (event.subjectKind === 'player' && event.playerId) {
+        const player = (players[event.playerId] ??= emptyStatistics());
+        applyAction(player, action);
+        if (isSendOff(action)) sentOffPlayerIds.add(event.playerId);
+      } else if (
+        event.subjectKind === 'opponentPlayer' &&
+        event.opponentPlayerNumber !== undefined
+      ) {
+        const opponent = ensureOpponentPlayer(opponentPlayers, event.opponentPlayerNumber);
+        applyAction(opponent, action);
+        if (isSendOff(action)) opponent.sentOff = true;
+      } else if (event.subjectKind === 'staff' && event.staffRole && event.staffIdentityKey) {
+        const staff = ensureStaffMember(
+          staffMembers,
+          event.staffIdentityKey,
+          event.team,
+          event.staffRole,
+          event.staffName,
+        );
+        applyAction(staff, action);
+        if (isSendOff(action)) staff.sentOff = true;
       }
       continue;
     }
@@ -162,12 +203,37 @@ export function deriveDisciplinaryState(
     opponentPlayers: [...opponentPlayers.values()].sort(
       (left, right) => left.jerseyNumber - right.jerseyNumber,
     ),
+    staffMembers: [...staffMembers.values()].sort(
+      (left, right) =>
+        left.team.localeCompare(right.team) || left.identityKey.localeCompare(right.identityKey),
+    ),
     teams,
     sentOffPlayerIds: [...sentOffPlayerIds],
     reductions,
     goalReleaseEventIds,
     onCourtPlayerCounts: playerCounts(reductions),
   };
+}
+
+function ensureStaffMember(
+  staffMembers: Map<string, BenchStaffDisciplineStatistics>,
+  identityKey: string,
+  team: FoulTeam,
+  role: StaffRole,
+  name?: string,
+): BenchStaffDisciplineStatistics {
+  const existing = staffMembers.get(identityKey);
+  if (existing) return existing;
+  const created: BenchStaffDisciplineStatistics = {
+    ...emptyStatistics(),
+    identityKey,
+    team,
+    role,
+    name,
+    sentOff: false,
+  };
+  staffMembers.set(identityKey, created);
+  return created;
 }
 
 export interface RegisterReplacementInput {

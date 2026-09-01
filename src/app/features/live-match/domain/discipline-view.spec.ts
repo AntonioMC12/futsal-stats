@@ -102,6 +102,39 @@ describe('discipline view projection', () => {
     expect(view.away.unattributedFouls).toBe(2);
   });
 
+  it('shows bench discipline separately while adding protest cards to current-period totals', () => {
+    const benchCard: MatchEvent = {
+      id: 'bench-card',
+      matchId: 'match-1',
+      type: 'BENCH_DISCIPLINE',
+      team: 'home',
+      subjectKind: 'player',
+      playerId: 'mara',
+      disciplinaryAction: 'yellow',
+      reason: 'protest',
+      context: 'bench',
+      countsAsAccumulatedFoul: true,
+      createsDirectFreeKickWithoutWall: false,
+      periodFoulNumber: 1,
+      period: 1,
+      gameClockMs: 1_000_000,
+      timestamp: 1,
+      sequence: 1,
+      undone: false,
+    };
+    const view = project([benchCard]);
+
+    expect(view.home.totals).toMatchObject({ fouls: 1, yellowCards: 1 });
+    expect(view.home.participants[0]).toMatchObject({ name: 'MARA', yellowCards: 1, fouls: 0 });
+    expect(view.bench.home).toEqual([
+      expect.objectContaining({
+        label: '#7 MARA',
+        reason: 'protest',
+        countsAsAccumulatedFoul: true,
+      }),
+    ]);
+  });
+
   it('recomputes after undo and removes the undone activity', () => {
     const card = foul('yellow', 1, 'home', { playerId: 'cala', action: 'yellow' });
     const undo: MatchEvent = {

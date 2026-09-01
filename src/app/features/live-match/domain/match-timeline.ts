@@ -61,6 +61,8 @@ function eventLabel(
       return `Cambio: ${playerName(event.outPlayerId, playerNames)} → ${playerName(event.inPlayerId, playerNames)}`;
     case 'FOUL':
       return foulLabel(event, playerNames);
+    case 'BENCH_DISCIPLINE':
+      return benchDisciplineLabel(event, playerNames, playerNumbers);
     case 'RED_CARD_REPLACEMENT':
       return event.team === 'home'
         ? `${playerName(event.playerId ?? '', playerNames)} entra tras expulsión`
@@ -73,6 +75,56 @@ function eventLabel(
       return 'Partido finalizado';
     case 'EVENT_UNDONE':
       return 'Evento deshecho';
+  }
+}
+
+function benchDisciplineLabel(
+  event: Extract<MatchEvent, { type: 'BENCH_DISCIPLINE' }>,
+  playerNames: Readonly<Record<string, string>>,
+  playerNumbers: Readonly<Record<string, number>>,
+): string {
+  const card =
+    event.disciplinaryAction === 'yellow'
+      ? '🟨'
+      : event.disciplinaryAction === 'secondYellow'
+        ? '🟨🟨'
+        : '🟥';
+  const side = event.team === 'home' ? 'Banquillo' : 'Banquillo rival';
+  const subject =
+    event.subjectKind === 'player' && event.playerId
+      ? playerLabel(event.playerId, playerNames, playerNumbers)
+      : event.subjectKind === 'opponentPlayer'
+        ? `#${event.opponentPlayerNumber}`
+        : `${staffRoleLabel(event.staffRole)}${event.staffName ? ` · ${event.staffName}` : ''}`;
+  const reason = event.reason === 'protest' ? 'Protesta / desobediencia' : 'Otra conducta';
+  const foul = event.countsAsAccumulatedFoul
+    ? event.team === 'home'
+      ? ' · +1 falta'
+      : ' · +1 falta rival'
+    : '';
+  return `${card} ${side} · ${subject} · ${reason}${foul}`;
+}
+
+function staffRoleLabel(
+  role?: Extract<MatchEvent, { type: 'BENCH_DISCIPLINE' }>['staffRole'],
+): string {
+  switch (role) {
+    case 'headCoach':
+      return 'Entrenador';
+    case 'assistantCoach':
+      return '2.º entrenador';
+    case 'delegate':
+      return 'Delegado';
+    case 'fitnessCoach':
+      return 'Preparador físico';
+    case 'physiotherapist':
+      return 'Fisioterapeuta';
+    case 'doctor':
+      return 'Médico';
+    case 'other':
+      return 'Otro miembro del staff';
+    default:
+      return 'Staff';
   }
 }
 

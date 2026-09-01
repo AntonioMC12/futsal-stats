@@ -121,6 +121,11 @@ describe('LiveMatchPage', () => {
 
   it('renders five court players and substitutes directly with the only bench player', async () => {
     const { fixture, notifications, store } = await createPage();
+    await store.startClock();
+    fixture.detectChanges();
+    const clockEventCount = store
+      .events()
+      .filter((event) => event.type === 'CLOCK_STARTED' || event.type === 'CLOCK_STOPPED').length;
     const courtPlayers = fixture.nativeElement.querySelectorAll(
       '.court-player:not(.court-player--empty)',
     );
@@ -152,6 +157,12 @@ describe('LiveMatchPage', () => {
 
     expect(makeSubstitution).toHaveBeenCalledOnce();
     expect(makeSubstitution).toHaveBeenCalledWith('p3', 'p6');
+    expect(store.clockRunning()).toBe(true);
+    expect(
+      store
+        .events()
+        .filter((event) => event.type === 'CLOCK_STARTED' || event.type === 'CLOCK_STOPPED'),
+    ).toHaveLength(clockEventCount);
     expect(fixture.nativeElement.querySelector('.substitution-sheet')).toBeNull();
     expect(notifications.notification()?.message).toBe('Cambio realizado');
     expect(notifications.notification()?.action?.label).toBe('Deshacer');
@@ -311,7 +322,7 @@ describe('LiveMatchPage', () => {
     fixture.destroy();
   });
 
-  it('stops the clock before opening a substitution', async () => {
+  it('keeps a running clock unchanged while opening and cancelling a substitution', async () => {
     const { fixture, store } = await createPage();
     await store.startClock();
     fixture.detectChanges();
@@ -325,9 +336,48 @@ describe('LiveMatchPage', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(stopClock).toHaveBeenCalledOnce();
-    expect(store.clockRunning()).toBe(false);
+    expect(stopClock).not.toHaveBeenCalled();
+    expect(store.clockRunning()).toBe(true);
     expect(fixture.nativeElement.querySelector('.substitution-sheet')).not.toBeNull();
+    (fixture.nativeElement.querySelector('.sheet-cancel') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(store.clockRunning()).toBe(true);
+    expect(fixture.nativeElement.querySelector('.substitution-sheet')).toBeNull();
+    fixture.destroy();
+  });
+
+  it('keeps the lineup header, command and court structure stable between clock states', async () => {
+    const { fixture, store } = await createPage();
+    await store.startClock();
+    fixture.detectChanges();
+
+    const panel = fixture.nativeElement.querySelector('.lineup-panel') as HTMLElement;
+    const heading = panel.querySelector('.panel-heading') as HTMLElement;
+    const runningIndicator = panel.querySelector('.live-indicator') as HTMLElement;
+    const runningCommand = panel.querySelector('.period-command') as HTMLButtonElement;
+    const court = panel.querySelector('.futsal-court') as HTMLElement;
+    const playerSlots = [...court.querySelectorAll('.court-player')].map((player) =>
+      player.getAttribute('data-slot'),
+    );
+
+    expect(panel.querySelector('#lineup-title')?.textContent).toContain('Quinteto en pista');
+    expect(runningIndicator.textContent).toContain('En juego');
+    expect(runningCommand.textContent).toContain('Reiniciar periodo');
+    expect(runningCommand.disabled).toBe(true);
+
+    await store.stopClock();
+    fixture.detectChanges();
+
+    expect(panel.querySelector('.panel-heading')).toBe(heading);
+    expect(panel.querySelector('.live-indicator')?.textContent).toContain('Detenido');
+    expect(panel.querySelector('.period-command')).toBe(runningCommand);
+    expect(runningCommand.disabled).toBe(false);
+    expect(panel.querySelector('.futsal-court')).toBe(court);
+    expect(
+      [...court.querySelectorAll('.court-player')].map((player) =>
+        player.getAttribute('data-slot'),
+      ),
+    ).toEqual(playerSlots);
     fixture.destroy();
   });
 
@@ -437,18 +487,19 @@ describe('LiveMatchPage', () => {
     fixture.destroy();
   });
 
-  it('groups the four frequent match actions in one touch-first area', async () => {
+  it('keeps the four frequent actions and adds bench discipline as a secondary action', async () => {
     const { fixture } = await createPage();
     const actions = fixture.nativeElement.querySelectorAll(
       '.primary-actions .btn',
     ) as NodeListOf<HTMLButtonElement>;
 
-    expect(actions).toHaveLength(4);
+    expect(actions).toHaveLength(5);
     expect([...actions].map((button) => button.textContent?.trim().replace(/\s+/g, ' '))).toEqual([
       '+1 Gol',
       '+1 Gol rival',
       '! Falta',
       '! Falta rival',
+      '▰ Disciplina banquillo',
     ]);
     fixture.destroy();
   });
@@ -681,10 +732,50 @@ describe('LiveMatchPage', () => {
     navButtons[2]?.click();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelectorAll('.discipline-empty')).toHaveLength(2);
+    expect(fixture.nativeElement.querySelectorAll('.discipline-empty')).toHaveLength(4);
     expect(fixture.nativeElement.querySelector('.discipline-panel').textContent).toContain(
       'Sin faltas ni tarjetas registradas.',
     );
+    fixture.destroy();
+  });
+
+  it('stops the clock and registers a staff protest from the bench discipline sheet', async () => {
+    const { fixture, notifications, store } = await createPage();
+    await store.startClock();
+    fixture.detectChanges();
+    const stopClock = vi.spyOn(store, 'stopClock');
+    const register = vi.spyOn(store, 'registerBenchDiscipline').mockResolvedValue(true);
+
+    (fixture.nativeElement.querySelector('.bench-discipline-action') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const sheet = fixture.nativeElement.querySelector('.bench-discipline-sheet') as HTMLElement;
+    expect(stopClock).toHaveBeenCalledOnce();
+    expect(store.clockRunning()).toBe(false);
+    expect(sheet).not.toBeNull();
+    const memberButtons = sheet
+      .querySelectorAll('.bench-discipline-toggle')[1]
+      ?.querySelectorAll('button') as NodeListOf<HTMLButtonElement>;
+    memberButtons[1]?.click();
+    fixture.detectChanges();
+    expect(sheet.textContent).toContain('Entrenador');
+    expect(sheet.textContent).toContain('+1 FALTA ACUMULADA');
+
+    (
+      sheet.querySelector('.bench-discipline-confirmation .btn--primary') as HTMLButtonElement
+    ).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(register).toHaveBeenCalledWith(
+      'home',
+      { subjectKind: 'staff', staffRole: 'headCoach', staffName: undefined },
+      'yellow',
+      'protest',
+    );
+    expect(fixture.nativeElement.querySelector('.bench-discipline-sheet')).toBeNull();
+    expect(notifications.notification()?.message).toBe('Disciplina de banquillo registrada');
     fixture.destroy();
   });
 });

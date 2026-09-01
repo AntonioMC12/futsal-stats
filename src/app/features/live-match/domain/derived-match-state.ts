@@ -21,7 +21,7 @@ export interface DerivedMatchState {
 
 export function deriveMatchState(match: Match, events: readonly MatchEvent[]): DerivedMatchState {
   const activeEvents = selectActiveEvents(events);
-  const lineup = new Set<string>();
+  const lineup: string[] = [];
   const foulsByPeriod: Record<number, PeriodFouls> = {};
   let status: MatchStatus = 'ready';
   let currentPeriod = 1;
@@ -60,15 +60,16 @@ export function deriveMatchState(match: Match, events: readonly MatchEvent[]): D
         status = event.period < match.periodCount ? 'halftime' : status;
         break;
       case 'PLAYER_ENTERED':
-        lineup.add(event.playerId);
+        if (!lineup.includes(event.playerId)) lineup.push(event.playerId);
         break;
       case 'PLAYER_LEFT':
-        lineup.delete(event.playerId);
+        removePlayer(lineup, event.playerId);
         break;
-      case 'SUBSTITUTION':
-        lineup.delete(event.outPlayerId);
-        lineup.add(event.inPlayerId);
+      case 'SUBSTITUTION': {
+        const slot = lineup.indexOf(event.outPlayerId);
+        if (slot >= 0) lineup[slot] = event.inPlayerId;
         break;
+      }
       case 'FOUL': {
         if (event.accumulated !== false) {
           const fouls = foulsByPeriod[event.period] ?? { home: 0, away: 0 };
@@ -82,12 +83,24 @@ export function deriveMatchState(match: Match, events: readonly MatchEvent[]): D
           event.playerId &&
           (event.disciplinaryAction === 'secondYellow' || event.disciplinaryAction === 'directRed')
         ) {
-          lineup.delete(event.playerId);
+          removePlayer(lineup, event.playerId);
+        }
+        break;
+      }
+      case 'BENCH_DISCIPLINE': {
+        if (event.countsAsAccumulatedFoul) {
+          const fouls = foulsByPeriod[event.period] ?? { home: 0, away: 0 };
+          foulsByPeriod[event.period] = {
+            ...fouls,
+            [event.team]: fouls[event.team] + 1,
+          };
         }
         break;
       }
       case 'RED_CARD_REPLACEMENT':
-        if (event.team === 'home' && event.playerId) lineup.add(event.playerId);
+        if (event.team === 'home' && event.playerId && !lineup.includes(event.playerId)) {
+          lineup.push(event.playerId);
+        }
         break;
       case 'GOAL_FOR':
         score = { ...score, home: score.home + 1 };
@@ -110,12 +123,17 @@ export function deriveMatchState(match: Match, events: readonly MatchEvent[]): D
     currentPeriod,
     clockRunning,
     score,
-    currentLineupPlayerIds: [...lineup],
+    currentLineupPlayerIds: lineup,
     foulsByPeriod,
     completedElapsedMs,
     runningSegmentStartedAtGameClockMs,
     activeEvents,
   };
+}
+
+function removePlayer(lineup: string[], playerId: string): void {
+  const slot = lineup.indexOf(playerId);
+  if (slot >= 0) lineup.splice(slot, 1);
 }
 
 export function selectActiveEvents(events: readonly MatchEvent[]): MatchEvent[] {

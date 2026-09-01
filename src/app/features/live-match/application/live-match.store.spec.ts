@@ -225,7 +225,9 @@ describe('LiveMatchStore', () => {
     vi.setSystemTime(15_000);
     expect(await store.makeSubstitution('p1', 'p6')).toBe(true);
 
-    expect(store.derivedState()?.currentLineupPlayerIds).toEqual(['p2', 'p3', 'p4', 'p5', 'p6']);
+    expect(store.derivedState()?.currentLineupPlayerIds).toEqual(['p6', 'p2', 'p3', 'p4', 'p5']);
+    expect(store.clockRunning()).toBe(true);
+    expect(storedEvents.filter((event) => event.type === 'CLOCK_STOPPED')).toHaveLength(0);
     expect(storedEvents.at(-1)).toMatchObject({
       type: 'SUBSTITUTION',
       sequence: 9,
@@ -241,7 +243,7 @@ describe('LiveMatchStore', () => {
     expect(storedEvents.at(-1)).toMatchObject({
       type: 'GOAL_FOR',
       scorerPlayerId: 'p6',
-      lineupPlayerIds: ['p2', 'p3', 'p4', 'p5', 'p6'],
+      lineupPlayerIds: ['p6', 'p2', 'p3', 'p4', 'p5'],
       scoreBefore: { home: 0, away: 0 },
       scoreAfter: { home: 1, away: 0 },
     });
@@ -251,6 +253,139 @@ describe('LiveMatchStore', () => {
     expect(store.lineupStatistics().find((lineup) => lineup.id === 'p2|p3|p4|p5|p6')).toMatchObject(
       { playedMs: 1_000, goalsFor: 1, goalsAgainst: 0, plusMinus: 1 },
     );
+
+    await store.stopClock();
+    const clockEventCount = storedEvents.filter(
+      (event) => event.type === 'CLOCK_STARTED' || event.type === 'CLOCK_STOPPED',
+    ).length;
+    expect(await store.makeSubstitution('p6', 'p1')).toBe(true);
+    expect(store.clockRunning()).toBe(false);
+    expect(
+      storedEvents.filter(
+        (event) => event.type === 'CLOCK_STARTED' || event.type === 'CLOCK_STOPPED',
+      ),
+    ).toHaveLength(clockEventCount);
+  });
+
+  it('persists and rehydrates bench cards, accumulated fouls and send-offs without reductions', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(10_000);
+    let persistedMatch = readyMatch();
+    const persistedEvents: MatchEvent[] = [];
+    const hydratedPlayers = persistedMatch.squadPlayerIds.map((id, index) => ({
+      id,
+      teamId: 'team-1',
+      number: index + 1,
+      name: `Jugador ${index + 1}`,
+      active: true,
+    }));
+    TestBed.configureTestingModule({
+      providers: [
+        LiveMatchStore,
+        { provide: MatchRepository, useValue: { get: async () => persistedMatch } },
+        { provide: PlayerRepository, useValue: { listByIds: async () => hydratedPlayers } },
+        {
+          provide: MatchEventRepository,
+          useValue: {
+            listByMatch: async () => [...persistedEvents],
+            commit: async (match: Match, events: MatchEvent[]) => {
+              persistedMatch = match;
+              persistedEvents.push(...events);
+            },
+          },
+        },
+      ],
+    });
+
+    const store = TestBed.inject(LiveMatchStore);
+    await store.load(persistedMatch.id);
+    await store.startClock();
+    await store.stopClock();
+    for (let index = 0; index < 4; index += 1) {
+      expect(await store.registerTeamFoul('p1')).toBe(true);
+    }
+    expect(
+      await store.registerBenchDiscipline(
+        'home',
+        { subjectKind: 'player', playerId: 'p6' },
+        'yellow',
+        'protest',
+      ),
+    ).toBe(true);
+    expect(store.benchPlayers().map((player) => player.id)).toContain('p6');
+    expect(
+      await store.registerBenchDiscipline(
+        'home',
+        { subjectKind: 'staff', staffRole: 'headCoach' },
+        'directRed',
+        'protest',
+      ),
+    ).toBe(true);
+    expect(store.currentPeriodFouls().home).toBe(6);
+    expect(store.disciplinaryState().reductions).toHaveLength(0);
+    expect(
+      await store.registerBenchDiscipline(
+        'home',
+        { subjectKind: 'player', playerId: 'p6' },
+        'directRed',
+        'other',
+      ),
+    ).toBe(true);
+
+    expect(store.currentPeriodFouls().home).toBe(6);
+    expect(store.disciplinaryState().staffMembers[0]).toMatchObject({
+      role: 'headCoach',
+      directRedCards: 1,
+      sentOff: true,
+    });
+    expect(store.disciplinaryState().sentOffPlayerIds).toContain('p6');
+    expect(store.disciplinaryState().reductions).toHaveLength(0);
+    expect(store.lineupPlayerIds()).toEqual(persistedMatch.startingLineupPlayerIds);
+    expect(store.benchPlayers().map((player) => player.id)).not.toContain('p6');
+
+    await store.load(persistedMatch.id);
+    expect(await store.registerTeamFoul('p1')).toBe(true);
+    expect(store.currentPeriodFouls().home).toBe(7);
+    expect(persistedEvents.at(-1)).toMatchObject({ type: 'FOUL', periodFoulNumber: 7 });
+
+    await store.load(persistedMatch.id);
+    expect(store.currentPeriodFouls().home).toBe(7);
+    expect(store.disciplinaryState().staffMembers).toHaveLength(1);
+    expect(store.disciplinaryState().sentOffPlayerIds).toContain('p6');
+    expect(store.timeline().filter((item) => item.type === 'BENCH_DISCIPLINE')).toHaveLength(3);
+  });
+
+  it('undoes every projected effect of bench discipline', async () => {
+    vi.useFakeTimers();
+    const original = readyMatch();
+    TestBed.configureTestingModule({
+      providers: [
+        LiveMatchStore,
+        { provide: MatchRepository, useValue: { get: async () => original } },
+        { provide: PlayerRepository, useValue: { listByIds: async () => [] } },
+        {
+          provide: MatchEventRepository,
+          useValue: { listByMatch: async () => [], commit: async () => undefined },
+        },
+      ],
+    });
+    const store = TestBed.inject(LiveMatchStore);
+    await store.load(original.id);
+    await store.startClock();
+    await store.stopClock();
+    await store.registerBenchDiscipline(
+      'home',
+      { subjectKind: 'staff', staffRole: 'headCoach' },
+      'directRed',
+      'protest',
+    );
+    expect(store.currentPeriodFouls().home).toBe(1);
+    expect(store.disciplinaryState().staffMembers[0]?.sentOff).toBe(true);
+
+    expect(await store.undoLastEvent()).toBe(true);
+    expect(store.currentPeriodFouls().home).toBe(0);
+    expect(store.disciplinaryState().staffMembers).toEqual([]);
+    expect(store.timeline().some((item) => item.type === 'BENCH_DISCIPLINE')).toBe(false);
   });
 
   it('persists goals with exact score, clock and lineup snapshots', async () => {
@@ -652,6 +787,7 @@ describe('LiveMatchStore', () => {
     vi.useFakeTimers();
     vi.setSystemTime(50_000);
     const original = readyMatch();
+    original.startingLineupPlayerIds = ['p1', 'p4', 'p3', 'p5', 'p2'];
     original.status = 'firstHalf';
     original.clock = {
       ...original.clock,
@@ -732,7 +868,7 @@ describe('LiveMatchStore', () => {
         timestamp: 10,
         sequence: 10,
         undone: false,
-        outPlayerId: 'p5',
+        outPlayerId: 'p3',
         inPlayerId: 'p6',
       },
     ];
@@ -759,7 +895,14 @@ describe('LiveMatchStore', () => {
     expect(store.clockRunning()).toBe(false);
     expect(store.score()).toEqual({ home: 1, away: 0 });
     expect(store.currentPeriodFouls()).toEqual({ home: 1, away: 0 });
-    expect(store.lineupPlayerIds()).toEqual(['p1', 'p2', 'p3', 'p4', 'p6']);
+    expect(store.lineupPlayerIds()).toEqual(['p1', 'p4', 'p6', 'p5', 'p2']);
+    expect(store.currentLineup().map((player) => player.id)).toEqual([
+      'p1',
+      'p4',
+      'p6',
+      'p5',
+      'p2',
+    ]);
     expect(store.playerPlayingTimes()['p1']?.playedMs).toBe(689_000);
     expect(store.events()).toHaveLength(persistedEvents.length);
     expect(new Set(store.events().map((event) => event.id)).size).toBe(persistedEvents.length);

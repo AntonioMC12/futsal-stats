@@ -135,6 +135,8 @@ export function deriveMatchStatistics(
           currentLineup.delete(event.playerId);
         }
         break;
+      case 'BENCH_DISCIPLINE':
+        break;
       case 'RED_CARD_REPLACEMENT':
         if (event.team === 'home' && event.playerId) {
           accumulateUntil(event.gameClockMs);

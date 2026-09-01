@@ -10,7 +10,13 @@ import { PlayerRepository } from '../../../core/persistence/player.repository';
 import { createId } from '../../../core/utils/id';
 import { DomainResult } from '../../../core/utils/result';
 import { Match } from '../../../shared/models/match';
-import { DisciplinaryAction, FoulTeam, MatchEvent } from '../../../shared/models/match-event';
+import {
+  BenchDisciplineAction,
+  BenchDisciplineReason,
+  DisciplinaryAction,
+  FoulTeam,
+  MatchEvent,
+} from '../../../shared/models/match-event';
 import { Player } from '../../../shared/models/player';
 import { deriveMatchState } from '../domain/derived-match-state';
 import { deriveDisciplinaryState, registerRedCardReplacement } from '../domain/discipline';
@@ -32,6 +38,11 @@ import { PlayerPlayingTimes } from '../domain/player-playing-time';
 import { makeSubstitution as createSubstitution } from '../domain/substitution';
 import { findLastUndoableEvent, undoLastEvent as createUndoLastEvent } from '../domain/undo';
 import { DeleteMatchService } from '../../matches/application/delete-match.service';
+import {
+  BenchDisciplineSubject,
+  createStaffIdentityKey,
+  registerBenchDiscipline as createBenchDiscipline,
+} from '../domain/bench-discipline';
 
 @Injectable()
 export class LiveMatchStore {
@@ -99,8 +110,11 @@ export class LiveMatchStore {
       : (this.derivedState()?.currentLineupPlayerIds ?? []);
   });
   readonly currentLineup = computed(() => {
-    const lineupIds = new Set(this.lineupPlayerIds());
-    return this.players().filter((player) => lineupIds.has(player.id));
+    const playersById = new Map(this.players().map((player) => [player.id, player]));
+    return this.lineupPlayerIds().flatMap((playerId) => {
+      const player = playersById.get(playerId);
+      return player ? [player] : [];
+    });
   });
   readonly benchPlayers = computed(() => {
     const lineupIds = new Set(this.lineupPlayerIds());
@@ -167,6 +181,7 @@ export class LiveMatchStore {
     const status = this.match()?.status;
     return status === 'firstHalf' || status === 'secondHalf';
   });
+  readonly canRegisterBenchDiscipline = this.canRegisterFoul;
   readonly canStartClock = computed(
     () =>
       this.lineupPlayerIds().length >= 3 && this.disciplinaryState().onCourtPlayerCounts.away >= 3,
@@ -341,6 +356,56 @@ export class LiveMatchStore {
     opponentPlayerNumber?: number,
   ): Promise<boolean> {
     return this.registerFoul('away', disciplinaryAction, undefined, opponentPlayerNumber);
+  }
+
+  async registerBenchDiscipline(
+    team: FoulTeam,
+    subject: BenchDisciplineSubject,
+    disciplinaryAction: BenchDisciplineAction,
+    reason: BenchDisciplineReason,
+  ): Promise<boolean> {
+    const match = this.match();
+    if (!match || this.commandInProgress) return false;
+
+    const subjectState = this.benchSubjectState(team, subject);
+    this.commandInProgress = true;
+    this.saving.set(true);
+    this.error.set(null);
+    this.notice.set(null);
+    const timestamp = Date.now();
+    try {
+      const result = createBenchDiscipline({
+        match,
+        team,
+        ...subject,
+        disciplinaryAction,
+        reason,
+        currentPeriodFoulCount: this.currentPeriodFouls()[team],
+        currentLineupPlayerIds: this.lineupPlayerIds(),
+        currentYellowCards: subjectState.yellowCards,
+        subjectSentOff: subjectState.sentOff,
+        gameClockMs: projectRemaining(match.clock, timestamp),
+        timestamp,
+        sequence: this.nextSequence(this.events()),
+        eventId: createId(),
+      });
+      if (!result.ok) {
+        this.error.set(result.error);
+        return false;
+      }
+
+      await this.eventStore.commit(result.value.match, [result.value.event]);
+      this.now.set(timestamp);
+      this.match.set(result.value.match);
+      this.events.update((events) => [...events, result.value.event]);
+      return true;
+    } catch {
+      this.error.set('No se ha podido guardar la disciplina de banquillo.');
+      return false;
+    } finally {
+      this.commandInProgress = false;
+      this.saving.set(false);
+    }
   }
 
   async replaceSentOffPlayer(reductionEventId: string, playerId?: string): Promise<boolean> {
@@ -646,6 +711,26 @@ export class LiveMatchStore {
       (player) => player.jerseyNumber === number,
     );
   }
+
+  private benchSubjectState(
+    team: FoulTeam,
+    subject: BenchDisciplineSubject,
+  ): { yellowCards: number; sentOff: boolean } {
+    const discipline = this.disciplinaryState();
+    if (subject.subjectKind === 'player') {
+      const player = discipline.players[subject.playerId];
+      return { yellowCards: player?.yellowCards ?? 0, sentOff: player?.sendOffs ? true : false };
+    }
+    if (subject.subjectKind === 'opponentPlayer') {
+      const player = discipline.opponentPlayers.find(
+        (item) => item.jerseyNumber === subject.opponentPlayerNumber,
+      );
+      return { yellowCards: player?.yellowCards ?? 0, sentOff: player?.sentOff ?? false };
+    }
+    const identityKey = createStaffIdentityKey(team, subject.staffRole, subject.staffName);
+    const staff = discipline.staffMembers.find((item) => item.identityKey === identityKey);
+    return { yellowCards: staff?.yellowCards ?? 0, sentOff: staff?.sentOff ?? false };
+  }
 }
 
 function undoLabel(type: MatchEvent['type']): string {
@@ -656,6 +741,8 @@ function undoLabel(type: MatchEvent['type']): string {
       return 'gol en contra';
     case 'FOUL':
       return 'falta';
+    case 'BENCH_DISCIPLINE':
+      return 'disciplina de banquillo';
     case 'SUBSTITUTION':
       return 'sustitución';
     case 'RED_CARD_REPLACEMENT':

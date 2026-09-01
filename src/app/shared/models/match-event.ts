@@ -9,6 +9,7 @@ export const MATCH_EVENT_TYPES = [
   'PLAYER_LEFT',
   'SUBSTITUTION',
   'FOUL',
+  'BENCH_DISCIPLINE',
   'RED_CARD_REPLACEMENT',
   'GOAL_FOR',
   'GOAL_AGAINST',
@@ -20,6 +21,17 @@ export type MatchEventType = (typeof MATCH_EVENT_TYPES)[number];
 
 export type FoulTeam = 'home' | 'away';
 export type DisciplinaryAction = 'none' | 'yellow' | 'secondYellow' | 'directRed';
+export type BenchDisciplineAction = Exclude<DisciplinaryAction, 'none'>;
+export type BenchDisciplineReason = 'protest' | 'other';
+export type BenchDisciplineSubjectKind = 'player' | 'opponentPlayer' | 'staff';
+export type StaffRole =
+  | 'headCoach'
+  | 'assistantCoach'
+  | 'delegate'
+  | 'fitnessCoach'
+  | 'physiotherapist'
+  | 'doctor'
+  | 'other';
 
 export interface MatchEventBase {
   id: string;
@@ -83,6 +95,23 @@ export interface FoulEvent extends MatchEventBase {
   matchElapsedMs?: number;
 }
 
+export interface BenchDisciplineEvent extends MatchEventBase {
+  type: 'BENCH_DISCIPLINE';
+  team: FoulTeam;
+  subjectKind: BenchDisciplineSubjectKind;
+  playerId?: string;
+  opponentPlayerNumber?: number;
+  staffRole?: StaffRole;
+  staffName?: string;
+  staffIdentityKey?: string;
+  disciplinaryAction: BenchDisciplineAction;
+  reason: BenchDisciplineReason;
+  context: 'bench';
+  countsAsAccumulatedFoul: boolean;
+  createsDirectFreeKickWithoutWall: false;
+  periodFoulNumber: number;
+}
+
 export interface RedCardReplacementEvent extends MatchEventBase {
   type: 'RED_CARD_REPLACEMENT';
   team: FoulTeam;
@@ -133,6 +162,7 @@ export type MatchEvent =
   | PlayerLeftEvent
   | SubstitutionEvent
   | FoulEvent
+  | BenchDisciplineEvent
   | RedCardReplacementEvent
   | GoalForEvent
   | GoalAgainstEvent

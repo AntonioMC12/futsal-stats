@@ -1,4 +1,10 @@
-import { FoulEvent, FoulTeam, MatchEvent } from '../../../shared/models/match-event';
+import {
+  BenchDisciplineAction,
+  BenchDisciplineReason,
+  FoulEvent,
+  FoulTeam,
+  MatchEvent,
+} from '../../../shared/models/match-event';
 import { Player } from '../../../shared/models/player';
 import {
   DisciplinaryState,
@@ -31,10 +37,20 @@ export interface DisciplineSideView {
   participants: DisciplineParticipantSummary[];
 }
 
+export interface BenchDisciplineViewItem {
+  eventId: string;
+  label: string;
+  sanction: BenchDisciplineAction;
+  reason: BenchDisciplineReason;
+  countsAsAccumulatedFoul: boolean;
+  sentOff: boolean;
+}
+
 export interface DisciplineViewModel {
   home: DisciplineSideView;
   away: DisciplineSideView & { unattributedFouls: number };
   activeSanctions: ActiveDisciplineSanction[];
+  bench: Readonly<Record<FoulTeam, BenchDisciplineViewItem[]>>;
   hasActivity: boolean;
 }
 
@@ -45,9 +61,16 @@ export function createDisciplineView(
   currentPeriod: number,
 ): DisciplineViewModel {
   const playersById = new Map(players.map((player) => [player.id, player]));
-  const currentFouls = selectActiveEvents(events).filter(
+  const activeEvents = selectActiveEvents(events);
+  const currentFouls = activeEvents.filter(
     (event): event is FoulEvent =>
       event.type === 'FOUL' && event.period === currentPeriod && event.accumulated !== false,
+  );
+  const currentBenchFouls = activeEvents.filter(
+    (event): event is Extract<MatchEvent, { type: 'BENCH_DISCIPLINE' }> =>
+      event.type === 'BENCH_DISCIPLINE' &&
+      event.period === currentPeriod &&
+      event.countsAsAccumulatedFoul,
   );
   const homeFoulsByPlayer = countBy(
     currentFouls.filter((event) => event.team === 'home' && event.playerId),
@@ -61,11 +84,15 @@ export function createDisciplineView(
   );
   const homeTotals = {
     ...state.teams.home,
-    fouls: currentFouls.filter((event) => event.team === 'home').length,
+    fouls:
+      currentFouls.filter((event) => event.team === 'home').length +
+      currentBenchFouls.filter((event) => event.team === 'home').length,
   };
   const awayTotals = {
     ...state.teams.away,
-    fouls: currentFouls.filter((event) => event.team === 'away').length,
+    fouls:
+      currentFouls.filter((event) => event.team === 'away').length +
+      currentBenchFouls.filter((event) => event.team === 'away').length,
   };
   const homeParticipants = Object.entries(state.players)
     .flatMap(([playerId, statistics]): DisciplineParticipantSummary[] => {
@@ -78,32 +105,24 @@ export function createDisciplineView(
         ...statistics,
         fouls: homeFoulsByPlayer.get(playerId) ?? 0,
         sentOff: statistics.sendOffs > 0,
-        ordinaryYellowCards: Math.max(
-          0,
-          statistics.yellowCards - statistics.secondYellowSendOffs,
-        ),
+        ordinaryYellowCards: Math.max(0, statistics.yellowCards - statistics.secondYellowSendOffs),
       };
       return hasDiscipline(participant) ? [participant] : [];
     })
     .sort(compareParticipants);
 
   const awayParticipants = state.opponentPlayers
-    .map(
-      (participant): DisciplineParticipantSummary => ({
-        id: `opponent-${participant.jerseyNumber}`,
-        number: participant.jerseyNumber,
-        fouls: awayFoulsByNumber.get(participant.jerseyNumber) ?? 0,
-        yellowCards: participant.yellowCards,
-        secondYellowSendOffs: participant.secondYellowSendOffs,
-        directRedCards: participant.directRedCards,
-        sendOffs: participant.sendOffs,
-        sentOff: participant.sentOff,
-        ordinaryYellowCards: Math.max(
-          0,
-          participant.yellowCards - participant.secondYellowSendOffs,
-        ),
-      }),
-    )
+    .map((participant): DisciplineParticipantSummary => ({
+      id: `opponent-${participant.jerseyNumber}`,
+      number: participant.jerseyNumber,
+      fouls: awayFoulsByNumber.get(participant.jerseyNumber) ?? 0,
+      yellowCards: participant.yellowCards,
+      secondYellowSendOffs: participant.secondYellowSendOffs,
+      directRedCards: participant.directRedCards,
+      sendOffs: participant.sendOffs,
+      sentOff: participant.sentOff,
+      ordinaryYellowCards: Math.max(0, participant.yellowCards - participant.secondYellowSendOffs),
+    }))
     .filter(hasDiscipline)
     .sort(compareParticipants);
 
@@ -130,18 +149,76 @@ export function createDisciplineView(
         remainingMs: reduction.remainingMs,
       };
     });
+  const bench = {
+    home: createBenchItems('home', activeEvents, playersById),
+    away: createBenchItems('away', activeEvents, playersById),
+  };
 
   const hasActivity =
-    hasTeamDiscipline(homeTotals) ||
-    hasTeamDiscipline(awayTotals) ||
-    activeSanctions.length > 0;
+    hasTeamDiscipline(homeTotals) || hasTeamDiscipline(awayTotals) || activeSanctions.length > 0;
 
   return {
     home: { totals: homeTotals, participants: homeParticipants },
     away: { totals: awayTotals, participants: awayParticipants, unattributedFouls },
     activeSanctions,
+    bench,
     hasActivity,
   };
+}
+
+function createBenchItems(
+  team: FoulTeam,
+  events: readonly MatchEvent[],
+  playersById: ReadonlyMap<string, Player>,
+): BenchDisciplineViewItem[] {
+  return events
+    .flatMap((event): BenchDisciplineViewItem[] => {
+      if (event.type !== 'BENCH_DISCIPLINE' || event.team !== team) return [];
+      const player = event.playerId ? playersById.get(event.playerId) : undefined;
+      const label =
+        event.subjectKind === 'player'
+          ? player
+            ? `#${player.number} ${player.name}`
+            : 'Jugador'
+          : event.subjectKind === 'opponentPlayer'
+            ? `#${event.opponentPlayerNumber}`
+            : `${staffRoleLabel(event.staffRole)}${event.staffName ? ` · ${event.staffName}` : ''}`;
+      return [
+        {
+          eventId: event.id,
+          label,
+          sanction: event.disciplinaryAction,
+          reason: event.reason,
+          countsAsAccumulatedFoul: event.countsAsAccumulatedFoul,
+          sentOff:
+            event.disciplinaryAction === 'secondYellow' || event.disciplinaryAction === 'directRed',
+        },
+      ];
+    })
+    .reverse();
+}
+
+function staffRoleLabel(
+  role?: Extract<MatchEvent, { type: 'BENCH_DISCIPLINE' }>['staffRole'],
+): string {
+  switch (role) {
+    case 'headCoach':
+      return 'Entrenador';
+    case 'assistantCoach':
+      return '2.º entrenador';
+    case 'delegate':
+      return 'Delegado';
+    case 'fitnessCoach':
+      return 'Preparador físico';
+    case 'physiotherapist':
+      return 'Fisioterapeuta';
+    case 'doctor':
+      return 'Médico';
+    case 'other':
+      return 'Otro';
+    default:
+      return 'Staff';
+  }
 }
 
 function countBy<T, K>(items: readonly T[], key: (item: T) => K): Map<K, number> {

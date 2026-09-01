@@ -129,6 +129,34 @@ describe('match timeline', () => {
     expect(createMatchTimeline(events)[0]?.label).toBe('🟨 Amarilla rival #7 · 3ª');
   });
 
+  it('describes bench context, reason and accumulated-foul effect', () => {
+    const event: MatchEvent = {
+      id: 'bench-card',
+      matchId: 'match-1',
+      type: 'BENCH_DISCIPLINE',
+      team: 'away',
+      subjectKind: 'staff',
+      staffRole: 'physiotherapist',
+      staffName: 'Ana',
+      staffIdentityKey: 'away:physiotherapist:ana',
+      disciplinaryAction: 'directRed',
+      reason: 'protest',
+      context: 'bench',
+      countsAsAccumulatedFoul: true,
+      createsDirectFreeKickWithoutWall: false,
+      periodFoulNumber: 5,
+      period: 1,
+      gameClockMs: 600_000,
+      timestamp: 1,
+      sequence: 1,
+      undone: false,
+    };
+
+    expect(createMatchTimeline([event])[0]?.label).toBe(
+      '🟥 Banquillo rival · Fisioterapeuta · Ana · Protesta / desobediencia · +1 falta rival',
+    );
+  });
+
   it('shows the scorer number and name while preserving anonymous goals', () => {
     const common = {
       matchId: 'match-1',

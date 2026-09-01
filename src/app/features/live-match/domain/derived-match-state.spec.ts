@@ -85,6 +85,35 @@ describe('derived match state', () => {
     expect(state.runningSegmentStartedAtGameClockMs).toBe(500_000);
   });
 
+  it('replaces a substituted player in the same positional slot and restores it on undo', () => {
+    const entered = ['p1', 'p4', 'p3', 'p5', 'p2'].map((playerId, index): MatchEvent => ({
+      ...base(`enter-${playerId}`, index + 1),
+      type: 'PLAYER_ENTERED',
+      playerId,
+    }));
+    const substitution: MatchEvent = {
+      ...base('change', 6),
+      type: 'SUBSTITUTION',
+      outPlayerId: 'p3',
+      inPlayerId: 'p6',
+    };
+
+    expect(deriveMatchState(match, [...entered, substitution]).currentLineupPlayerIds).toEqual([
+      'p1',
+      'p4',
+      'p6',
+      'p5',
+      'p2',
+    ]);
+    expect(
+      deriveMatchState(match, [
+        ...entered,
+        substitution,
+        { ...base('undo-change', 7), type: 'EVENT_UNDONE', targetEventId: 'change' },
+      ]).currentLineupPlayerIds,
+    ).toEqual(['p1', 'p4', 'p3', 'p5', 'p2']);
+  });
+
   it('ignores events reverted through EVENT_UNDONE without deleting history', () => {
     const events: MatchEvent[] = [
       { ...base('start', 1), type: 'MATCH_STARTED' },

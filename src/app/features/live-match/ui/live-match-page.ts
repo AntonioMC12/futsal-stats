@@ -1,10 +1,18 @@
 import { Component, computed, effect, HostListener, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { formatGameClock } from '../../../core/clock/match-clock';
-import { DisciplinaryAction, FoulTeam, MatchEventType } from '../../../shared/models/match-event';
+import {
+  BenchDisciplineAction,
+  BenchDisciplineReason,
+  DisciplinaryAction,
+  FoulTeam,
+  MatchEventType,
+  StaffRole,
+} from '../../../shared/models/match-event';
 import { LiveMatchStore } from '../application/live-match.store';
 import { MatchCsvExportService } from '../../matches/application/match-csv-export.service';
 import { SystemNotificationService } from '../../../core/notifications/system-notification.service';
+import { BenchDisciplineSubject, createStaffIdentityKey } from '../domain/bench-discipline';
 
 type MatchOverlay = 'statistics' | 'events' | 'discipline' | 'more';
 
@@ -32,6 +40,25 @@ export class LiveMatchPage {
   protected readonly goalSelectorOpen = signal(false);
   protected readonly goalSaving = signal(false);
   protected readonly activeOverlay = signal<MatchOverlay | null>(null);
+  protected readonly benchDisciplineOpen = signal(false);
+  protected readonly benchDisciplineTeam = signal<FoulTeam>('home');
+  protected readonly benchMemberKind = signal<'player' | 'staff'>('player');
+  protected readonly selectedBenchPlayerId = signal<string | null>(null);
+  protected readonly selectedBenchOpponentNumber = signal<number | null>(null);
+  protected readonly benchOpponentNumberInput = signal('');
+  protected readonly benchStaffRole = signal<StaffRole>('headCoach');
+  protected readonly benchStaffName = signal('');
+  protected readonly benchDisciplineAction = signal<BenchDisciplineAction>('yellow');
+  protected readonly benchDisciplineReason = signal<BenchDisciplineReason>('protest');
+  protected readonly staffRoles: readonly { value: StaffRole; label: string }[] = [
+    { value: 'headCoach', label: 'Entrenador' },
+    { value: 'assistantCoach', label: '2.º entrenador' },
+    { value: 'delegate', label: 'Delegado' },
+    { value: 'fitnessCoach', label: 'Preparador físico' },
+    { value: 'physiotherapist', label: 'Fisioterapeuta' },
+    { value: 'doctor', label: 'Médico' },
+    { value: 'other', label: 'Otro' },
+  ];
   private substitutionTrigger: HTMLElement | null = null;
   private goalTrigger: HTMLElement | null = null;
   readonly matchId = input.required<string>();
@@ -51,6 +78,72 @@ export class LiveMatchPage {
     const value = Number(this.opponentNumberInput());
     return Number.isSafeInteger(value) && value >= 1 && value <= 999;
   });
+  protected readonly benchSubject = computed<BenchDisciplineSubject | null>(() => {
+    if (this.benchMemberKind() === 'staff') {
+      return {
+        subjectKind: 'staff',
+        staffRole: this.benchStaffRole(),
+        staffName: this.benchStaffName() || undefined,
+      };
+    }
+    if (this.benchDisciplineTeam() === 'home') {
+      const playerId = this.selectedBenchPlayerId();
+      return playerId ? { subjectKind: 'player', playerId } : null;
+    }
+    const selected = this.selectedBenchOpponentNumber();
+    const number = selected ?? Number(this.benchOpponentNumberInput());
+    return Number.isSafeInteger(number) && number >= 1 && number <= 999
+      ? { subjectKind: 'opponentPlayer', opponentPlayerNumber: number }
+      : null;
+  });
+  protected readonly benchSubjectDiscipline = computed(() => {
+    const subject = this.benchSubject();
+    if (!subject) return { yellowCards: 0, sentOff: false };
+    const discipline = this.store.disciplinaryState();
+    if (subject.subjectKind === 'player') {
+      const player = discipline.players[subject.playerId];
+      return { yellowCards: player?.yellowCards ?? 0, sentOff: (player?.sendOffs ?? 0) > 0 };
+    }
+    if (subject.subjectKind === 'opponentPlayer') {
+      const player = discipline.opponentPlayers.find(
+        (item) => item.jerseyNumber === subject.opponentPlayerNumber,
+      );
+      return { yellowCards: player?.yellowCards ?? 0, sentOff: player?.sentOff ?? false };
+    }
+    const key = createStaffIdentityKey(
+      this.benchDisciplineTeam(),
+      subject.staffRole,
+      subject.staffName,
+    );
+    const staff = discipline.staffMembers.find((item) => item.identityKey === key);
+    return { yellowCards: staff?.yellowCards ?? 0, sentOff: staff?.sentOff ?? false };
+  });
+  protected readonly benchSubjectLabel = computed(() => {
+    const subject = this.benchSubject();
+    if (!subject) return 'Selecciona una persona';
+    if (subject.subjectKind === 'player') {
+      const player = this.store.players().find((item) => item.id === subject.playerId);
+      return player ? `#${player.number} ${player.name}` : 'Jugador';
+    }
+    if (subject.subjectKind === 'opponentPlayer') return `Rival #${subject.opponentPlayerNumber}`;
+    return `${this.staffRoleLabel(subject.staffRole)}${subject.staffName ? ` · ${subject.staffName.trim()}` : ''}`;
+  });
+  protected readonly benchSubmissionValid = computed(() => {
+    const subject = this.benchSubject();
+    const discipline = this.benchSubjectDiscipline();
+    const action = this.benchDisciplineAction();
+    return (
+      subject !== null &&
+      !discipline.sentOff &&
+      (action === 'yellow' ? discipline.yellowCards === 0 : true) &&
+      (action === 'secondYellow' ? discipline.yellowCards === 1 : true)
+    );
+  });
+  protected readonly activeBenchStaff = computed(() =>
+    this.store
+      .disciplinaryState()
+      .staffMembers.filter((staff) => staff.team === this.benchDisciplineTeam() && !staff.sentOff),
+  );
   protected readonly clockFabVisible = computed(() => {
     const match = this.store.match();
     return (
@@ -91,15 +184,13 @@ export class LiveMatchPage {
     effect(() => void this.store.load(this.matchId()));
   }
 
-  protected selectOutPlayer(playerId: string, event: Event): void | Promise<void> {
+  protected selectOutPlayer(playerId: string, event: Event): void {
     if (!this.store.canSubstitute() || this.store.saving()) {
       return;
     }
     const trigger = event.currentTarget as HTMLElement;
-    return this.runAfterClockStopped(() => {
-      this.substitutionTrigger = trigger;
-      this.selectedOutPlayerId.set(playerId);
-    });
+    this.substitutionTrigger = trigger;
+    this.selectedOutPlayerId.set(playerId);
   }
 
   protected async substituteWith(inPlayerId: string): Promise<void> {
@@ -193,6 +284,56 @@ export class LiveMatchPage {
       this.resetOpponentSelection();
       this.foulTeam.set(team);
     });
+  }
+
+  protected openBenchDiscipline(): void | Promise<void> {
+    if (!this.store.canRegisterBenchDiscipline() || this.store.saving()) return;
+    return this.runAfterClockStopped(() => {
+      this.resetBenchDiscipline();
+      this.benchDisciplineOpen.set(true);
+    });
+  }
+
+  protected cancelBenchDiscipline(): void {
+    if (this.disciplineSaving()) return;
+    this.benchDisciplineOpen.set(false);
+    this.resetBenchDiscipline();
+  }
+
+  protected selectBenchTeam(team: FoulTeam): void {
+    this.benchDisciplineTeam.set(team);
+    this.selectedBenchPlayerId.set(null);
+    this.selectedBenchOpponentNumber.set(null);
+    this.benchOpponentNumberInput.set('');
+  }
+
+  protected selectBenchMemberKind(kind: 'player' | 'staff'): void {
+    this.benchMemberKind.set(kind);
+    this.selectedBenchPlayerId.set(null);
+    this.selectedBenchOpponentNumber.set(null);
+    this.benchOpponentNumberInput.set('');
+  }
+
+  protected async submitBenchDiscipline(): Promise<void> {
+    const subject = this.benchSubject();
+    if (!subject || !this.benchSubmissionValid() || this.disciplineSaving()) return;
+    this.disciplineSaving.set(true);
+    try {
+      if (
+        await this.store.registerBenchDiscipline(
+          this.benchDisciplineTeam(),
+          subject,
+          this.benchDisciplineAction(),
+          this.benchDisciplineReason(),
+        )
+      ) {
+        this.showActionFeedback('Disciplina de banquillo registrada');
+        this.benchDisciplineOpen.set(false);
+        this.resetBenchDiscipline();
+      }
+    } finally {
+      this.disciplineSaving.set(false);
+    }
   }
 
   protected cancelFoul(): void {
@@ -293,6 +434,8 @@ export class LiveMatchPage {
       this.cancelFoul();
     } else if (this.replacingReductionId() && !this.disciplineSaving()) {
       this.cancelReplacement();
+    } else if (this.benchDisciplineOpen() && !this.disciplineSaving()) {
+      this.cancelBenchDiscipline();
     }
   }
 
@@ -315,7 +458,7 @@ export class LiveMatchPage {
   protected timelineSymbol(type: MatchEventType, label: string): string {
     if (type === 'GOAL_FOR' || type === 'GOAL_AGAINST') return '⚽';
     if (type === 'SUBSTITUTION' || type === 'RED_CARD_REPLACEMENT') return '⇄';
-    if (type === 'FOUL') {
+    if (type === 'FOUL' || type === 'BENCH_DISCIPLINE') {
       if (label.includes('Roja')) return '🟥';
       if (label.includes('Amarilla')) return '🟨';
       return '⚠';
@@ -326,12 +469,16 @@ export class LiveMatchPage {
   protected timelineKind(type: MatchEventType): string {
     if (type === 'GOAL_FOR' || type === 'GOAL_AGAINST') return 'goal';
     if (type === 'SUBSTITUTION' || type === 'RED_CARD_REPLACEMENT') return 'change';
-    if (type === 'FOUL') return 'discipline';
+    if (type === 'FOUL' || type === 'BENCH_DISCIPLINE') return 'discipline';
     return 'system';
   }
 
   protected playerYellowCards(playerId: string): number {
     return this.store.disciplinaryState().players[playerId]?.yellowCards ?? 0;
+  }
+
+  protected staffRoleLabel(role: StaffRole): string {
+    return this.staffRoles.find((option) => option.value === role)?.label ?? 'Staff';
   }
 
   private cancelFoulAfterSave(): void {
@@ -344,6 +491,18 @@ export class LiveMatchPage {
     this.pendingOpponentAction.set(null);
     this.selectedOpponentNumber.set(null);
     this.opponentNumberInput.set('');
+  }
+
+  private resetBenchDiscipline(): void {
+    this.benchDisciplineTeam.set('home');
+    this.benchMemberKind.set('player');
+    this.selectedBenchPlayerId.set(null);
+    this.selectedBenchOpponentNumber.set(null);
+    this.benchOpponentNumberInput.set('');
+    this.benchStaffRole.set('headCoach');
+    this.benchStaffName.set('');
+    this.benchDisciplineAction.set('yellow');
+    this.benchDisciplineReason.set('protest');
   }
 
   private showActionFeedback(message: string): void {
