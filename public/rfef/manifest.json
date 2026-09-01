@@ -1,0 +1,19 @@
+{
+  "corpusId": "rfef-futsal-2026-27",
+  "version": "2026.08.26.1",
+  "federation": "RFEF",
+  "sport": "Fútbol Sala",
+  "season": "2026/27",
+  "revisionDate": "2026-08-26",
+  "generatedAt": "2026-09-01T00:00:00.000Z",
+  "chunksFile": "chunks.json",
+  "chunkCount": 12,
+  "documents": [
+    {
+      "id": "circular-10-rectificativa-2026-27",
+      "title": "Circular n.º 10 (Rectificativa) — Reglas de Juego y criterios arbitrales",
+      "date": "2026-08-26",
+      "sourceUrl": "https://rfef.es/sites/default/files/circular_10_rectificativa_ctafs_rfef_2026-2027_reglas_de_juego_y_criterios_arbitrales_modificacion_26-08-2026_1.pdf"
+    }
+  ]
+}

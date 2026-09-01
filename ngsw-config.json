@@ -23,6 +23,14 @@
       "resources": {
         "files": ["/**/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"]
       }
+    },
+    {
+      "name": "rfef-corpus",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": ["/rfef/manifest.json", "/rfef/chunks.json"]
+      }
     }
   ]
 }

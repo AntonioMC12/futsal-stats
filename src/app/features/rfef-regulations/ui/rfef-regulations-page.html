@@ -1,0 +1,100 @@
+<section class="rfef-page" aria-labelledby="rfef-title">
+  <header class="rfef-header">
+    <button
+      class="back-button"
+      type="button"
+      (click)="goBack()"
+      aria-label="Volver a la pantalla anterior"
+    >
+      ←
+    </button>
+    <div>
+      <p class="eyebrow">Consulta offline</p>
+      <h1 id="rfef-title">REGLAMENTO RFEF</h1>
+      @if (manifest(); as installed) {
+        <p class="installed-version">
+          Fútbol Sala · {{ installed.season }} · revisión instalada {{ revisionLabel() }}
+        </p>
+      } @else if (loading()) {
+        <p class="installed-version" role="status">Cargando corpus instalado…</p>
+      }
+    </div>
+  </header>
+
+  <form class="search-form" role="search" (submit)="submit($event)">
+    <label for="rfef-query">Buscar en la normativa instalada</label>
+    <div class="search-row">
+      <input
+        id="rfef-query"
+        name="query"
+        type="search"
+        autocomplete="off"
+        placeholder="Ej.: tarjeta roja al banquillo"
+        [value]="query()"
+        (input)="setQuery($event)"
+      />
+      <button
+        class="btn btn--primary"
+        type="submit"
+        [disabled]="!query().trim() || searching() || loading()"
+      >
+        {{ searching() ? 'Buscando…' : 'Buscar' }}
+      </button>
+    </div>
+  </form>
+
+  <div class="quick-queries" aria-label="Consultas rápidas">
+    @for (quickQuery of quickQueries; track quickQuery) {
+      <button
+        type="button"
+        (click)="useQuickQuery(quickQuery)"
+        [disabled]="loading() || searching()"
+      >
+        {{ quickQuery }}
+      </button>
+    }
+  </div>
+
+  @if (error(); as message) {
+    <p class="banner banner--warn" role="alert">{{ message }}</p>
+  }
+
+  @if (searched() && results().length === 0 && !error()) {
+    <section class="empty-result" aria-live="polite">
+      <h2>Sin referencia suficiente</h2>
+      <p>No encuentro una referencia suficiente en la normativa RFEF 2026/27 instalada.</p>
+    </section>
+  } @else if (results().length > 0) {
+    <section class="results" aria-labelledby="results-title" aria-live="polite">
+      <h2 id="results-title">Referencias encontradas</h2>
+      <div class="result-list">
+        @for (result of results(); track result.id) {
+          <article class="result-card">
+            <p class="result-section">{{ result.section }}</p>
+            <p class="result-text">{{ result.text }}</p>
+            <footer>
+              <span
+                >{{ result.documentTitle }} · {{ result.documentDate }}
+                @if (result.page) {
+                  · pág. {{ result.page }}
+                }
+              </span>
+              <a
+                [href]="result.sourceUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                [attr.aria-label]="'Abrir fuente oficial de ' + result.section"
+                >Fuente oficial RFEF ↗</a
+              >
+            </footer>
+          </article>
+        }
+      </div>
+    </section>
+  }
+
+  <p class="corpus-note">
+    El buscador recupera fragmentos exactos del corpus oficial instalado. No genera ni interpreta
+    respuestas.
+  </p>
+</section>

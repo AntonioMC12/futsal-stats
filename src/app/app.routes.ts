@@ -41,5 +41,12 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/live-match/ui/live-match-page').then((m) => m.LiveMatchPage),
   },
+  {
+    path: 'reglamento-rfef',
+    loadComponent: () =>
+      import('./features/rfef-regulations/ui/rfef-regulations-page').then(
+        (m) => m.RfefRegulationsPage,
+      ),
+  },
   { path: '**', redirectTo: 'matches' },
 ];

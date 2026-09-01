@@ -371,7 +371,7 @@
                 </section>
               }
               @case ('more') {
-                <div class="more-actions"><button class="btn btn--secondary export-csv" type="button" [disabled]="csvExporter.isExporting()" (click)="csvExporter.export(match.id)">{{ csvExporter.isExporting() ? 'Exportando…' : 'Exportar CSV' }}</button><a class="btn btn--secondary" routerLink="/matches">Volver a partidos</a><div class="danger-zone"><span>Zona sensible</span><button class="btn btn--danger" type="button" (click)="activeOverlay.set(null); confirmAbandon.set(true)">Abandonar partido</button></div></div>
+                <div class="more-actions"><a class="btn btn--secondary" routerLink="/reglamento-rfef">Reglamento RFEF</a><button class="btn btn--secondary export-csv" type="button" [disabled]="csvExporter.isExporting()" (click)="csvExporter.export(match.id)">{{ csvExporter.isExporting() ? 'Exportando…' : 'Exportar CSV' }}</button><a class="btn btn--secondary" routerLink="/matches">Volver a partidos</a><div class="danger-zone"><span>Zona sensible</span><button class="btn btn--danger" type="button" (click)="activeOverlay.set(null); confirmAbandon.set(true)">Abandonar partido</button></div></div>
               }
             }
           </div>
