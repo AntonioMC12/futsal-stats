@@ -1,5 +1,10 @@
 import { RfefCorpusChunk } from '../domain/rfef-corpus';
-import { expandRfefQuery, normalizeRfefText, rankRfefChunks } from './rfef-search.service';
+import {
+  expandRfefQuery,
+  hybridRankRfefChunks,
+  normalizeRfefText,
+  rankRfefChunks,
+} from './rfef-search.service';
 
 const sourceUrl = 'https://rfef.es/documento-oficial.pdf';
 
@@ -67,5 +72,33 @@ describe('RfefSearchService', () => {
     expect(result.text).toBe(fixture.text);
     expect(result.documentTitle).toBe(fixture.documentTitle);
     expect(result.sourceUrl).toBe(sourceUrl);
+  });
+
+  it('recupera por semántica aunque no haya coincidencia textual', () => {
+    const results = hybridRankRfefChunks(
+      [chunk({ id: 'banquillo' }), chunk({ id: 'otra' })],
+      'echan al míster',
+      new Map([
+        ['banquillo', 0.9],
+        ['otra', 0.79],
+      ]),
+    );
+    expect(results[0].id).toBe('banquillo');
+  });
+
+  it('mantiene una coincidencia reglamentaria exacta frente a ruido semántico', () => {
+    const results = hybridRankRfefChunks(
+      [chunk({ id: 'exacta', section: 'Segunda tarjeta amarilla' }), chunk({ id: 'semantica' })],
+      'segunda tarjeta amarilla',
+      new Map([
+        ['exacta', 0.84],
+        ['semantica', 0.94],
+      ]),
+    );
+    expect(results[0].id).toBe('exacta');
+  });
+
+  it('rechaza una coincidencia solo semántica con confianza insuficiente', () => {
+    expect(hybridRankRfefChunks([chunk()], 'uno menos', new Map([['fixture', 0.81]]))).toEqual([]);
   });
 });

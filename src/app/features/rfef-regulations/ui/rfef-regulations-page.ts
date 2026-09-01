@@ -1,6 +1,7 @@
 import { Location } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { RfefCorpusService } from '../application/rfef-corpus.service';
+import { RfefEmbeddingService } from '../application/rfef-embedding.service';
 import { RfefSearchService } from '../application/rfef-search.service';
 import { RfefCorpusManifest, RfefSearchResult } from '../domain/rfef-corpus';
 
@@ -22,6 +23,7 @@ export class RfefRegulationsPage {
     'Sustituciones',
     'Portero-jugador',
   ] as const;
+  protected readonly embeddings = inject(RfefEmbeddingService);
   protected readonly query = signal('');
   protected readonly manifest = signal<RfefCorpusManifest | null>(null);
   protected readonly results = signal<readonly RfefSearchResult[]>([]);

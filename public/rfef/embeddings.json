@@ -1,0 +1,61 @@
+{
+  "formatVersion": 1,
+  "corpusRevision": "2026.08.26.1",
+  "modelId": "Xenova/multilingual-e5-small",
+  "modelRevision": "761b726dd34fb83930e26aab4e9ac3899aa1fa78",
+  "dtype": "int8",
+  "embeddingDimension": 384,
+  "vectorCount": 12,
+  "normalized": true,
+  "binaryFile": "embeddings.f32",
+  "entries": [
+    {
+      "chunkId": "c10-bench-cards",
+      "offset": 0
+    },
+    {
+      "chunkId": "c10-bench-electronics",
+      "offset": 384
+    },
+    {
+      "chunkId": "c10-card-signals",
+      "offset": 768
+    },
+    {
+      "chunkId": "c10-dogso-handball",
+      "offset": 1152
+    },
+    {
+      "chunkId": "c10-fifth-foul-review",
+      "offset": 1536
+    },
+    {
+      "chunkId": "c10-goal-clearance",
+      "offset": 1920
+    },
+    {
+      "chunkId": "c10-medical-assistance-card",
+      "offset": 2304
+    },
+    {
+      "chunkId": "c10-penalty-not-accumulated",
+      "offset": 2688
+    },
+    {
+      "chunkId": "c10-red-card-video",
+      "offset": 3072
+    },
+    {
+      "chunkId": "c10-scope",
+      "offset": 3456
+    },
+    {
+      "chunkId": "c10-second-yellow-review",
+      "offset": 3840
+    },
+    {
+      "chunkId": "c10-sixth-foul-example",
+      "offset": 4224
+    }
+  ]
+}

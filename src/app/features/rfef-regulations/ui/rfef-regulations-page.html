@@ -21,6 +21,33 @@
     </div>
   </header>
 
+  <p class="search-capability" role="status">
+    @switch (embeddings.state()) {
+      @case ('loading') {
+        <span class="capability-dot is-loading" aria-hidden="true"></span>
+        Preparando búsqueda inteligente…
+        @if (embeddings.progress() > 0 && embeddings.progress() < 100) {
+          {{ embeddings.progress() }} %
+        }
+      }
+      @case ('ready') {
+        <span class="capability-dot is-ready" aria-hidden="true"></span>
+        Búsqueda inteligente <strong>✓ Disponible</strong>
+        @if (embeddings.backend(); as backend) {
+          <small>{{ backend === 'webgpu' ? 'WebGPU' : 'WASM' }}</small>
+        }
+      }
+      @case ('unavailable') {
+        <span class="capability-dot" aria-hidden="true"></span>
+        <strong>Búsqueda básica.</strong> Usando búsqueda básica.
+      }
+      @default {
+        <span class="capability-dot is-ready" aria-hidden="true"></span>
+        Búsqueda inteligente · disponible al buscar
+      }
+    }
+  </p>
+
   <form class="search-form" role="search" (submit)="submit($event)">
     <label for="rfef-query">Buscar en la normativa instalada</label>
     <div class="search-row">
@@ -70,7 +97,14 @@
       <div class="result-list">
         @for (result of results(); track result.id) {
           <article class="result-card">
-            <p class="result-section">{{ result.section }}</p>
+            <div class="result-heading">
+              <p class="result-section">{{ result.section }}</p>
+              @if (result.relevance) {
+                <span class="relevance">{{
+                  result.relevance === 'high' ? 'Alta relevancia' : 'Relevancia media'
+                }}</span>
+              }
+            </div>
             <p class="result-text">{{ result.text }}</p>
             <footer>
               <span

@@ -29,7 +29,12 @@
       "installMode": "prefetch",
       "updateMode": "prefetch",
       "resources": {
-        "files": ["/rfef/manifest.json", "/rfef/chunks.json"]
+        "files": [
+          "/rfef/manifest.json",
+          "/rfef/chunks.json",
+          "/rfef/embeddings.json",
+          "/rfef/embeddings.f32"
+        ]
       }
     }
   ]

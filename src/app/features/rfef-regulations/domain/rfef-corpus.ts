@@ -38,4 +38,20 @@ export interface RfefCorpus {
 
 export interface RfefSearchResult extends RfefCorpusChunk {
   score: number;
+  textScore?: number;
+  semanticScore?: number;
+  relevance?: 'high' | 'medium';
+}
+
+export interface RfefEmbeddingsMetadata {
+  formatVersion: 1;
+  corpusRevision: string;
+  modelId: string;
+  modelRevision: string;
+  dtype: string;
+  embeddingDimension: number;
+  vectorCount: number;
+  normalized: true;
+  binaryFile: string;
+  entries: readonly { chunkId: string; offset: number }[];
 }
