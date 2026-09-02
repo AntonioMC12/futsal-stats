@@ -1,9 +1,18 @@
 .matches-page {
-  width: min(100%, 46rem);
+  width: min(100%, var(--ds-content));
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+.matches-page > header {
+  padding-bottom: var(--ds-space-5);
+  border-bottom: 1px solid var(--ds-border-subtle);
+}
+
+.matches-page > header h1 {
+  margin-bottom: var(--ds-space-2);
 }
 
 .matches-page h1,
@@ -12,13 +21,12 @@
   margin-top: 0;
 }
 
-.eyebrow,
 .active-section > h2,
 .history > h2 {
   margin-bottom: 0.35rem;
   color: var(--color-accent);
   font-size: 0.85rem;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.09em;
   text-transform: uppercase;
 }
@@ -26,14 +34,14 @@
 .active-card,
 .empty-state,
 .history-item {
-  border: 2px solid var(--color-border);
-  border-radius: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--ds-radius-lg);
   background: var(--color-surface);
 }
 
 .active-card {
   padding: 1.25rem;
-  border-color: var(--color-accent);
+  border-left: 0.25rem solid var(--color-accent);
   text-align: center;
 }
 
@@ -76,9 +84,8 @@
 }
 
 .new-match {
-  min-height: 4rem;
-  font-size: 1.1rem;
-  text-transform: uppercase;
+  min-height: var(--ds-touch-primary);
+  font-size: 1rem;
 }
 
 .secondary-actions {
@@ -115,8 +122,10 @@
 }
 
 .empty-state {
-  padding: 1.25rem;
-  text-align: center;
+  padding: var(--ds-space-6);
+  border-style: dashed;
+  background: var(--ds-surface-secondary);
+  text-align: left;
 }
 
 .empty-state h2,
@@ -152,4 +161,35 @@
 .secondary-actions--compact {
   margin: 0;
   text-align: right;
+}
+
+@media (min-width: 768px) {
+  .matches-page {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(19rem, 0.85fr);
+    align-items: start;
+    gap: var(--ds-space-6);
+  }
+
+  .matches-page > header,
+  .matches-page > .banner,
+  .matches-page > .empty {
+    grid-column: 1 / -1;
+  }
+  .active-section,
+  .empty-state {
+    grid-column: 1;
+  }
+  .new-match {
+    grid-column: 1;
+    width: auto;
+    justify-self: start;
+    min-width: 13rem;
+  }
+  .history {
+    grid-column: 2;
+    grid-row: 2 / span 3;
+    padding-left: var(--ds-space-6);
+    border-left: 1px solid var(--ds-border-subtle);
+  }
 }

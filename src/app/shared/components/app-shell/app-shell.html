@@ -1,13 +1,36 @@
 <div class="shell" [class.shell--live-match]="liveMatchActive">
   <app-system-notification />
   <header class="shell__header">
-    <a class="shell__brand" routerLink="/">Futsal Stats</a>
+    <a class="shell__brand" routerLink="/matches" aria-label="Futsal Stats, partidos">
+      <span class="brand-mark" aria-hidden="true">FS</span>
+      <span class="brand-copy"><strong>Futsal Stats</strong><small>Mesa técnica</small></span>
+    </a>
     <span class="offline-status" role="status" [hidden]="connectivity.online()">
       Sin conexión · guardado local
     </span>
     <nav class="shell__nav" aria-label="Principal">
-      <a routerLink="/matches" routerLinkActive="is-active">Partidos</a>
-      <a routerLink="/teams" routerLinkActive="is-active">Equipos</a>
+      <a routerLink="/matches" routerLinkActive="is-active" ariaCurrentWhenActive="page">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 4v16M19 4v16M5 7h14M5 17h14M9 7v10M15 7v10" />
+        </svg>
+        <span>Partidos</span>
+      </a>
+      <a routerLink="/teams" routerLinkActive="is-active" ariaCurrentWhenActive="page">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8-1a2.5 2.5 0 1 0 0-5M3 19v-1.5A3.5 3.5 0 0 1 6.5 14h3A3.5 3.5 0 0 1 13 17.5V19m1-5h2.5a3.5 3.5 0 0 1 3.5 3.5V19"
+          />
+        </svg>
+        <span>Equipos</span>
+      </a>
+      <a routerLink="/reglamento-rfef" routerLinkActive="is-active" ariaCurrentWhenActive="page">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21.5Zm0 0v17M9 7h7m-7 4h7"
+          />
+        </svg>
+        <span>Reglamento</span>
+      </a>
     </nav>
   </header>
   <main class="shell__main">
