@@ -13,7 +13,8 @@
       <h1 id="rfef-title">REGLAMENTO RFEF</h1>
       @if (manifest(); as installed) {
         <p class="installed-version">
-          Fútbol Sala · {{ installed.season }} · revisión instalada {{ revisionLabel() }}
+          Fútbol Sala · {{ installed.season }} · reglamento completo ·
+          {{ installed.chunkCount }} fragmentos · revisión {{ revisionLabel() }}
         </p>
       } @else if (loading()) {
         <p class="installed-version" role="status">Cargando corpus instalado…</p>
@@ -44,7 +45,12 @@
           reglamento incluso sin conexión.
         </p>
         <p class="model-detail">
-          {{ model.label }} · {{ model.approximateDownload }} · {{ model.approximateVram }}
+          @if (llm.backend() === 'wasm') {
+            {{ fallbackModel.label }} · {{ fallbackModel.approximateDownload }} · compatible con
+            este iPad mediante WebAssembly
+          } @else {
+            {{ model.label }} · {{ model.approximateDownload }} · {{ model.approximateVram }}
+          }
         </p>
         <button class="btn btn--primary" type="button" (click)="installAssistant()">
           DESCARGAR ASISTENTE
@@ -67,7 +73,10 @@
       }
       @case ('installed') {
         <p><strong>✓ Asistente disponible en este dispositivo</strong></p>
-        <p class="privacy-note">Las consultas se procesan en este dispositivo.</p>
+        <p class="privacy-note">
+          Las consultas se procesan en este dispositivo ·
+          {{ llm.backend() === 'wasm' ? 'WebAssembly compatible' : 'WebLLM con WebGPU' }}
+        </p>
         <button class="btn btn--secondary" type="button" (click)="removeAssistant()">
           Eliminar modelo
         </button>
@@ -108,6 +117,11 @@
                 : 'No probado'
           }}
         </dd>
+        <dt>Workgroup storage</dt>
+        <dd>
+          {{ diagnostic.adapterLimits['maxComputeWorkgroupStorageSize'] || '—' }} bytes (WebLLM
+          requiere 32768)
+        </dd>
         <dt>GPU</dt>
         <dd class="diagnostics-value">
           {{ diagnostic.adapterInfo['vendor'] || '—' }}
@@ -124,12 +138,22 @@
         <dd>{{ diagnostic.status }}</dd>
         <dt>WebLLM</dt>
         <dd>{{ diagnostic.webllmStatus }}</dd>
+        <dt>Motor local activo</dt>
+        <dd>{{ diagnostic.localAiBackend }}</dd>
+        <dt>Fallback WASM</dt>
+        <dd>{{ diagnostic.fallbackStatus }}</dd>
         <dt>Modelo</dt>
-        <dd class="diagnostics-value">{{ diagnostic.model || model.id }}</dd>
+        <dd class="diagnostics-value">
+          {{ diagnostic.model || (llm.backend() === 'wasm' ? fallbackModel.id : model.id) }}
+        </dd>
         <dt>Contexto / prefill</dt>
         <dd>
-          {{ diagnostic.contextWindowSize || (diagnostic.isMobile ? 2048 : 4096) }} /
-          {{ model.prefillChunkSize }}
+          @if (llm.backend() === 'wasm') {
+            gestionado por ONNX Runtime
+          } @else {
+            {{ diagnostic.contextWindowSize || (diagnostic.isMobile ? 2048 : 4096) }} /
+            {{ model.prefillChunkSize }}
+          }
         </dd>
         <dt>Progreso</dt>
         <dd class="diagnostics-value">{{ diagnostic.progressText }}</dd>

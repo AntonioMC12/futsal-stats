@@ -35,6 +35,9 @@ describe('RfefSearchService', () => {
     expect(expandRfefQuery('entrenador')).toEqual(
       expect.arrayContaining(['cuerpo', 'tecnico', 'banquillo']),
     );
+    expect(expandRfefQuery('jugamos con uno menos')).toEqual(
+      expect.arrayContaining(['inferioridad', 'numerica', 'dos', 'minutos', 'expulsado']),
+    );
   });
 
   it('encuentra coincidencias en palabras clave', () => {

@@ -23,6 +23,7 @@ export class RfefPromptBuilder {
         'No uses conocimiento general, otras temporadas ni memoria propia.',
         `Si falta información suficiente, responde exactamente: "${RFEF_NO_EVIDENCE_MESSAGE}"`,
         'No inventes reglas, artículos, páginas, documentos, sanciones ni excepciones.',
+        'Jerarquía normativa: la Circular n.º 10 rectificativa de 26-08-2026 prevalece sobre las Reglas de Juego del Futsal 2025/26 cuando exista conflicto.',
         'Si un documento posterior rectifica uno anterior, aplica la prioridad indicada por el contexto.',
         'Diferencia, cuando sea relevante, regla de juego, criterio arbitral, regla de competición e interpretación.',
         'Responde en español claro, breve y práctico.',

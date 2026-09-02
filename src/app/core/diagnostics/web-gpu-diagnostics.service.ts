@@ -5,12 +5,15 @@ export type WebGpuDiagnosticStatus =
   | 'NO_GPU_ADAPTER'
   | 'GPU_DEVICE_FAILED'
   | 'WEBGPU_AVAILABLE'
+  | 'WEBLLM_REQUIREMENTS_UNMET'
   | 'WEBLLM_INITIALIZATION_FAILED'
-  | 'WEBLLM_READY';
+  | 'WEBLLM_READY'
+  | 'LOCAL_WASM_FALLBACK_READY';
 
 export type DeviceKind = 'desktop' | 'mobile' | 'unknown';
 export type OperatingSystem = 'iOS/iPadOS' | 'Android' | 'other' | 'unknown';
 export type WebLlmDiagnosticStatus = 'not_started' | 'loading' | 'available' | 'error';
+export type LocalFallbackStatus = 'not_started' | 'loading' | 'available' | 'error';
 
 export interface SerializableError {
   name: string;
@@ -49,6 +52,9 @@ export interface WebGpuDiagnosticReport {
   status: WebGpuDiagnosticStatus;
   webllmVersion: string;
   webllmStatus: WebLlmDiagnosticStatus;
+  localAiBackend: 'webllm' | 'wasm';
+  fallbackStatus: LocalFallbackStatus;
+  fallbackModel: string;
   model: string;
   contextWindowSize: number;
   prefillChunkSize: number;
@@ -108,14 +114,18 @@ type NavigatorWithGpu = Omit<Navigator, 'gpu'> & {
   userAgentData?: { mobile?: boolean; platform?: string };
 };
 
-const WEBLLM_VERSION = '0.2.82';
+const WEBLLM_VERSION = '0.2.84';
 const MAX_GLOBAL_ERRORS = 30;
 const LIMIT_NAMES = [
   'maxBufferSize',
   'maxStorageBufferBindingSize',
   'maxComputeWorkgroupSizeX',
+  'maxComputeWorkgroupSizeY',
+  'maxComputeWorkgroupSizeZ',
   'maxComputeInvocationsPerWorkgroup',
   'maxComputeWorkgroupsPerDimension',
+  'maxComputeWorkgroupStorageSize',
+  'maxStorageBuffersPerShaderStage',
 ] as const;
 
 @Injectable({ providedIn: 'root' })
@@ -200,6 +210,58 @@ export class WebGpuDiagnosticsService {
       status: 'WEBLLM_INITIALIZATION_FAILED',
       webllmStatus: 'error',
       progressText: 'Error al iniciar WebLLM',
+      error: serializable,
+    });
+  }
+
+  markWebLlmRequirementsUnmet(error: Error): void {
+    const serializable = serializeError(error);
+    console.warn('[WebLLM]', 'GPU limits do not meet WebLLM requirements', serializable);
+    this.patchReport({
+      status: 'WEBLLM_REQUIREMENTS_UNMET',
+      webllmStatus: 'error',
+      progressText: 'Requisitos de WebLLM no cumplidos',
+      error: serializable,
+    });
+  }
+
+  markFallbackSelected(model: string): void {
+    this.patchReport({
+      localAiBackend: 'wasm',
+      fallbackModel: model,
+    });
+  }
+
+  markFallbackLoading(model: string): void {
+    console.info('[AI WASM]', 'Loading local fallback model', model);
+    this.patchReport({
+      localAiBackend: 'wasm',
+      fallbackStatus: 'loading',
+      fallbackModel: model,
+      model,
+      progressText: 'Descargando modelo local compatible…',
+      error: null,
+    });
+  }
+
+  markFallbackReady(): void {
+    console.info('[AI WASM]', 'Local fallback ready');
+    this.patchReport({
+      status: 'LOCAL_WASM_FALLBACK_READY',
+      localAiBackend: 'wasm',
+      fallbackStatus: 'available',
+      progressText: 'Asistente local WebAssembly listo',
+      error: null,
+    });
+  }
+
+  markFallbackFailed(error: unknown): void {
+    const serializable = serializeError(error);
+    console.error('[AI WASM]', 'Local fallback failed', serializable);
+    this.patchReport({
+      localAiBackend: 'wasm',
+      fallbackStatus: 'error',
+      progressText: 'Error al iniciar el fallback local',
       error: serializable,
     });
   }
@@ -333,6 +395,9 @@ export class WebGpuDiagnosticsService {
       status: 'NO_WEBGPU',
       webllmVersion: WEBLLM_VERSION,
       webllmStatus: 'not_started',
+      localAiBackend: 'webllm',
+      fallbackStatus: 'not_started',
+      fallbackModel: '',
       model: '',
       contextWindowSize: 0,
       prefillChunkSize: 0,

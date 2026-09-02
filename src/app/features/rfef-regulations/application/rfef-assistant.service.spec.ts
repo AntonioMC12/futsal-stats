@@ -6,7 +6,7 @@ import {
   RfefPrompt,
 } from '../domain/rfef-assistant';
 import { RfefSearchResult } from '../domain/rfef-corpus';
-import { RfefAssistantService } from './rfef-assistant.service';
+import { isInScope, RfefAssistantService } from './rfef-assistant.service';
 import { RfefLocalLlmService } from './rfef-local-llm.service';
 import { RfefPromptBuilder } from './rfef-prompt-builder';
 import { RfefSearchService } from './rfef-search.service';
@@ -91,6 +91,11 @@ describe('RfefAssistantService', () => {
     expect(answer.text).toBe(RFEF_OUT_OF_SCOPE_MESSAGE);
     expect(answer.sources).toEqual([]);
     expect(generate).not.toHaveBeenCalled();
+  });
+
+  it('accepts questions covered by the complete rules', () => {
+    expect(isInScope('¿Cuánto mide la pista?')).toBe(true);
+    expect(isInScope('¿Qué equipamiento puede llevar el capitán?')).toBe(true);
   });
 
   it('passes structured match context to the prompt builder', async () => {

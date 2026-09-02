@@ -8,6 +8,10 @@ const chunks: readonly RfefCorpusChunk[] = [
   fixture('c10-fifth-foul-review', 'Revisión a partir de la quinta falta'),
   fixture('c10-sixth-foul-example', 'Ejemplo de sexta falta'),
   fixture('c10-second-yellow-review', 'Segunda tarjeta amarilla'),
+  fixture(
+    'lotg-2025-26-p057-02',
+    'Jugador expulsado: dos minutos en inferioridad numérica o hasta que se marque un gol',
+  ),
 ];
 
 describe('benchmark pequeño de retrieval RFEF', () => {

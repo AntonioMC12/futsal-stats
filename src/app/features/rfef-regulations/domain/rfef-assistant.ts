@@ -10,6 +10,16 @@ export const RFEF_LOCAL_MODEL = {
   prefillChunkSize: 1024,
 } as const;
 
+export const RFEF_WASM_FALLBACK_MODEL = {
+  id: 'onnx-community/SmolLM2-135M-Instruct-ONNX',
+  revision: 'b8a5c0f183b78c55955a5364f610c36668b5e681',
+  label: 'SmolLM2 135M Instruct',
+  parameters: '0,135B',
+  quantization: 'q8',
+  approximateDownload: 'aprox. 145 MB',
+  runtime: 'WebAssembly',
+} as const;
+
 export const RFEF_LOCAL_MODEL_CONFIG = {
   desktop: { contextWindowSize: 4096 },
   mobile: { contextWindowSize: 2048 },

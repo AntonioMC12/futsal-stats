@@ -7,7 +7,12 @@ import { RfefCorpusService } from '../application/rfef-corpus.service';
 import { RfefEmbeddingService } from '../application/rfef-embedding.service';
 import { RfefLocalLlmService } from '../application/rfef-local-llm.service';
 import { RfefMatchContextService } from '../application/rfef-match-context.service';
-import { RFEF_LOCAL_MODEL, RfefAnswer, RfefMatchContext } from '../domain/rfef-assistant';
+import {
+  RFEF_LOCAL_MODEL,
+  RFEF_WASM_FALLBACK_MODEL,
+  RfefAnswer,
+  RfefMatchContext,
+} from '../domain/rfef-assistant';
 import { RfefCorpusManifest } from '../domain/rfef-corpus';
 
 @Component({
@@ -34,6 +39,7 @@ export class RfefRegulationsPage {
   protected readonly llm = inject(RfefLocalLlmService);
   protected readonly diagnostics = inject(WebGpuDiagnosticsService);
   protected readonly model = RFEF_LOCAL_MODEL;
+  protected readonly fallbackModel = RFEF_WASM_FALLBACK_MODEL;
   protected readonly query = signal('');
   protected readonly manifest = signal<RfefCorpusManifest | null>(null);
   protected readonly answer = signal<RfefAnswer | null>(null);

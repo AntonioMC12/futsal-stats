@@ -1,11 +1,11 @@
 {
   "formatVersion": 1,
-  "corpusRevision": "2026.08.26.1",
+  "corpusRevision": "2026.09.02.2",
   "modelId": "Xenova/multilingual-e5-small",
   "modelRevision": "761b726dd34fb83930e26aab4e9ac3899aa1fa78",
   "dtype": "int8",
   "embeddingDimension": 384,
-  "vectorCount": 12,
+  "vectorCount": 289,
   "normalized": true,
   "binaryFile": "embeddings.f32",
   "entries": [
@@ -56,6 +56,1114 @@
     {
       "chunkId": "c10-sixth-foul-example",
       "offset": 4224
+    },
+    {
+      "chunkId": "lotg-2025-26-p033-01",
+      "offset": 4608
+    },
+    {
+      "chunkId": "lotg-2025-26-p033-02",
+      "offset": 4992
+    },
+    {
+      "chunkId": "lotg-2025-26-p034-01",
+      "offset": 5376
+    },
+    {
+      "chunkId": "lotg-2025-26-p034-02",
+      "offset": 5760
+    },
+    {
+      "chunkId": "lotg-2025-26-p035-01",
+      "offset": 6144
+    },
+    {
+      "chunkId": "lotg-2025-26-p035-02",
+      "offset": 6528
+    },
+    {
+      "chunkId": "lotg-2025-26-p036-01",
+      "offset": 6912
+    },
+    {
+      "chunkId": "lotg-2025-26-p036-02",
+      "offset": 7296
+    },
+    {
+      "chunkId": "lotg-2025-26-p038-01",
+      "offset": 7680
+    },
+    {
+      "chunkId": "lotg-2025-26-p038-02",
+      "offset": 8064
+    },
+    {
+      "chunkId": "lotg-2025-26-p039-01",
+      "offset": 8448
+    },
+    {
+      "chunkId": "lotg-2025-26-p040-01",
+      "offset": 8832
+    },
+    {
+      "chunkId": "lotg-2025-26-p041-01",
+      "offset": 9216
+    },
+    {
+      "chunkId": "lotg-2025-26-p041-02",
+      "offset": 9600
+    },
+    {
+      "chunkId": "lotg-2025-26-p042-01",
+      "offset": 9984
+    },
+    {
+      "chunkId": "lotg-2025-26-p042-02",
+      "offset": 10368
+    },
+    {
+      "chunkId": "lotg-2025-26-p043-01",
+      "offset": 10752
+    },
+    {
+      "chunkId": "lotg-2025-26-p044-01",
+      "offset": 11136
+    },
+    {
+      "chunkId": "lotg-2025-26-p044-02",
+      "offset": 11520
+    },
+    {
+      "chunkId": "lotg-2025-26-p045-01",
+      "offset": 11904
+    },
+    {
+      "chunkId": "lotg-2025-26-p046-01",
+      "offset": 12288
+    },
+    {
+      "chunkId": "lotg-2025-26-p047-01",
+      "offset": 12672
+    },
+    {
+      "chunkId": "lotg-2025-26-p047-02",
+      "offset": 13056
+    },
+    {
+      "chunkId": "lotg-2025-26-p048-01",
+      "offset": 13440
+    },
+    {
+      "chunkId": "lotg-2025-26-p049-01",
+      "offset": 13824
+    },
+    {
+      "chunkId": "lotg-2025-26-p051-01",
+      "offset": 14208
+    },
+    {
+      "chunkId": "lotg-2025-26-p051-02",
+      "offset": 14592
+    },
+    {
+      "chunkId": "lotg-2025-26-p052-01",
+      "offset": 14976
+    },
+    {
+      "chunkId": "lotg-2025-26-p052-02",
+      "offset": 15360
+    },
+    {
+      "chunkId": "lotg-2025-26-p054-01",
+      "offset": 15744
+    },
+    {
+      "chunkId": "lotg-2025-26-p054-02",
+      "offset": 16128
+    },
+    {
+      "chunkId": "lotg-2025-26-p055-01",
+      "offset": 16512
+    },
+    {
+      "chunkId": "lotg-2025-26-p055-02",
+      "offset": 16896
+    },
+    {
+      "chunkId": "lotg-2025-26-p056-01",
+      "offset": 17280
+    },
+    {
+      "chunkId": "lotg-2025-26-p056-02",
+      "offset": 17664
+    },
+    {
+      "chunkId": "lotg-2025-26-p057-01",
+      "offset": 18048
+    },
+    {
+      "chunkId": "lotg-2025-26-p057-02",
+      "offset": 18432
+    },
+    {
+      "chunkId": "lotg-2025-26-p058-01",
+      "offset": 18816
+    },
+    {
+      "chunkId": "lotg-2025-26-p059-01",
+      "offset": 19200
+    },
+    {
+      "chunkId": "lotg-2025-26-p059-02",
+      "offset": 19584
+    },
+    {
+      "chunkId": "lotg-2025-26-p060-01",
+      "offset": 19968
+    },
+    {
+      "chunkId": "lotg-2025-26-p062-01",
+      "offset": 20352
+    },
+    {
+      "chunkId": "lotg-2025-26-p062-02",
+      "offset": 20736
+    },
+    {
+      "chunkId": "lotg-2025-26-p063-01",
+      "offset": 21120
+    },
+    {
+      "chunkId": "lotg-2025-26-p063-02",
+      "offset": 21504
+    },
+    {
+      "chunkId": "lotg-2025-26-p064-01",
+      "offset": 21888
+    },
+    {
+      "chunkId": "lotg-2025-26-p064-02",
+      "offset": 22272
+    },
+    {
+      "chunkId": "lotg-2025-26-p065-01",
+      "offset": 22656
+    },
+    {
+      "chunkId": "lotg-2025-26-p065-02",
+      "offset": 23040
+    },
+    {
+      "chunkId": "lotg-2025-26-p066-01",
+      "offset": 23424
+    },
+    {
+      "chunkId": "lotg-2025-26-p066-02",
+      "offset": 23808
+    },
+    {
+      "chunkId": "lotg-2025-26-p067-01",
+      "offset": 24192
+    },
+    {
+      "chunkId": "lotg-2025-26-p067-02",
+      "offset": 24576
+    },
+    {
+      "chunkId": "lotg-2025-26-p069-01",
+      "offset": 24960
+    },
+    {
+      "chunkId": "lotg-2025-26-p069-02",
+      "offset": 25344
+    },
+    {
+      "chunkId": "lotg-2025-26-p070-01",
+      "offset": 25728
+    },
+    {
+      "chunkId": "lotg-2025-26-p070-02",
+      "offset": 26112
+    },
+    {
+      "chunkId": "lotg-2025-26-p071-01",
+      "offset": 26496
+    },
+    {
+      "chunkId": "lotg-2025-26-p071-02",
+      "offset": 26880
+    },
+    {
+      "chunkId": "lotg-2025-26-p071-03",
+      "offset": 27264
+    },
+    {
+      "chunkId": "lotg-2025-26-p072-01",
+      "offset": 27648
+    },
+    {
+      "chunkId": "lotg-2025-26-p072-02",
+      "offset": 28032
+    },
+    {
+      "chunkId": "lotg-2025-26-p073-01",
+      "offset": 28416
+    },
+    {
+      "chunkId": "lotg-2025-26-p073-02",
+      "offset": 28800
+    },
+    {
+      "chunkId": "lotg-2025-26-p074-01",
+      "offset": 29184
+    },
+    {
+      "chunkId": "lotg-2025-26-p075-01",
+      "offset": 29568
+    },
+    {
+      "chunkId": "lotg-2025-26-p075-02",
+      "offset": 29952
+    },
+    {
+      "chunkId": "lotg-2025-26-p077-01",
+      "offset": 30336
+    },
+    {
+      "chunkId": "lotg-2025-26-p077-02",
+      "offset": 30720
+    },
+    {
+      "chunkId": "lotg-2025-26-p078-01",
+      "offset": 31104
+    },
+    {
+      "chunkId": "lotg-2025-26-p079-01",
+      "offset": 31488
+    },
+    {
+      "chunkId": "lotg-2025-26-p079-02",
+      "offset": 31872
+    },
+    {
+      "chunkId": "lotg-2025-26-p080-01",
+      "offset": 32256
+    },
+    {
+      "chunkId": "lotg-2025-26-p080-02",
+      "offset": 32640
+    },
+    {
+      "chunkId": "lotg-2025-26-p081-01",
+      "offset": 33024
+    },
+    {
+      "chunkId": "lotg-2025-26-p083-01",
+      "offset": 33408
+    },
+    {
+      "chunkId": "lotg-2025-26-p083-02",
+      "offset": 33792
+    },
+    {
+      "chunkId": "lotg-2025-26-p084-01",
+      "offset": 34176
+    },
+    {
+      "chunkId": "lotg-2025-26-p084-02",
+      "offset": 34560
+    },
+    {
+      "chunkId": "lotg-2025-26-p085-01",
+      "offset": 34944
+    },
+    {
+      "chunkId": "lotg-2025-26-p087-01",
+      "offset": 35328
+    },
+    {
+      "chunkId": "lotg-2025-26-p087-02",
+      "offset": 35712
+    },
+    {
+      "chunkId": "lotg-2025-26-p088-01",
+      "offset": 36096
+    },
+    {
+      "chunkId": "lotg-2025-26-p088-02",
+      "offset": 36480
+    },
+    {
+      "chunkId": "lotg-2025-26-p089-01",
+      "offset": 36864
+    },
+    {
+      "chunkId": "lotg-2025-26-p091-01",
+      "offset": 37248
+    },
+    {
+      "chunkId": "lotg-2025-26-p091-02",
+      "offset": 37632
+    },
+    {
+      "chunkId": "lotg-2025-26-p093-01",
+      "offset": 38016
+    },
+    {
+      "chunkId": "lotg-2025-26-p093-02",
+      "offset": 38400
+    },
+    {
+      "chunkId": "lotg-2025-26-p094-01",
+      "offset": 38784
+    },
+    {
+      "chunkId": "lotg-2025-26-p094-02",
+      "offset": 39168
+    },
+    {
+      "chunkId": "lotg-2025-26-p095-01",
+      "offset": 39552
+    },
+    {
+      "chunkId": "lotg-2025-26-p095-02",
+      "offset": 39936
+    },
+    {
+      "chunkId": "lotg-2025-26-p095-03",
+      "offset": 40320
+    },
+    {
+      "chunkId": "lotg-2025-26-p096-01",
+      "offset": 40704
+    },
+    {
+      "chunkId": "lotg-2025-26-p096-02",
+      "offset": 41088
+    },
+    {
+      "chunkId": "lotg-2025-26-p098-01",
+      "offset": 41472
+    },
+    {
+      "chunkId": "lotg-2025-26-p100-01",
+      "offset": 41856
+    },
+    {
+      "chunkId": "lotg-2025-26-p100-02",
+      "offset": 42240
+    },
+    {
+      "chunkId": "lotg-2025-26-p101-01",
+      "offset": 42624
+    },
+    {
+      "chunkId": "lotg-2025-26-p101-02",
+      "offset": 43008
+    },
+    {
+      "chunkId": "lotg-2025-26-p102-01",
+      "offset": 43392
+    },
+    {
+      "chunkId": "lotg-2025-26-p102-02",
+      "offset": 43776
+    },
+    {
+      "chunkId": "lotg-2025-26-p103-01",
+      "offset": 44160
+    },
+    {
+      "chunkId": "lotg-2025-26-p103-02",
+      "offset": 44544
+    },
+    {
+      "chunkId": "lotg-2025-26-p104-01",
+      "offset": 44928
+    },
+    {
+      "chunkId": "lotg-2025-26-p104-02",
+      "offset": 45312
+    },
+    {
+      "chunkId": "lotg-2025-26-p105-01",
+      "offset": 45696
+    },
+    {
+      "chunkId": "lotg-2025-26-p105-02",
+      "offset": 46080
+    },
+    {
+      "chunkId": "lotg-2025-26-p106-01",
+      "offset": 46464
+    },
+    {
+      "chunkId": "lotg-2025-26-p106-02",
+      "offset": 46848
+    },
+    {
+      "chunkId": "lotg-2025-26-p107-01",
+      "offset": 47232
+    },
+    {
+      "chunkId": "lotg-2025-26-p107-02",
+      "offset": 47616
+    },
+    {
+      "chunkId": "lotg-2025-26-p108-01",
+      "offset": 48000
+    },
+    {
+      "chunkId": "lotg-2025-26-p108-02",
+      "offset": 48384
+    },
+    {
+      "chunkId": "lotg-2025-26-p109-01",
+      "offset": 48768
+    },
+    {
+      "chunkId": "lotg-2025-26-p109-02",
+      "offset": 49152
+    },
+    {
+      "chunkId": "lotg-2025-26-p110-01",
+      "offset": 49536
+    },
+    {
+      "chunkId": "lotg-2025-26-p112-01",
+      "offset": 49920
+    },
+    {
+      "chunkId": "lotg-2025-26-p113-01",
+      "offset": 50304
+    },
+    {
+      "chunkId": "lotg-2025-26-p113-02",
+      "offset": 50688
+    },
+    {
+      "chunkId": "lotg-2025-26-p114-01",
+      "offset": 51072
+    },
+    {
+      "chunkId": "lotg-2025-26-p114-02",
+      "offset": 51456
+    },
+    {
+      "chunkId": "lotg-2025-26-p115-01",
+      "offset": 51840
+    },
+    {
+      "chunkId": "lotg-2025-26-p115-02",
+      "offset": 52224
+    },
+    {
+      "chunkId": "lotg-2025-26-p116-01",
+      "offset": 52608
+    },
+    {
+      "chunkId": "lotg-2025-26-p116-02",
+      "offset": 52992
+    },
+    {
+      "chunkId": "lotg-2025-26-p117-01",
+      "offset": 53376
+    },
+    {
+      "chunkId": "lotg-2025-26-p117-02",
+      "offset": 53760
+    },
+    {
+      "chunkId": "lotg-2025-26-p117-03",
+      "offset": 54144
+    },
+    {
+      "chunkId": "lotg-2025-26-p119-01",
+      "offset": 54528
+    },
+    {
+      "chunkId": "lotg-2025-26-p119-02",
+      "offset": 54912
+    },
+    {
+      "chunkId": "lotg-2025-26-p120-01",
+      "offset": 55296
+    },
+    {
+      "chunkId": "lotg-2025-26-p120-02",
+      "offset": 55680
+    },
+    {
+      "chunkId": "lotg-2025-26-p121-01",
+      "offset": 56064
+    },
+    {
+      "chunkId": "lotg-2025-26-p121-02",
+      "offset": 56448
+    },
+    {
+      "chunkId": "lotg-2025-26-p122-01",
+      "offset": 56832
+    },
+    {
+      "chunkId": "lotg-2025-26-p122-02",
+      "offset": 57216
+    },
+    {
+      "chunkId": "lotg-2025-26-p123-01",
+      "offset": 57600
+    },
+    {
+      "chunkId": "lotg-2025-26-p123-02",
+      "offset": 57984
+    },
+    {
+      "chunkId": "lotg-2025-26-p124-01",
+      "offset": 58368
+    },
+    {
+      "chunkId": "lotg-2025-26-p125-01",
+      "offset": 58752
+    },
+    {
+      "chunkId": "lotg-2025-26-p125-02",
+      "offset": 59136
+    },
+    {
+      "chunkId": "lotg-2025-26-p126-01",
+      "offset": 59520
+    },
+    {
+      "chunkId": "lotg-2025-26-p126-02",
+      "offset": 59904
+    },
+    {
+      "chunkId": "lotg-2025-26-p127-01",
+      "offset": 60288
+    },
+    {
+      "chunkId": "lotg-2025-26-p128-01",
+      "offset": 60672
+    },
+    {
+      "chunkId": "lotg-2025-26-p128-02",
+      "offset": 61056
+    },
+    {
+      "chunkId": "lotg-2025-26-p130-01",
+      "offset": 61440
+    },
+    {
+      "chunkId": "lotg-2025-26-p130-02",
+      "offset": 61824
+    },
+    {
+      "chunkId": "lotg-2025-26-p131-01",
+      "offset": 62208
+    },
+    {
+      "chunkId": "lotg-2025-26-p131-02",
+      "offset": 62592
+    },
+    {
+      "chunkId": "lotg-2025-26-p132-01",
+      "offset": 62976
+    },
+    {
+      "chunkId": "lotg-2025-26-p132-02",
+      "offset": 63360
+    },
+    {
+      "chunkId": "lotg-2025-26-p133-01",
+      "offset": 63744
+    },
+    {
+      "chunkId": "lotg-2025-26-p134-01",
+      "offset": 64128
+    },
+    {
+      "chunkId": "lotg-2025-26-p134-02",
+      "offset": 64512
+    },
+    {
+      "chunkId": "lotg-2025-26-p136-01",
+      "offset": 64896
+    },
+    {
+      "chunkId": "lotg-2025-26-p136-02",
+      "offset": 65280
+    },
+    {
+      "chunkId": "lotg-2025-26-p137-01",
+      "offset": 65664
+    },
+    {
+      "chunkId": "lotg-2025-26-p137-02",
+      "offset": 66048
+    },
+    {
+      "chunkId": "lotg-2025-26-p139-01",
+      "offset": 66432
+    },
+    {
+      "chunkId": "lotg-2025-26-p139-02",
+      "offset": 66816
+    },
+    {
+      "chunkId": "lotg-2025-26-p140-01",
+      "offset": 67200
+    },
+    {
+      "chunkId": "lotg-2025-26-p142-01",
+      "offset": 67584
+    },
+    {
+      "chunkId": "lotg-2025-26-p142-02",
+      "offset": 67968
+    },
+    {
+      "chunkId": "lotg-2025-26-p143-01",
+      "offset": 68352
+    },
+    {
+      "chunkId": "lotg-2025-26-p145-01",
+      "offset": 68736
+    },
+    {
+      "chunkId": "lotg-2025-26-p145-02",
+      "offset": 69120
+    },
+    {
+      "chunkId": "lotg-2025-26-p146-01",
+      "offset": 69504
+    },
+    {
+      "chunkId": "lotg-2025-26-p146-02",
+      "offset": 69888
+    },
+    {
+      "chunkId": "lotg-2025-26-p147-01",
+      "offset": 70272
+    },
+    {
+      "chunkId": "lotg-2025-26-p147-02",
+      "offset": 70656
+    },
+    {
+      "chunkId": "lotg-2025-26-p148-01",
+      "offset": 71040
+    },
+    {
+      "chunkId": "lotg-2025-26-p148-02",
+      "offset": 71424
+    },
+    {
+      "chunkId": "lotg-2025-26-p149-01",
+      "offset": 71808
+    },
+    {
+      "chunkId": "lotg-2025-26-p149-02",
+      "offset": 72192
+    },
+    {
+      "chunkId": "lotg-2025-26-p150-01",
+      "offset": 72576
+    },
+    {
+      "chunkId": "lotg-2025-26-p150-02",
+      "offset": 72960
+    },
+    {
+      "chunkId": "lotg-2025-26-p151-01",
+      "offset": 73344
+    },
+    {
+      "chunkId": "lotg-2025-26-p153-01",
+      "offset": 73728
+    },
+    {
+      "chunkId": "lotg-2025-26-p154-01",
+      "offset": 74112
+    },
+    {
+      "chunkId": "lotg-2025-26-p155-01",
+      "offset": 74496
+    },
+    {
+      "chunkId": "lotg-2025-26-p156-01",
+      "offset": 74880
+    },
+    {
+      "chunkId": "lotg-2025-26-p157-01",
+      "offset": 75264
+    },
+    {
+      "chunkId": "lotg-2025-26-p158-01",
+      "offset": 75648
+    },
+    {
+      "chunkId": "lotg-2025-26-p159-01",
+      "offset": 76032
+    },
+    {
+      "chunkId": "lotg-2025-26-p160-01",
+      "offset": 76416
+    },
+    {
+      "chunkId": "lotg-2025-26-p161-01",
+      "offset": 76800
+    },
+    {
+      "chunkId": "lotg-2025-26-p162-01",
+      "offset": 77184
+    },
+    {
+      "chunkId": "lotg-2025-26-p163-01",
+      "offset": 77568
+    },
+    {
+      "chunkId": "lotg-2025-26-p164-01",
+      "offset": 77952
+    },
+    {
+      "chunkId": "lotg-2025-26-p165-01",
+      "offset": 78336
+    },
+    {
+      "chunkId": "lotg-2025-26-p166-01",
+      "offset": 78720
+    },
+    {
+      "chunkId": "lotg-2025-26-p167-01",
+      "offset": 79104
+    },
+    {
+      "chunkId": "lotg-2025-26-p167-02",
+      "offset": 79488
+    },
+    {
+      "chunkId": "lotg-2025-26-p168-01",
+      "offset": 79872
+    },
+    {
+      "chunkId": "lotg-2025-26-p168-02",
+      "offset": 80256
+    },
+    {
+      "chunkId": "lotg-2025-26-p169-01",
+      "offset": 80640
+    },
+    {
+      "chunkId": "lotg-2025-26-p170-01",
+      "offset": 81024
+    },
+    {
+      "chunkId": "lotg-2025-26-p171-01",
+      "offset": 81408
+    },
+    {
+      "chunkId": "lotg-2025-26-p172-01",
+      "offset": 81792
+    },
+    {
+      "chunkId": "lotg-2025-26-p173-01",
+      "offset": 82176
+    },
+    {
+      "chunkId": "lotg-2025-26-p174-01",
+      "offset": 82560
+    },
+    {
+      "chunkId": "lotg-2025-26-p175-01",
+      "offset": 82944
+    },
+    {
+      "chunkId": "lotg-2025-26-p176-01",
+      "offset": 83328
+    },
+    {
+      "chunkId": "lotg-2025-26-p177-01",
+      "offset": 83712
+    },
+    {
+      "chunkId": "lotg-2025-26-p178-01",
+      "offset": 84096
+    },
+    {
+      "chunkId": "lotg-2025-26-p179-01",
+      "offset": 84480
+    },
+    {
+      "chunkId": "lotg-2025-26-p180-01",
+      "offset": 84864
+    },
+    {
+      "chunkId": "lotg-2025-26-p180-02",
+      "offset": 85248
+    },
+    {
+      "chunkId": "lotg-2025-26-p181-01",
+      "offset": 85632
+    },
+    {
+      "chunkId": "lotg-2025-26-p181-02",
+      "offset": 86016
+    },
+    {
+      "chunkId": "lotg-2025-26-p182-01",
+      "offset": 86400
+    },
+    {
+      "chunkId": "lotg-2025-26-p183-01",
+      "offset": 86784
+    },
+    {
+      "chunkId": "lotg-2025-26-p184-01",
+      "offset": 87168
+    },
+    {
+      "chunkId": "lotg-2025-26-p185-01",
+      "offset": 87552
+    },
+    {
+      "chunkId": "lotg-2025-26-p186-01",
+      "offset": 87936
+    },
+    {
+      "chunkId": "lotg-2025-26-p186-02",
+      "offset": 88320
+    },
+    {
+      "chunkId": "lotg-2025-26-p187-01",
+      "offset": 88704
+    },
+    {
+      "chunkId": "lotg-2025-26-p187-02",
+      "offset": 89088
+    },
+    {
+      "chunkId": "lotg-2025-26-p188-01",
+      "offset": 89472
+    },
+    {
+      "chunkId": "lotg-2025-26-p188-02",
+      "offset": 89856
+    },
+    {
+      "chunkId": "lotg-2025-26-p189-01",
+      "offset": 90240
+    },
+    {
+      "chunkId": "lotg-2025-26-p189-02",
+      "offset": 90624
+    },
+    {
+      "chunkId": "lotg-2025-26-p190-01",
+      "offset": 91008
+    },
+    {
+      "chunkId": "lotg-2025-26-p190-02",
+      "offset": 91392
+    },
+    {
+      "chunkId": "lotg-2025-26-p191-01",
+      "offset": 91776
+    },
+    {
+      "chunkId": "lotg-2025-26-p191-02",
+      "offset": 92160
+    },
+    {
+      "chunkId": "lotg-2025-26-p192-01",
+      "offset": 92544
+    },
+    {
+      "chunkId": "lotg-2025-26-p192-02",
+      "offset": 92928
+    },
+    {
+      "chunkId": "lotg-2025-26-p193-01",
+      "offset": 93312
+    },
+    {
+      "chunkId": "lotg-2025-26-p193-02",
+      "offset": 93696
+    },
+    {
+      "chunkId": "lotg-2025-26-p194-01",
+      "offset": 94080
+    },
+    {
+      "chunkId": "lotg-2025-26-p194-02",
+      "offset": 94464
+    },
+    {
+      "chunkId": "lotg-2025-26-p195-01",
+      "offset": 94848
+    },
+    {
+      "chunkId": "lotg-2025-26-p195-02",
+      "offset": 95232
+    },
+    {
+      "chunkId": "lotg-2025-26-p196-01",
+      "offset": 95616
+    },
+    {
+      "chunkId": "lotg-2025-26-p196-02",
+      "offset": 96000
+    },
+    {
+      "chunkId": "lotg-2025-26-p197-01",
+      "offset": 96384
+    },
+    {
+      "chunkId": "lotg-2025-26-p197-02",
+      "offset": 96768
+    },
+    {
+      "chunkId": "lotg-2025-26-p198-01",
+      "offset": 97152
+    },
+    {
+      "chunkId": "lotg-2025-26-p198-02",
+      "offset": 97536
+    },
+    {
+      "chunkId": "lotg-2025-26-p199-01",
+      "offset": 97920
+    },
+    {
+      "chunkId": "lotg-2025-26-p199-02",
+      "offset": 98304
+    },
+    {
+      "chunkId": "lotg-2025-26-p200-01",
+      "offset": 98688
+    },
+    {
+      "chunkId": "lotg-2025-26-p200-02",
+      "offset": 99072
+    },
+    {
+      "chunkId": "lotg-2025-26-p201-01",
+      "offset": 99456
+    },
+    {
+      "chunkId": "lotg-2025-26-p201-02",
+      "offset": 99840
+    },
+    {
+      "chunkId": "lotg-2025-26-p202-01",
+      "offset": 100224
+    },
+    {
+      "chunkId": "lotg-2025-26-p202-02",
+      "offset": 100608
+    },
+    {
+      "chunkId": "lotg-2025-26-p203-01",
+      "offset": 100992
+    },
+    {
+      "chunkId": "lotg-2025-26-p203-02",
+      "offset": 101376
+    },
+    {
+      "chunkId": "lotg-2025-26-p204-01",
+      "offset": 101760
+    },
+    {
+      "chunkId": "lotg-2025-26-p204-02",
+      "offset": 102144
+    },
+    {
+      "chunkId": "lotg-2025-26-p205-01",
+      "offset": 102528
+    },
+    {
+      "chunkId": "lotg-2025-26-p205-02",
+      "offset": 102912
+    },
+    {
+      "chunkId": "lotg-2025-26-p206-01",
+      "offset": 103296
+    },
+    {
+      "chunkId": "lotg-2025-26-p206-02",
+      "offset": 103680
+    },
+    {
+      "chunkId": "lotg-2025-26-p207-01",
+      "offset": 104064
+    },
+    {
+      "chunkId": "lotg-2025-26-p207-02",
+      "offset": 104448
+    },
+    {
+      "chunkId": "lotg-2025-26-p208-01",
+      "offset": 104832
+    },
+    {
+      "chunkId": "lotg-2025-26-p208-02",
+      "offset": 105216
+    },
+    {
+      "chunkId": "lotg-2025-26-p209-01",
+      "offset": 105600
+    },
+    {
+      "chunkId": "lotg-2025-26-p210-01",
+      "offset": 105984
+    },
+    {
+      "chunkId": "lotg-2025-26-p210-02",
+      "offset": 106368
+    },
+    {
+      "chunkId": "lotg-2025-26-p211-01",
+      "offset": 106752
+    },
+    {
+      "chunkId": "lotg-2025-26-p212-01",
+      "offset": 107136
+    },
+    {
+      "chunkId": "lotg-2025-26-p212-02",
+      "offset": 107520
+    },
+    {
+      "chunkId": "lotg-2025-26-p213-01",
+      "offset": 107904
+    },
+    {
+      "chunkId": "lotg-2025-26-p214-01",
+      "offset": 108288
+    },
+    {
+      "chunkId": "lotg-2025-26-p215-01",
+      "offset": 108672
+    },
+    {
+      "chunkId": "lotg-2025-26-p216-01",
+      "offset": 109056
+    },
+    {
+      "chunkId": "lotg-2025-26-p217-01",
+      "offset": 109440
+    },
+    {
+      "chunkId": "lotg-2025-26-p218-01",
+      "offset": 109824
+    },
+    {
+      "chunkId": "lotg-2025-26-p219-01",
+      "offset": 110208
+    },
+    {
+      "chunkId": "lotg-2025-26-p219-02",
+      "offset": 110592
     }
   ]
 }

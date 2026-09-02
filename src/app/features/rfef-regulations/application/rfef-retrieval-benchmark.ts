@@ -12,9 +12,7 @@ export const RFEF_RETRIEVAL_BENCHMARK: readonly RfefRetrievalBenchmarkCase[] = [
   },
   {
     question: '¿Cuánto tiempo estamos con uno menos?',
-    expectedChunkIds: [],
-    expectedEmpty: true,
-    note: 'El corpus instalado no incluye todavía una regla oficial de reducción numérica.',
+    expectedChunkIds: ['lotg-2025-26-p057-02'],
   },
   {
     question: '¿Qué pasa con la sexta?',
