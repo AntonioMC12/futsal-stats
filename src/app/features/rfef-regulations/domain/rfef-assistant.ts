@@ -3,8 +3,16 @@ import { RfefSearchResult } from './rfef-corpus';
 export const RFEF_LOCAL_MODEL = {
   id: 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC',
   label: 'Qwen 2.5 0.5B Instruct',
+  parameters: '0,5B',
+  quantization: 'q4f16_1',
   approximateDownload: 'aprox. 500 MB',
   approximateVram: 'aprox. 945 MB de memoria gráfica',
+  prefillChunkSize: 1024,
+} as const;
+
+export const RFEF_LOCAL_MODEL_CONFIG = {
+  desktop: { contextWindowSize: 4096 },
+  mobile: { contextWindowSize: 2048 },
 } as const;
 
 export const RFEF_NO_EVIDENCE_MESSAGE =

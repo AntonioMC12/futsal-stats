@@ -33,13 +33,10 @@
     </div>
     @switch (llm.state()) {
       @case ('checking') {
-        <p role="status">Comprobando compatibilidad…</p>
+        <p role="status">{{ llm.statusText() }}</p>
       }
       @case ('unsupported') {
-        <p class="banner banner--warn">
-          No es posible ejecutar el asistente generativo en este dispositivo. El buscador RFEF sigue
-          disponible.
-        </p>
+        <p class="banner banner--warn">{{ llm.statusText() }} El buscador RFEF sigue disponible.</p>
       }
       @case ('not-installed') {
         <p>
@@ -59,7 +56,9 @@
         <p class="model-detail">{{ llm.statusText() }}</p>
       }
       @case ('loading') {
-        <p role="status"><strong>Cargando el modelo local…</strong></p>
+        <p role="status">
+          <strong>{{ llm.statusText() }}</strong>
+        </p>
         <progress [value]="llm.progress()" max="100">{{ llm.progress() }} %</progress>
       }
       @case ('generating') {
@@ -81,6 +80,75 @@
       }
     }
   </section>
+
+  @if (diagnostics.debugEnabled) {
+    @let diagnostic = diagnostics.report();
+    <details class="diagnostics-panel" open>
+      <summary>Diagnóstico de IA</summary>
+      <dl>
+        <dt>Dispositivo</dt>
+        <dd>{{ diagnostic.device }} · {{ diagnostic.operatingSystem }}</dd>
+        <dt>Navegador</dt>
+        <dd>{{ diagnostic.browser }}</dd>
+        <dt>User Agent</dt>
+        <dd class="diagnostics-value">{{ diagnostic.userAgent }}</dd>
+        <dt>WebGPU</dt>
+        <dd>{{ diagnostic.webgpu ? 'Disponible' : 'No disponible' }}</dd>
+        <dt>GPU Adapter</dt>
+        <dd>{{ diagnostic.gpuAdapter ? 'Disponible' : 'No disponible' }}</dd>
+        <dt>GPU Device</dt>
+        <dd>{{ diagnostic.gpuDevice ? 'Disponible' : 'Error / no disponible' }}</dd>
+        <dt>WebGPU compute</dt>
+        <dd>
+          {{
+            diagnostic.webgpuCompute === true
+              ? 'Correcto'
+              : diagnostic.webgpuCompute === false
+                ? 'Error'
+                : 'No probado'
+          }}
+        </dd>
+        <dt>GPU</dt>
+        <dd class="diagnostics-value">
+          {{ diagnostic.adapterInfo['vendor'] || '—' }}
+          {{ diagnostic.adapterInfo['architecture'] || '' }}
+          {{ diagnostic.adapterInfo['description'] || '' }}
+        </dd>
+        <dt>WebAssembly</dt>
+        <dd>{{ diagnostic.webAssembly ? 'Sí' : 'No' }}</dd>
+        <dt>SharedArrayBuffer</dt>
+        <dd>{{ diagnostic.sharedArrayBuffer ? 'Sí' : 'No' }}</dd>
+        <dt>crossOriginIsolated</dt>
+        <dd>{{ diagnostic.crossOriginIsolated }}</dd>
+        <dt>Estado</dt>
+        <dd>{{ diagnostic.status }}</dd>
+        <dt>WebLLM</dt>
+        <dd>{{ diagnostic.webllmStatus }}</dd>
+        <dt>Modelo</dt>
+        <dd class="diagnostics-value">{{ diagnostic.model || model.id }}</dd>
+        <dt>Contexto / prefill</dt>
+        <dd>
+          {{ diagnostic.contextWindowSize || (diagnostic.isMobile ? 2048 : 4096) }} /
+          {{ model.prefillChunkSize }}
+        </dd>
+        <dt>Progreso</dt>
+        <dd class="diagnostics-value">{{ diagnostic.progressText }}</dd>
+        <dt>Error</dt>
+        <dd class="diagnostics-value">{{ diagnostic.error?.message || '—' }}</dd>
+      </dl>
+      <div class="diagnostics-actions">
+        <button class="btn btn--secondary" type="button" (click)="copyDiagnostics()">
+          {{ diagnosticsCopied() ? '✓ Copiado' : 'Copiar diagnóstico' }}
+        </button>
+        <button class="btn btn--secondary" type="button" (click)="resetLocalAi()">
+          Borrar caché del modelo
+        </button>
+      </div>
+      <small
+        >Borra solamente los archivos descargados por WebLLM, no tus datos de Futsal Stats.</small
+      >
+    </details>
+  }
 
   <p class="search-capability" role="status">
     @switch (embeddings.state()) {

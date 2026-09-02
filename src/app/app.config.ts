@@ -11,11 +11,13 @@ import { provideServiceWorker } from '@angular/service-worker';
 import { provideHttpClient } from '@angular/common/http';
 import { routes } from './app.routes';
 import { BuiltInDataInitializer } from './core/initialization/built-in-data.initializer';
+import { WebGpuDiagnosticsService } from './core/diagnostics/web-gpu-diagnostics.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideZonelessChangeDetection(),
+    provideAppInitializer(() => inject(WebGpuDiagnosticsService).initialize()),
     provideAppInitializer(() => inject(BuiltInDataInitializer).ensureBuiltInTeams()),
     provideHttpClient(),
     provideRouter(routes, withComponentInputBinding()),

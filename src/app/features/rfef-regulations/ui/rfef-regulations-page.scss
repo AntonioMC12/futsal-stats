@@ -202,12 +202,42 @@
 }
 .assistant-card,
 .answer-card,
-.match-context-option {
+.match-context-option,
+.diagnostics-panel {
   padding: var(--ds-space-4);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-lg);
   background: var(--ds-surface);
   box-shadow: var(--ds-shadow-sm);
+}
+.diagnostics-panel summary {
+  cursor: pointer;
+  font-weight: 900;
+}
+.diagnostics-panel dl {
+  display: grid;
+  grid-template-columns: minmax(8rem, auto) minmax(0, 1fr);
+  gap: var(--ds-space-2) var(--ds-space-3);
+  font-size: var(--ds-font-xs);
+}
+.diagnostics-panel dt {
+  color: var(--ds-text-muted);
+  font-weight: 800;
+}
+.diagnostics-panel dd {
+  margin: 0;
+}
+.diagnostics-value {
+  overflow-wrap: anywhere;
+}
+.diagnostics-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-2);
+  margin-bottom: var(--ds-space-2);
+}
+.diagnostics-panel small {
+  color: var(--ds-text-muted);
 }
 .assistant-card,
 .answer-card {

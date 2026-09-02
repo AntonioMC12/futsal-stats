@@ -1,6 +1,7 @@
 import { Location } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { WebGpuDiagnosticsService } from '../../../core/diagnostics/web-gpu-diagnostics.service';
 import { RfefAssistantService } from '../application/rfef-assistant.service';
 import { RfefCorpusService } from '../application/rfef-corpus.service';
 import { RfefEmbeddingService } from '../application/rfef-embedding.service';
@@ -31,6 +32,7 @@ export class RfefRegulationsPage {
   ] as const;
   protected readonly embeddings = inject(RfefEmbeddingService);
   protected readonly llm = inject(RfefLocalLlmService);
+  protected readonly diagnostics = inject(WebGpuDiagnosticsService);
   protected readonly model = RFEF_LOCAL_MODEL;
   protected readonly query = signal('');
   protected readonly manifest = signal<RfefCorpusManifest | null>(null);
@@ -41,6 +43,7 @@ export class RfefRegulationsPage {
   protected readonly searching = signal(false);
   protected readonly searched = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly diagnosticsCopied = signal(false);
 
   constructor() {
     void this.loadPage();
@@ -67,6 +70,19 @@ export class RfefRegulationsPage {
     })();
   }
   protected removeAssistant(): void {
+    void this.llm.remove();
+  }
+  protected copyDiagnostics(): void {
+    void navigator.clipboard
+      .writeText(this.diagnostics.exportReport())
+      .then(() => {
+        this.diagnosticsCopied.set(true);
+        window.setTimeout(() => this.diagnosticsCopied.set(false), 2000);
+      })
+      .catch((error: unknown) => console.error('[WebGPU Diagnostics]', 'Copy failed', error));
+  }
+  protected resetLocalAi(): void {
+    if (!window.confirm('Se borrará solo el modelo de IA descargado. ¿Continuar?')) return;
     void this.llm.remove();
   }
   protected goBack(): void {
