@@ -920,12 +920,7 @@
               }
               @case ('more') {
                 <div class="more-actions">
-                  <a
-                    class="btn btn--secondary"
-                    routerLink="/reglamento-rfef"
-                    [queryParams]="{ matchId: match.id }"
-                    >Reglamento RFEF</a
-                  ><button
+                  <button
                     class="btn btn--secondary export-csv"
                     type="button"
                     [disabled]="csvExporter.isExporting()"
