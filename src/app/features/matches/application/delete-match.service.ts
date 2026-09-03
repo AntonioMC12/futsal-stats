@@ -1,14 +1,11 @@
 import { inject, Injectable } from '@angular/core';
-import { FutsalStatsDb } from '../../../core/persistence/futsal-stats.db';
+import { MATCH_REPOSITORY } from '../../../core/persistence/persistence.tokens';
 
 @Injectable({ providedIn: 'root' })
 export class DeleteMatchService {
-  private readonly db = inject(FutsalStatsDb);
+  private readonly matches = inject(MATCH_REPOSITORY);
 
   async execute(matchId: string): Promise<void> {
-    await this.db.transaction('rw', this.db.matches, this.db.events, async () => {
-      await this.db.events.where('matchId').equals(matchId).delete();
-      await this.db.matches.delete(matchId);
-    });
+    await this.matches.delete(matchId);
   }
 }

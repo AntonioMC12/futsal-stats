@@ -1,6 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { PlayerRepository } from '../../../core/persistence/player.repository';
-import { TeamRepository } from '../../../core/persistence/team.repository';
+import { PLAYER_REPOSITORY, TEAM_REPOSITORY } from '../../../core/persistence/persistence.tokens';
 import { createId } from '../../../core/utils/id';
 import { DomainResult, fail, ok } from '../../../core/utils/result';
 import { Player } from '../../../shared/models/player';
@@ -22,8 +21,8 @@ export interface TeamSummary {
 
 @Injectable({ providedIn: 'root' })
 export class TeamsService {
-  private readonly teams = inject(TeamRepository);
-  private readonly players = inject(PlayerRepository);
+  private readonly teams = inject(TEAM_REPOSITORY);
+  private readonly players = inject(PLAYER_REPOSITORY);
 
   async listSummaries(): Promise<TeamSummary[]> {
     const teams = await this.teams.list();

@@ -4,9 +4,11 @@ import {
   formatGameClock,
   projectRemaining,
 } from '../../../core/clock/match-clock';
-import { MatchEventRepository } from '../../../core/persistence/match-event.repository';
-import { MatchRepository } from '../../../core/persistence/match.repository';
-import { PlayerRepository } from '../../../core/persistence/player.repository';
+import {
+  MATCH_EVENT_REPOSITORY,
+  MATCH_REPOSITORY,
+  PLAYER_REPOSITORY,
+} from '../../../core/persistence/persistence.tokens';
 import { createId } from '../../../core/utils/id';
 import { DomainResult } from '../../../core/utils/result';
 import { Match } from '../../../shared/models/match';
@@ -46,9 +48,9 @@ import {
 
 @Injectable()
 export class LiveMatchStore {
-  private readonly matches = inject(MatchRepository);
-  private readonly eventStore = inject(MatchEventRepository);
-  private readonly playerRepository = inject(PlayerRepository);
+  private readonly matches = inject(MATCH_REPOSITORY);
+  private readonly eventStore = inject(MATCH_EVENT_REPOSITORY);
+  private readonly playerRepository = inject(PLAYER_REPOSITORY);
   private readonly deleteMatchService = inject(DeleteMatchService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly now = signal(Date.now());

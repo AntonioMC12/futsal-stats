@@ -1,9 +1,10 @@
 import { inject, Injectable } from '@angular/core';
-import { ACTIVE_MATCH_STATUSES, isMatchActive, Match } from '../../shared/models/match';
+import { ACTIVE_MATCH_STATUSES, isMatchActive, Match } from '../../../shared/models/match';
+import { MatchRepository } from '../ports/match.repository';
 import { FutsalStatsDb } from './futsal-stats.db';
 
-@Injectable({ providedIn: 'root' })
-export class MatchRepository {
+@Injectable()
+export class DexieMatchRepository implements MatchRepository {
   private readonly db = inject(FutsalStatsDb);
 
   async findActive(): Promise<Match | null> {
@@ -29,11 +30,16 @@ export class MatchRepository {
         .where('status')
         .anyOf([...ACTIVE_MATCH_STATUSES])
         .first();
-      if (active) {
-        return false;
-      }
+      if (active) return false;
       await this.db.matches.add(match);
       return true;
+    });
+  }
+
+  async delete(matchId: string): Promise<void> {
+    await this.db.transaction('rw', this.db.matches, this.db.events, async () => {
+      await this.db.events.where('matchId').equals(matchId).delete();
+      await this.db.matches.delete(matchId);
     });
   }
 }

@@ -29,6 +29,30 @@ Los componentes Angular no contienen reglas de fútbol sala. Llaman a `LiveMatch
 
 La lógica de partido debe poder testearse con Vitest **sin** `TestBed`.
 
+## Límite de persistencia
+
+Las features consumen contratos TypeScript puros desde `core/persistence/ports` mediante los
+tokens `TEAM_REPOSITORY`, `PLAYER_REPOSITORY`, `MATCH_REPOSITORY` y
+`MATCH_EVENT_REPOSITORY`. Ningún consumidor de UI, aplicación o dominio conoce Dexie ni
+`FutsalStatsDb`.
+
+`provideLocalPersistence()` selecciona actualmente los adapters `Dexie*Repository`. Solo esos
+adapters y el inicializador local integrado acceden a `FutsalStatsDb`; una estrategia cloud o
+híbrida podrá sustituir los providers sin cambiar las features.
+
+```text
+UI → Application/Stores → Repository ports → Angular DI → Dexie adapters → IndexedDB
+```
+
+Las fronteras transaccionales pertenecen a los contratos orientados al agregado:
+
+- `MatchEventRepository.commit(match, events)` escribe eventos nuevos y snapshot juntos.
+- `MatchRepository.addIfNoActive(match)` comprueba y crea dentro de una transacción.
+- `MatchRepository.delete(matchId)` elimina partido y eventos juntos, sin tocar equipos ni jugadores.
+
+Regla arquitectónica: `features/*/{ui,application,domain}` no debe importar `dexie`,
+`local/futsal-stats.db` ni adapters `Dexie*Repository`.
+
 ## Modelo persistido vs agregado
 
 - Tabla `matches`: metadatos + `status` + snapshot del reloj + convocatoria + quinteto inicial.

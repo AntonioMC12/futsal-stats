@@ -1,7 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { createMatchClock } from '../../../core/clock/match-clock';
-import { MatchEventRepository } from '../../../core/persistence/match-event.repository';
-import { MatchRepository } from '../../../core/persistence/match.repository';
+import {
+  MATCH_EVENT_REPOSITORY as MatchEventRepository,
+  MATCH_REPOSITORY as MatchRepository,
+} from '../../../core/persistence/persistence.tokens';
 import { Match } from '../../../shared/models/match';
 import { MatchEvent } from '../../../shared/models/match-event';
 import { DeleteMatchService } from './delete-match.service';

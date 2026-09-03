@@ -1,7 +1,9 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { MatchEventRepository } from '../../../core/persistence/match-event.repository';
-import { MatchRepository } from '../../../core/persistence/match.repository';
-import { PlayerRepository } from '../../../core/persistence/player.repository';
+import {
+  MATCH_EVENT_REPOSITORY,
+  MATCH_REPOSITORY,
+  PLAYER_REPOSITORY,
+} from '../../../core/persistence/persistence.tokens';
 import { DomainResult, fail, ok } from '../../../core/utils/result';
 import { createMatchCsvFilename, serializeMatchCsv } from '../domain/match-csv';
 import { buildMatchStatisticsExport } from '../domain/match-export';
@@ -10,9 +12,9 @@ import { SystemNotificationService } from '../../../core/notifications/system-no
 
 @Injectable({ providedIn: 'root' })
 export class MatchCsvExportService {
-  private readonly matches = inject(MatchRepository);
-  private readonly events = inject(MatchEventRepository);
-  private readonly players = inject(PlayerRepository);
+  private readonly matches = inject(MATCH_REPOSITORY);
+  private readonly events = inject(MATCH_EVENT_REPOSITORY);
+  private readonly players = inject(PLAYER_REPOSITORY);
   private readonly downloader = inject(CsvFileDownloader);
   private readonly notifications = inject(SystemNotificationService);
   readonly exportingId = signal<string | null>(null);

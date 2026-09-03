@@ -1,7 +1,9 @@
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { formatGameClock, projectRemaining } from '../../../core/clock/match-clock';
-import { MatchEventRepository } from '../../../core/persistence/match-event.repository';
-import { MatchRepository } from '../../../core/persistence/match.repository';
+import {
+  MATCH_EVENT_REPOSITORY,
+  MATCH_REPOSITORY,
+} from '../../../core/persistence/persistence.tokens';
 import { isMatchActive, isMatchFinished, Match } from '../../../shared/models/match';
 import { ScoreSnapshot } from '../../../shared/models/match-event';
 import { deriveMatchState } from '../../live-match/domain/derived-match-state';
@@ -14,8 +16,8 @@ export interface MatchSummary {
 
 @Injectable()
 export class MatchesStore {
-  private readonly matchesRepository = inject(MatchRepository);
-  private readonly eventsRepository = inject(MatchEventRepository);
+  private readonly matchesRepository = inject(MATCH_REPOSITORY);
+  private readonly eventsRepository = inject(MATCH_EVENT_REPOSITORY);
   private readonly deleteMatchService = inject(DeleteMatchService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly now = signal(Date.now());

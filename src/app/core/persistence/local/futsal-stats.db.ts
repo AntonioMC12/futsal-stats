@@ -1,11 +1,11 @@
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
-import { Match } from '../../shared/models/match';
-import { MatchEvent } from '../../shared/models/match-event';
-import { Player } from '../../shared/models/player';
-import { Team } from '../../shared/models/team';
+import { Match } from '../../../shared/models/match';
+import { MatchEvent } from '../../../shared/models/match-event';
+import { Player } from '../../../shared/models/player';
+import { Team } from '../../../shared/models/team';
 
-@Injectable({ providedIn: 'root' })
+@Injectable()
 export class FutsalStatsDb extends Dexie {
   teams!: Table<Team, string>;
   players!: Table<Player, string>;

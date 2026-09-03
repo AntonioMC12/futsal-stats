@@ -1,7 +1,9 @@
 import { inject, Injectable } from '@angular/core';
-import { MatchRepository } from '../../../core/persistence/match.repository';
-import { PlayerRepository } from '../../../core/persistence/player.repository';
-import { TeamRepository } from '../../../core/persistence/team.repository';
+import {
+  MATCH_REPOSITORY,
+  PLAYER_REPOSITORY,
+  TEAM_REPOSITORY,
+} from '../../../core/persistence/persistence.tokens';
 import { createId } from '../../../core/utils/id';
 import { DomainResult, fail } from '../../../core/utils/result';
 import { Match } from '../../../shared/models/match';
@@ -23,9 +25,9 @@ export interface SaveMatchSetupInput {
 
 @Injectable({ providedIn: 'root' })
 export class MatchSetupService {
-  private readonly teams = inject(TeamRepository);
-  private readonly players = inject(PlayerRepository);
-  private readonly matches = inject(MatchRepository);
+  private readonly teams = inject(TEAM_REPOSITORY);
+  private readonly players = inject(PLAYER_REPOSITORY);
+  private readonly matches = inject(MATCH_REPOSITORY);
 
   async listTeams(): Promise<MatchSetupTeam[]> {
     const teams = await this.teams.list();

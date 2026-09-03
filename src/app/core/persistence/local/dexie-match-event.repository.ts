@@ -1,10 +1,11 @@
 import { inject, Injectable } from '@angular/core';
-import { Match } from '../../shared/models/match';
-import { MatchEvent } from '../../shared/models/match-event';
+import { Match } from '../../../shared/models/match';
+import { MatchEvent } from '../../../shared/models/match-event';
+import { MatchEventRepository } from '../ports/match-event.repository';
 import { FutsalStatsDb } from './futsal-stats.db';
 
-@Injectable({ providedIn: 'root' })
-export class MatchEventRepository {
+@Injectable()
+export class DexieMatchEventRepository implements MatchEventRepository {
   private readonly db = inject(FutsalStatsDb);
 
   async listByMatch(matchId: string): Promise<MatchEvent[]> {
@@ -14,9 +15,7 @@ export class MatchEventRepository {
 
   async commit(match: Match, events: readonly MatchEvent[]): Promise<void> {
     await this.db.transaction('rw', this.db.matches, this.db.events, async () => {
-      if (events.length > 0) {
-        await this.db.events.bulkAdd([...events]);
-      }
+      if (events.length > 0) await this.db.events.bulkAdd([...events]);
       await this.db.matches.put(match);
     });
   }

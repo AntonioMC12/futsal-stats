@@ -522,15 +522,15 @@ npm run ng -- <comando>
 
 # Rutas principales
 
-| Ruta | Descripción |
-| --- | --- |
-| `/matches` | Gestor de partidos activos y finalizados |
-| `/matches/new` | Preparación de convocatoria y quinteto inicial |
-| `/live/:matchId` | Registro del partido en directo |
-| `/teams` | Listado de equipos |
-| `/teams/new` | Creación de un equipo |
-| `/teams/:teamId` | Plantilla de un equipo |
-| `/teams/:teamId/edit` | Edición de un equipo |
+| Ruta                  | Descripción                                    |
+| --------------------- | ---------------------------------------------- |
+| `/matches`            | Gestor de partidos activos y finalizados       |
+| `/matches/new`        | Preparación de convocatoria y quinteto inicial |
+| `/live/:matchId`      | Registro del partido en directo                |
+| `/teams`              | Listado de equipos                             |
+| `/teams/new`          | Creación de un equipo                          |
+| `/teams/:teamId`      | Plantilla de un equipo                         |
+| `/teams/:teamId/edit` | Edición de un equipo                           |
 
 El acceso directo a `/matches/new` se protege cuando ya existe un partido activo.
 
@@ -562,12 +562,21 @@ src/app/
 
 ## Persistencia
 
+Las features no dependen directamente de Dexie. Consumen repository ports mediante tokens de
+inyección; `provideLocalPersistence()` conecta esos contratos con los adapters Dexie locales. Esto
+permite sustituir la estrategia de persistencia en el bootstrap sin modificar stores, servicios ni
+reglas de dominio.
+
 La base de datos local contiene cuatro tablas:
 
 - `teams`
 - `players`
 - `matches`
 - `events`
+
+El seed integrado de Apaga es infraestructura local, transaccional e idempotente. Sus IDs
+deterministas (`built-in-team-apaga` y `built-in-player-apaga-*`) son una excepción deliberada para
+garantizar esa idempotencia; el resto de altas continúa usando `createId()`/`crypto.randomUUID()`.
 
 El reloj persistido forma parte del registro `Match`. Marcador, faltas, quintetos, minutos y estadísticas se calculan a partir de los eventos; no se guardan copias derivadas innecesarias.
 

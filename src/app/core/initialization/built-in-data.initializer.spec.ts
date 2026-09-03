@@ -1,10 +1,14 @@
 import 'fake-indexeddb/auto';
 import { TestBed } from '@angular/core/testing';
 import Dexie from 'dexie';
-import { MatchRepository } from '../persistence/match.repository';
-import { PlayerRepository } from '../persistence/player.repository';
-import { TeamRepository } from '../persistence/team.repository';
-import { FutsalStatsDb } from '../persistence/futsal-stats.db';
+import { DexiePlayerRepository } from '../persistence/local/dexie-player.repository';
+import { DexieTeamRepository } from '../persistence/local/dexie-team.repository';
+import { FutsalStatsDb } from '../persistence/local/futsal-stats.db';
+import {
+  MATCH_REPOSITORY,
+  PLAYER_REPOSITORY,
+  TEAM_REPOSITORY,
+} from '../persistence/persistence.tokens';
 import { MatchSetupService } from '../../features/match-setup/application/match-setup.service';
 import { BuiltInDataInitializer } from './built-in-data.initializer';
 import { APAGA_ROSTER, APAGA_SEED_KEY, APAGA_TEAM_ID } from './built-in-teams';
@@ -141,10 +145,12 @@ describe('BuiltInDataInitializer', () => {
       providers: [
         FutsalStatsDb,
         BuiltInDataInitializer,
-        TeamRepository,
-        PlayerRepository,
+        DexieTeamRepository,
+        DexiePlayerRepository,
+        { provide: TEAM_REPOSITORY, useExisting: DexieTeamRepository },
+        { provide: PLAYER_REPOSITORY, useExisting: DexiePlayerRepository },
         MatchSetupService,
-        { provide: MatchRepository, useValue: {} },
+        { provide: MATCH_REPOSITORY, useValue: {} },
       ],
     });
     db = TestBed.inject(FutsalStatsDb);

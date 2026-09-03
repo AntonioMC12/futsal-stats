@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { FutsalStatsDb } from '../persistence/futsal-stats.db';
+import { FutsalStatsDb } from '../persistence/local/futsal-stats.db';
 import { APAGA_SEED_KEY, createApagaPlayers, createApagaTeam } from './built-in-teams';
 
 @Injectable({ providedIn: 'root' })
