@@ -1,0 +1,34 @@
+<aside class="phase-panel" aria-label="Detalle de la fase">
+  <div class="phase-panel__heading" aria-live="polite" aria-atomic="true">
+    <span>Fase {{ phase().order }}/{{ strategy().phases.length }}</span>
+    <h2>{{ phase().title }}</h2>
+    <p>{{ phase().description }}</p>
+  </div>
+
+  <div class="phase-cue">
+    <span class="phase-cue__icon" aria-hidden="true">✦</span>
+    <div>
+      <strong>Clave táctica</strong>
+      <p>{{ phase().cue }}</p>
+    </div>
+  </div>
+
+  <div class="phase-index">
+    <h3>Secuencia</h3>
+    <ol>
+      @for (item of strategy().phases; track item.id; let index = $index) {
+        <li>
+          <button
+            type="button"
+            [class.is-active]="index === phaseIndex()"
+            [attr.aria-current]="index === phaseIndex() ? 'step' : null"
+            (click)="phaseSelected.emit(index)"
+          >
+            <span>{{ item.order }}</span>
+            <strong>{{ item.title }}</strong>
+          </button>
+        </li>
+      }
+    </ol>
+  </div>
+</aside>

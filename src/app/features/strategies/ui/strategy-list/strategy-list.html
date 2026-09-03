@@ -1,0 +1,9 @@
+<div class="strategy-list" aria-label="Catálogo de estrategias">
+  @for (strategy of strategies(); track strategy.id) {
+    <app-strategy-card
+      [strategy]="strategy"
+      [active]="strategy.id === selectedStrategyId()"
+      (selected)="strategySelected.emit($event)"
+    />
+  }
+</div>

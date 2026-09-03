@@ -1,0 +1,63 @@
+<section class="controls" aria-label="Controles de reproducción">
+  <div class="controls__transport">
+    <button
+      class="control-button control-button--secondary"
+      type="button"
+      aria-label="Fase anterior"
+      [disabled]="phaseIndex() === 0"
+      (click)="previousRequested.emit()"
+    >
+      <span aria-hidden="true">←</span>
+    </button>
+    <button
+      class="control-button control-button--play"
+      type="button"
+      [attr.aria-label]="playing() ? 'Pausar reproducción' : 'Reproducir estrategia'"
+      [attr.aria-pressed]="playing()"
+      (click)="playbackToggled.emit()"
+    >
+      <span aria-hidden="true">{{ playing() ? 'Ⅱ' : '▶' }}</span>
+      <span>{{ playing() ? 'Pausar' : 'Reproducir' }}</span>
+    </button>
+    <button
+      class="control-button control-button--secondary"
+      type="button"
+      aria-label="Fase siguiente"
+      [disabled]="phaseIndex() === phases().length - 1"
+      (click)="nextRequested.emit()"
+    >
+      <span aria-hidden="true">→</span>
+    </button>
+  </div>
+
+  <div class="timeline" aria-label="Línea de tiempo">
+    <span class="timeline__track" aria-hidden="true"></span>
+    @for (phase of phases(); track phase.id; let index = $index) {
+      <button
+        class="timeline__step"
+        type="button"
+        [class.is-active]="index === phaseIndex()"
+        [class.is-complete]="index < phaseIndex()"
+        [attr.aria-label]="'Ir a la fase ' + phase.order + ': ' + phase.title"
+        [attr.aria-current]="index === phaseIndex() ? 'step' : null"
+        (click)="phaseSelected.emit(index)"
+      >
+        {{ phase.order }}
+      </button>
+    }
+  </div>
+
+  <label class="speed-control">
+    <span>Velocidad</span>
+    <select [value]="intervalMs()" (change)="changeSpeed($event)">
+      @for (speed of speeds(); track speed.intervalMs) {
+        <option
+          [value]="speed.intervalMs"
+          [selected]="speed.intervalMs === intervalMs()"
+        >
+          {{ speed.label }}
+        </option>
+      }
+    </select>
+  </label>
+</section>

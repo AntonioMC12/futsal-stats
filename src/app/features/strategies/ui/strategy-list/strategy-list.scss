@@ -1,0 +1,5 @@
+.strategy-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: var(--ds-space-3);
+}
