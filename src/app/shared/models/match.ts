@@ -14,6 +14,7 @@ export type MatchStatus = (typeof MATCH_STATUSES)[number];
 
 export interface Match {
   id: string;
+  teamId: string;
   homeTeam: TeamRef;
   awayTeam: TeamRef;
   date: number;

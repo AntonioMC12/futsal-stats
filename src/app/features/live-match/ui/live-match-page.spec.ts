@@ -27,6 +27,7 @@ const players: Player[] = Array.from({ length: 6 }, (_, index) => ({
 function activeMatch(): Match {
   return {
     id: 'match-1',
+    teamId: 'team-1',
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: 'Rival', shortName: 'RIV' },
     date: 1,

@@ -1,16 +1,19 @@
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
-import { Match } from '../../../shared/models/match';
-import { MatchEvent } from '../../../shared/models/match-event';
-import { Player } from '../../../shared/models/player';
-import { Team } from '../../../shared/models/team';
+import { migrateToCloudDataModel } from './cloud-data-model.migration';
+import {
+  LocalMatchEventRecord,
+  LocalMatchRecord,
+  LocalPlayerRecord,
+  LocalTeamRecord,
+} from './local-records';
 
 @Injectable()
 export class FutsalStatsDb extends Dexie {
-  teams!: Table<Team, string>;
-  players!: Table<Player, string>;
-  matches!: Table<Match, string>;
-  events!: Table<MatchEvent, string>;
+  teams!: Table<LocalTeamRecord, string>;
+  players!: Table<LocalPlayerRecord, string>;
+  matches!: Table<LocalMatchRecord, string>;
+  events!: Table<LocalMatchEventRecord, string>;
 
   constructor() {
     super('futsal-stats');
@@ -26,5 +29,13 @@ export class FutsalStatsDb extends Dexie {
       matches: 'id, status, date, updatedAt',
       events: 'id, matchId, sequence, type, timestamp',
     });
+    this.version(3)
+      .stores({
+        teams: 'id, name, updatedAt, &seedKey, syncStatus',
+        players: 'id, teamId, number, active, updatedAt, syncStatus',
+        matches: 'id, teamId, status, date, updatedAt, syncStatus, [teamId+updatedAt]',
+        events: 'id, matchId, sequence, type, timestamp, updatedAt, syncStatus, [matchId+sequence]',
+      })
+      .upgrade(migrateToCloudDataModel);
   }
 }

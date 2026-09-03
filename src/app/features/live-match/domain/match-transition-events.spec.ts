@@ -5,6 +5,7 @@ import { createEventsForTransition } from './match-transition-events';
 function match(): Match {
   return {
     id: 'match-1',
+    teamId: 'team-1',
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: 'Rival', shortName: 'RIV' },
     date: 1,

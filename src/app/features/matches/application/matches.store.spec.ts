@@ -12,6 +12,7 @@ import { MatchesStore } from './matches.store';
 function match(id: string, status: Match['status'], date: number): Match {
   return {
     id,
+    teamId: 'team-1',
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: `Rival ${id}`, shortName: `R${id}` },
     date,

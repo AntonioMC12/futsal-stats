@@ -575,8 +575,9 @@ La base de datos local contiene cuatro tablas:
 - `events`
 
 El seed integrado de Apaga es infraestructura local, transaccional e idempotente. Sus IDs
-deterministas (`built-in-team-apaga` y `built-in-player-apaga-*`) son una excepción deliberada para
-garantizar esa idempotencia; el resto de altas continúa usando `createId()`/`crypto.randomUUID()`.
+son UUIDs fijos para garantizar esa idempotencia; el resto de altas continúa usando
+`createId()`/`crypto.randomUUID()`. Dexie v3 migra los IDs históricos y todas sus referencias sin
+borrar la base local. Consulta [`docs/architecture/cloud-data-model.md`](docs/architecture/cloud-data-model.md).
 
 El reloj persistido forma parte del registro `Match`. Marcador, faltas, quintetos, minutos y estadísticas se calculan a partir de los eventos; no se guardan copias derivadas innecesarias.
 

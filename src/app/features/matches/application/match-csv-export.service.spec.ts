@@ -13,6 +13,7 @@ import { SystemNotificationService } from '../../../core/notifications/system-no
 function match(status: Match['status']): Match {
   return {
     id: 'match-1',
+    teamId: 'team-1',
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: 'Rival', shortName: 'RIV' },
     date: new Date(2026, 7, 28, 12).getTime(),

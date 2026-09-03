@@ -49,6 +49,7 @@ export function createMatchRecord(
 
   return ok({
     id,
+    teamId: input.homeTeam.id,
     homeTeam: {
       id: input.homeTeam.id,
       name: input.homeTeam.name,

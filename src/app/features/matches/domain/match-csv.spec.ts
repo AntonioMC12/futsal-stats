@@ -18,6 +18,7 @@ function finishedMatch(status: Match['status'] = 'finished'): Match {
   const clock = createMatchClock();
   return {
     id: 'match-1',
+    teamId: 'team-1',
     homeTeam: { id: 'team-1', name: 'Fútsal Team', shortName: 'FUT' },
     awayTeam: { name: 'Rival FC', shortName: 'RIV' },
     date: new Date(2026, 7, 28, 12).getTime(),
