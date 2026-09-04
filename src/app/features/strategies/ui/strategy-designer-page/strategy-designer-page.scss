@@ -1,0 +1,300 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+.designer {
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(10rem, 12rem) minmax(0, 1fr) minmax(13rem, 16rem);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0.65rem;
+}
+.designer-header {
+  grid-column: 1/-1;
+  min-width: 0;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.designer-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.designer-title > span {
+  flex: 0 0 auto;
+  color: var(--ds-text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+.designer-title label {
+  min-width: 8rem;
+}
+.designer-title input {
+  width: min(32vw, 28rem);
+  min-height: 2.5rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: var(--ds-radius-control);
+  background: var(--ds-surface-raised);
+  color: var(--ds-text);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.designer-title input.is-invalid {
+  border-color: var(--ds-danger);
+}
+.designer-title small {
+  color: var(--ds-danger);
+  font-size: 0.7rem;
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.save-status {
+  color: var(--ds-text-muted);
+  font-size: 0.75rem;
+}
+.save-status.has-error {
+  color: var(--ds-danger);
+}
+.icon-action {
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-button);
+  background: var(--ds-surface-raised);
+  color: var(--ds-text);
+  font-size: 1.2rem;
+}
+.inspector-toggle,
+.inspector-close {
+  display: none;
+}
+.tools-panel,
+.inspector-panel,
+.board-stage {
+  min-width: 0;
+  min-height: 0;
+}
+.tools-panel {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+.board-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.board-stage app-tactical-board {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.shortcut-help {
+  padding: 0.65rem;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.4rem;
+  color: var(--ds-text-muted);
+  font-size: 0.65rem;
+}
+.shortcut-help strong {
+  grid-column: 1/-1;
+}
+.shortcut-help kbd {
+  font-size: 0.62rem;
+}
+.designer-footer {
+  grid-column: 1/-1;
+  min-width: 0;
+}
+.designer-state {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+@media (max-width: 1279px) {
+  :host {
+    height: auto;
+  }
+  .designer {
+    height: auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+  }
+  .designer-header,
+  .designer-footer {
+    grid-column: 1;
+  }
+  .tools-panel {
+    grid-row: 2;
+    display: block;
+  }
+  .tools-panel app-tactical-toolbar {
+    display: block;
+  }
+  .shortcut-help {
+    display: none;
+  }
+  .inspector-toggle {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    padding: 0 0.7rem;
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-radius-button);
+    background: var(--ds-surface-raised);
+    color: var(--ds-text);
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 800;
+  }
+  .inspector-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: var(--ds-z-overlay);
+    border: 0;
+    background: rgb(3 9 18/55%);
+  }
+  .inspector-panel {
+    display: none;
+    position: fixed;
+    z-index: calc(var(--ds-z-overlay) + 1);
+    top: 5rem;
+    right: 1rem;
+    bottom: 1rem;
+    width: min(22rem, calc(100% - 2rem));
+  }
+  .inspector-panel.is-open {
+    display: block;
+  }
+  .inspector-close {
+    display: grid;
+    place-items: center;
+    position: absolute;
+    z-index: 1;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid var(--ds-border);
+    border-radius: 50%;
+    background: var(--ds-surface-raised);
+    color: var(--ds-text);
+    font-size: 1.3rem;
+  }
+  .board-stage {
+    grid-row: 3;
+    overflow: visible;
+  }
+  .designer-footer {
+    grid-row: 4;
+  }
+}
+@media (min-width: 1280px) and (max-width: 1500px) {
+  .designer {
+    grid-template-columns: 10rem minmax(0, 1fr) 14rem;
+  }
+}
+@media (min-width: 901px) and (max-width: 1279px) and (orientation: landscape) {
+  :host {
+    height: 100%;
+    min-height: 0;
+  }
+  .designer {
+    height: 100%;
+    min-height: 0;
+    grid-template-columns: 10rem minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  .designer-header {
+    grid-column: 1/-1;
+  }
+  .tools-panel {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 0;
+  }
+  .tools-panel app-tactical-toolbar {
+    display: block;
+    height: 100%;
+  }
+  .board-stage {
+    grid-column: 2;
+    grid-row: 2;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .board-stage app-tactical-board {
+    height: 100%;
+  }
+  .designer-footer {
+    grid-column: 1/-1;
+    grid-row: 3;
+  }
+}
+@media (max-width: 700px) {
+  .designer-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .designer-title {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .designer-title input {
+    width: 100%;
+    font-size: 1rem;
+  }
+  .header-actions {
+    justify-content: space-between;
+  }
+  .save-status {
+    flex: 1;
+  }
+  .designer {
+    gap: 0.5rem;
+  }
+}
+@media (max-width: 900px) {
+  .inspector-panel {
+    top: auto;
+    right: 0.5rem;
+    bottom: calc(0.5rem + env(safe-area-inset-bottom));
+    left: 0.5rem;
+    width: auto;
+    max-height: 70dvh;
+  }
+}

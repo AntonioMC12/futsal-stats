@@ -1,0 +1,82 @@
+.toolbar {
+  padding: 0.5rem;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface);
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+}
+.toolbar button {
+  min-height: var(--ds-touch-min);
+  padding: 0.4rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--ds-radius-button);
+  background: var(--ds-surface-raised);
+  color: var(--ds-text-secondary);
+  font: inherit;
+  font-weight: var(--ds-weight-strong);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.toolbar button.is-active {
+  border-color: var(--ds-primary);
+  background: var(--ds-primary-soft);
+  color: var(--ds-text);
+  box-shadow: inset 0 -2px var(--ds-primary);
+}
+.toolbar button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.toolbar__delete {
+  margin-left: auto;
+  color: var(--ds-danger-strong) !important;
+}
+.toolbar--vertical {
+  height: 100%;
+  padding: var(--ds-space-3);
+  flex-direction: column;
+  overflow: visible;
+}
+.toolbar--vertical::before {
+  content: 'Herramientas';
+  margin: 0.15rem 0.35rem 0.35rem;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-font-xs);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.toolbar--vertical button {
+  width: 100%;
+  text-align: left;
+}
+.toolbar--vertical .toolbar__delete {
+  margin-top: auto;
+  margin-left: 0;
+}
+@media (max-width: 520px) {
+  .toolbar button span {
+    font-size: 0.78rem;
+  }
+}
+@media (max-width: 900px) {
+  .toolbar--vertical {
+    height: auto;
+    padding: 0.5rem;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  .toolbar--vertical::before {
+    display: none;
+  }
+  .toolbar--vertical button {
+    width: auto;
+    text-align: center;
+  }
+  .toolbar--vertical .toolbar__delete {
+    margin-top: 0;
+    margin-left: auto;
+  }
+}

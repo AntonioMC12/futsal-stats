@@ -1,4 +1,8 @@
-<div class="shell" [class.shell--live-match]="liveMatchActive">
+<div
+  class="shell"
+  [class.shell--live-match]="liveMatchActive"
+  [class.shell--strategies]="strategiesActive"
+>
   <app-system-notification />
   <header class="shell__header">
     <a class="shell__brand" routerLink="/matches" aria-label="Futsal Stats, partidos">

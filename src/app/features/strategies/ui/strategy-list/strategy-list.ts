@@ -12,4 +12,6 @@ export class StrategyList {
   readonly strategies = input.required<readonly Strategy[]>();
   readonly selectedStrategyId = input<string | null>(null);
   readonly strategySelected = output<string>();
+  readonly strategyPlayed = output<string>();
+  readonly strategyEdited = output<string>();
 }

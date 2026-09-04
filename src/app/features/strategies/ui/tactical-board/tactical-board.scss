@@ -2,175 +2,233 @@
   display: block;
   min-width: 0;
 }
-
+@media (min-width: 1280px) {
+  :host,
+  .board-frame {
+    height: 100%;
+    min-height: 0;
+  }
+  .board-frame {
+    display: flex;
+    flex-direction: column;
+  }
+  .board {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    aspect-ratio: auto;
+  }
+}
+@media (min-width: 901px) and (max-width: 1279px) and (orientation: landscape) {
+  :host,
+  .board-frame {
+    height: 100%;
+    min-height: 0;
+  }
+  .board-frame {
+    display: flex;
+    flex-direction: column;
+  }
+  .board {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    aspect-ratio: auto;
+  }
+}
 .board-frame {
-  padding: clamp(0.5rem, 1.5vw, 1rem);
+  padding: clamp(0.35rem, 1.5vw, 1rem);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-panel);
   background: #07150f;
   box-shadow: var(--ds-shadow-md);
   overflow: hidden;
 }
-
 .board {
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 5 / 3;
+  aspect-ratio: 5/3;
+  user-select: none;
 }
-
+.board--drawing {
+  touch-action: none;
+  cursor: crosshair;
+}
 .pitch {
   fill: url('#pitch-gradient');
-  stroke: rgb(255 255 255 / 16%);
+  stroke: rgb(255 255 255/16%);
   stroke-width: 2;
 }
-
 .pitch-lines {
   fill: none;
-  stroke: rgb(255 255 255 / 76%);
+  stroke: rgb(255 255 255/76%);
   stroke-width: 3;
+  pointer-events: none;
 }
-
 .pitch-lines .pitch-dot {
-  fill: rgb(255 255 255 / 82%);
+  fill: #fff;
   stroke: none;
 }
-
 .pitch-lines .goal {
-  stroke: rgb(255 255 255 / 54%);
   stroke-width: 4;
 }
-
-.action {
+.arrow {
   fill: none;
   stroke-linecap: round;
   stroke-width: 7;
-  opacity: 0.96;
-  animation: action-enter 320ms var(--ds-ease-standard) both;
+  pointer-events: none;
 }
-
-.action--pass {
-  stroke: #ffb84d;
+.arrow--hit {
+  stroke: transparent;
+  stroke-width: 28;
+  pointer-events: stroke;
+  cursor: pointer;
 }
-
-.action--run {
-  stroke: #59e3f5;
+.arrow--pass {
+  stroke: #ffbe5c;
+}
+.arrow--movement {
+  stroke: #73deee;
   stroke-dasharray: 16 13;
 }
-
-.player,
-.ball {
+.arrow.is-selected {
+  filter: drop-shadow(0 0 8px #fff);
+  stroke-width: 11;
+}
+.arrow--pass + * {
+}
+#pass-arrow path {
+  fill: #ffbe5c;
+}
+#movement-arrow path {
+  fill: #73deee;
+}
+.piece {
+  filter: url('#piece-shadow');
   transform-origin: 0 0;
-  transition: transform 1.25s cubic-bezier(0.2, 0.7, 0.2, 1);
+  cursor: grab;
+  touch-action: none;
 }
-
-.player {
-  filter: url('#player-shadow');
+.piece:active {
+  cursor: grabbing;
 }
-
-.player__disc {
-  fill: #397be8;
-  stroke: #bcd6ff;
-  stroke-width: 3;
+.piece.is-locked {
+  cursor: not-allowed;
 }
-
-.player__disc--goalkeeper {
-  fill: #d6489b;
-  stroke: #ffc3e4;
+.piece.is-selected .piece__disc,
+.piece.is-selected > circle {
+  stroke: #fff;
+  stroke-width: 7;
+  filter: drop-shadow(0 0 9px #fff);
 }
-
-.player__ring {
+.board-frame--compact {
+  padding: 0;
+  border-radius: var(--ds-radius-md);
+  box-shadow: none;
+}
+.piece__disc {
+  stroke-width: 4;
+}
+.piece--home .piece__disc {
+  fill: #2874df;
+  stroke: #d7e8ff;
+}
+.piece--away .piece__disc {
+  fill: #d83d52;
+  stroke: #ffd4da;
+}
+.piece__ring {
   fill: none;
-  stroke: rgb(255 255 255 / 25%);
+  stroke: rgb(255 255 255/35%);
   stroke-width: 2;
 }
-
-.player text {
-  fill: white;
-  font-size: 24px;
+.piece text {
+  fill: #fff;
+  font-size: 22px;
   font-weight: 900;
   text-anchor: middle;
+  pointer-events: none;
 }
-
-.ball {
-  transition-duration: 850ms;
-}
-
-.ball circle {
+.piece--ball circle {
   fill: #fff;
   stroke: #142033;
-  stroke-width: 2;
+  stroke-width: 3;
 }
-
-.ball path {
+.piece--ball path {
   fill: none;
   stroke: #142033;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 1.8;
+  stroke-width: 2;
+  pointer-events: none;
 }
-
+.draft-point {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 4;
+  stroke-dasharray: 5 4;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+.arrow-handle {
+  fill: var(--ds-surface);
+  stroke: #fff;
+  stroke-width: 4;
+  transform-origin: 0 0;
+  cursor: grab;
+  touch-action: none;
+}
 .board-legend {
-  padding: var(--ds-space-2) var(--ds-space-2) 0;
+  padding: 0.5rem 0.5rem 0;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: var(--ds-space-4);
+  gap: 1rem;
   color: #b8cfc6;
   font-size: var(--ds-font-xs);
 }
-
 .board-legend span {
   display: inline-flex;
   align-items: center;
-  gap: var(--ds-space-2);
+  gap: 0.4rem;
 }
-
 .board-legend i {
   display: block;
-  width: 1.5rem;
+  width: 1.4rem;
   height: 0.2rem;
-  border-radius: var(--ds-radius-pill);
 }
-
-.legend-player {
+.legend-home,
+.legend-away {
   width: 0.7rem !important;
   height: 0.7rem !important;
-  border-radius: 50% !important;
-  background: #397be8;
+  border-radius: 50%;
 }
-
+.legend-home {
+  background: #2874df;
+}
+.legend-away {
+  background: #d83d52;
+}
 .legend-pass {
-  background: #ffb84d;
+  background: #ffbe5c;
 }
-
-.legend-run {
-  background: repeating-linear-gradient(90deg, #59e3f5 0 0.45rem, transparent 0.45rem 0.7rem);
+.legend-movement {
+  background: repeating-linear-gradient(90deg, #73deee 0 0.4rem, transparent 0.4rem 0.65rem);
 }
-
-@keyframes action-enter {
-  from {
-    opacity: 0;
-    stroke-dashoffset: 40;
-  }
-}
-
 @media (max-width: 520px) {
   .board-frame {
     margin-inline: calc(-1 * var(--ds-space-2));
     border-radius: var(--ds-radius-lg);
   }
-
   .board-legend {
     justify-content: center;
-    gap: var(--ds-space-3);
+    gap: 0.65rem;
   }
 }
-
 @media (prefers-reduced-motion: reduce) {
-  .action,
-  .player,
-  .ball {
+  .piece,
+  .arrow {
     animation: none;
     transition: none;
   }

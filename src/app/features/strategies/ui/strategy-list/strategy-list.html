@@ -2,8 +2,8 @@
   @for (strategy of strategies(); track strategy.id) {
     <app-strategy-card
       [strategy]="strategy"
-      [active]="strategy.id === selectedStrategyId()"
-      (selected)="strategySelected.emit($event)"
+      (played)="strategyPlayed.emit($event)"
+      (edited)="strategyEdited.emit($event)"
     />
   }
 </div>

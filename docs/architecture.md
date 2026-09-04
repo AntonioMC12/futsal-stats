@@ -119,6 +119,27 @@ Faltas: por periodo según reglas; acumulado de periodo se deriva. Jugador opcio
 
 Service Worker de Angular en producción. IndexedDB es la fuente local. Al abrir: si hay partido no `finished`, ofrecer **Continuar partido**.
 
+## Estrategias tácticas
+
+El panel de estrategias usa snapshots completos de cada secuencia. Las posiciones de jugadores,
+rivales y balón se guardan normalizadas en el rango `0..1`; el SVG es únicamente la proyección
+responsive de esos datos. Las operaciones de edición son funciones puras del dominio y mantienen
+estable el `pieceId` entre secuencias.
+
+```text
+UI SVG/Pointer Events → StrategyPlaybackStore → StrategyRepository → DexieStrategyRepository
+```
+
+La reproducción interpola snapshots en un estado temporal mediante `requestAnimationFrame`, sin
+modificar las secuencias persistidas. Cada estrategia requiere un `teamId`; la tabla `strategies`
+está indexada por esa frontera y se incorporó en la versión 3 de la base local.
+
+La experiencia se divide en rutas hijas bajo `/strategies`: `designer/:strategyId?` concentra la
+edición en una única pantalla y `library` ofrece búsqueda, filtros, previsualizaciones y un visor de
+solo lectura. Ambas superficies reutilizan `TacticalBoard`, `StrategyControls` y el mismo
+`StrategyPlaybackStore`; no existe un segundo motor de renderizado o reproducción para la
+biblioteca.
+
 ## Qué no haremos aún
 
 NgRx, sync en la nube, motor completo de estadísticas avanzadas, Playwright (se añade cuando haya flujo de partido estable).
