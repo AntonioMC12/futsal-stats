@@ -1,0 +1,96 @@
+:host {
+  display: block;
+}
+
+.strategy-card {
+  width: 100%;
+  min-height: 7rem;
+  padding: var(--ds-space-4);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-4);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--ds-duration-fast) var(--ds-ease-standard),
+    background-color var(--ds-duration-fast) var(--ds-ease-standard),
+    transform var(--ds-duration-fast) var(--ds-ease-standard);
+}
+
+.strategy-card.is-active {
+  border-color: var(--ds-primary);
+  background: var(--ds-primary-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ds-primary) 25%, transparent);
+}
+
+.strategy-card__mark {
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-surface-raised);
+  color: var(--ds-primary);
+  display: grid;
+  place-items: center;
+}
+
+.strategy-card__mark svg {
+  width: 1.75rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.strategy-card__content {
+  min-width: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--ds-space-1);
+}
+
+.strategy-card__topline {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+}
+
+.strategy-card__topline strong {
+  font-size: var(--ds-font-lg);
+}
+
+.strategy-card__topline > span,
+.strategy-card__category {
+  color: var(--ds-primary);
+  font-size: var(--ds-font-xs);
+  font-weight: var(--ds-weight-strong);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.strategy-card__description {
+  color: var(--ds-text-secondary);
+  font-size: var(--ds-font-sm);
+}
+
+@media (hover: hover) {
+  .strategy-card:hover {
+    border-color: var(--ds-border-strong);
+    background: var(--ds-surface-secondary);
+    transform: translateY(-1px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .strategy-card {
+    transition: none;
+  }
+}

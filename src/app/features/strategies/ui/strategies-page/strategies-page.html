@@ -1,0 +1,85 @@
+<section class="strategies-page">
+  <header class="page-head strategies-head">
+    <div>
+      <p class="eyebrow">Biblioteca táctica</p>
+      <h1>Estrategias</h1>
+      <p class="lede">Prepara movimientos, explica cada decisión y repasa la jugada en equipo.</p>
+    </div>
+    <span class="season-badge">Temporada 2026/27</span>
+  </header>
+
+  @if (store.loading()) {
+    <div class="state-card" role="status">
+      <span class="state-card__loader" aria-hidden="true"></span>
+      <p>Cargando estrategias…</p>
+    </div>
+  } @else if (store.error(); as error) {
+    <div class="state-card" role="alert">
+      <p>{{ error }}</p>
+      <button class="btn btn--secondary" type="button" (click)="retry()">Volver a intentar</button>
+    </div>
+  } @else if (store.strategies().length === 0) {
+    <div class="state-card state-card--empty">
+      <span aria-hidden="true">↗</span>
+      <h2>Aún no hay estrategias</h2>
+      <p>Cuando añadas una jugada, aparecerá aquí lista para trabajar con el equipo.</p>
+    </div>
+  } @else {
+    <section class="catalog" aria-labelledby="catalog-title">
+      <div class="section-title">
+        <div>
+          <p class="eyebrow">Catálogo</p>
+          <h2 id="catalog-title">Jugadas disponibles</h2>
+        </div>
+        <span>{{ store.strategies().length }} estrategia</span>
+      </div>
+      <app-strategy-list
+        [strategies]="store.strategies()"
+        [selectedStrategyId]="store.selectedStrategyId()"
+        (strategySelected)="store.selectStrategy($event)"
+      />
+    </section>
+
+    @if (store.selectedStrategy(); as strategy) {
+      @if (store.currentPhase(); as phase) {
+        <section class="strategy-workspace" aria-labelledby="workspace-title">
+          <header class="workspace-head">
+            <div>
+              <p class="eyebrow">{{ strategy.category }}</p>
+              <h2 id="workspace-title">{{ strategy.name }}</h2>
+            </div>
+            <p>{{ strategy.description }}</p>
+          </header>
+
+          <div class="workspace-grid">
+            <div class="board-column">
+              <app-tactical-board [strategy]="strategy" [phase]="phase" />
+              <app-strategy-controls
+                [phases]="strategy.phases"
+                [phaseIndex]="store.phaseIndex()"
+                [playing]="store.playing()"
+                [intervalMs]="store.intervalMs()"
+                [speeds]="speeds"
+                (playbackToggled)="store.togglePlayback()"
+                (previousRequested)="store.previous()"
+                (nextRequested)="store.next()"
+                (phaseSelected)="store.selectPhase($event)"
+                (speedSelected)="store.setSpeed($event)"
+              />
+              <p class="keyboard-hint">
+                <span>Teclado</span>
+                <kbd>←</kbd><kbd>→</kbd> fases <kbd>Espacio</kbd> reproducir o pausar
+              </p>
+            </div>
+            <app-strategy-phase-panel
+              [strategy]="strategy"
+              [phase]="phase"
+              [phaseIndex]="store.phaseIndex()"
+              (phaseSelected)="store.selectPhase($event)"
+            />
+          </div>
+        </section>
+      }
+    }
+  }
+</section>

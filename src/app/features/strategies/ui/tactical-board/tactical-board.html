@@ -1,0 +1,94 @@
+<div class="board-frame">
+  <svg
+    class="board"
+    viewBox="0 0 1000 600"
+    role="img"
+    [attr.aria-labelledby]="'board-title board-description'"
+  >
+    <title id="board-title">{{ strategy().name }}: {{ phase().title }}</title>
+    <desc id="board-description">
+      Pizarra de fútbol sala con las posiciones y movimientos de la fase {{ phase().order }}.
+    </desc>
+    <defs>
+      <linearGradient id="pitch-gradient" x1="0" x2="1">
+        <stop offset="0" stop-color="#0b5b43" />
+        <stop offset="0.5" stop-color="#126b4d" />
+        <stop offset="1" stop-color="#0b5b43" />
+      </linearGradient>
+      <filter id="player-shadow" x="-50%" y="-50%" width="200%" height="200%">
+        <feDropShadow dx="0" dy="5" stdDeviation="6" flood-opacity="0.34" />
+      </filter>
+      <marker
+        id="pass-arrow"
+        viewBox="0 0 12 12"
+        refX="9"
+        refY="6"
+        markerWidth="9"
+        markerHeight="9"
+        orient="auto-start-reverse"
+      >
+        <path d="M1 1l10 5-10 5z" fill="#ffb84d" />
+      </marker>
+      <marker
+        id="run-arrow"
+        viewBox="0 0 12 12"
+        refX="9"
+        refY="6"
+        markerWidth="9"
+        markerHeight="9"
+        orient="auto-start-reverse"
+      >
+        <path d="M1 1l10 5-10 5z" fill="#59e3f5" />
+      </marker>
+    </defs>
+
+    <rect class="pitch" x="18" y="18" width="964" height="564" rx="26" />
+    <g class="pitch-lines" aria-hidden="true">
+      <rect x="34" y="34" width="932" height="532" rx="17" />
+      <path d="M500 34v532" />
+      <circle cx="500" cy="300" r="70" />
+      <circle class="pitch-dot" cx="500" cy="300" r="4" />
+      <path d="M34 165h62a112 112 0 0 1 0 270H34M966 165h-62a112 112 0 0 0 0 270h62" />
+      <path d="M34 225h28v150H34M966 225h-28v150h28" />
+      <circle class="pitch-dot" cx="135" cy="300" r="4" />
+      <circle class="pitch-dot" cx="865" cy="300" r="4" />
+      <path class="goal" d="M34 245H8v110h26M966 245h26v110h-26" />
+    </g>
+
+    <g class="actions" aria-hidden="true">
+      @for (action of visibleActions(); track action.id) {
+        <path
+          class="action"
+          [class.action--pass]="action.type === 'pass'"
+          [class.action--run]="action.type === 'run'"
+          [attr.d]="actionPath(action)"
+          [attr.marker-end]="action.type === 'pass' ? 'url(#pass-arrow)' : 'url(#run-arrow)'"
+        />
+      }
+    </g>
+
+    <g class="players" aria-hidden="true">
+      @for (player of strategy().players; track player.id) {
+        <g class="player" [style.transform]="translate(playerPosition(player.id))">
+          <circle
+            r="28"
+            [class.player__disc--goalkeeper]="player.kind === 'goalkeeper'"
+            class="player__disc"
+          />
+          <circle class="player__ring" r="21" />
+          <text dy="0.36em">{{ player.label }}</text>
+        </g>
+      }
+    </g>
+
+    <g class="ball" aria-hidden="true" [style.transform]="translate(phase().ballPosition)">
+      <circle r="13" />
+      <path d="M0-7l7 5-3 8h-8l-3-8zM0-7v-5M7-2l5-2M4 6l3 5M-4 6l-3 5M-7-2l-5-2" />
+    </g>
+  </svg>
+  <div class="board-legend" aria-hidden="true">
+    <span><i class="legend-player"></i>Jugador</span>
+    <span><i class="legend-pass"></i>Pase</span>
+    <span><i class="legend-run"></i>Desmarque</span>
+  </div>
+</div>

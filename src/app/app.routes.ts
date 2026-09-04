@@ -37,6 +37,13 @@ export const routes: Routes = [
     loadComponent: () => import('./features/matches/ui/matches-page').then((m) => m.MatchesPage),
   },
   {
+    path: 'strategies',
+    loadComponent: () =>
+      import('./features/strategies/ui/strategies-page/strategies-page').then(
+        (m) => m.StrategiesPage,
+      ),
+  },
+  {
     path: 'live/:matchId',
     loadComponent: () =>
       import('./features/live-match/ui/live-match-page').then((m) => m.LiveMatchPage),

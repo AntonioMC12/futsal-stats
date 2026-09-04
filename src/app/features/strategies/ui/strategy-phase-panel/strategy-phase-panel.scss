@@ -1,0 +1,113 @@
+.phase-panel {
+  height: 100%;
+  padding: clamp(1rem, 2vw, 1.5rem);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-panel);
+  background: var(--ds-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-5);
+}
+
+.phase-panel__heading > span {
+  color: var(--ds-primary);
+  font-size: var(--ds-font-xs);
+  font-weight: var(--ds-weight-strong);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.phase-panel__heading h2 {
+  margin: var(--ds-space-2) 0 var(--ds-space-3);
+  font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+}
+
+.phase-panel__heading p,
+.phase-cue p {
+  margin: 0;
+  color: var(--ds-text-secondary);
+}
+
+.phase-cue {
+  padding: var(--ds-space-4);
+  border: 1px solid color-mix(in srgb, var(--ds-warning) 32%, transparent);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-warning-soft);
+  display: flex;
+  gap: var(--ds-space-3);
+}
+
+.phase-cue__icon {
+  color: var(--ds-warning-strong);
+}
+
+.phase-cue strong {
+  display: block;
+  margin-bottom: var(--ds-space-1);
+  color: var(--ds-warning-strong);
+  font-size: var(--ds-font-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.phase-index {
+  margin-top: auto;
+}
+
+.phase-index h3 {
+  margin: 0 0 var(--ds-space-2);
+  color: var(--ds-text-muted);
+  font-size: var(--ds-font-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.phase-index ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--ds-space-1);
+}
+
+.phase-index button {
+  width: 100%;
+  min-height: var(--ds-touch-min);
+  padding: var(--ds-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--ds-radius-md);
+  background: transparent;
+  color: var(--ds-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.phase-index button > span {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid var(--ds-border-strong);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: var(--ds-font-xs);
+}
+
+.phase-index button strong {
+  font-size: var(--ds-font-sm);
+}
+
+.phase-index button.is-active {
+  border-color: var(--ds-primary);
+  background: var(--ds-primary-soft);
+  color: var(--ds-text);
+}
+
+.phase-index button.is-active > span {
+  border-color: var(--ds-primary);
+  background: var(--ds-primary);
+  color: white;
+}
