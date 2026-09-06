@@ -34,7 +34,7 @@ export function createMatchTimeline(
     }));
 }
 
-function eventLabel(
+export function eventLabel(
   event: MatchEvent,
   playerNames: Readonly<Record<string, string>>,
   playerNumbers: Readonly<Record<string, number>>,

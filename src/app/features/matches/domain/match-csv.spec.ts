@@ -4,6 +4,7 @@ import { MatchEvent } from '../../../shared/models/match-event';
 import { Player } from '../../../shared/models/player';
 import { createMatchCsvFilename, CSV_UTF8_BOM, serializeMatchCsv } from './match-csv';
 import { buildMatchStatisticsExport } from './match-export';
+import { deriveMatchStatistics } from '../../live-match/domain/match-statistics';
 
 const players: Player[] = [
   { id: 'p1', teamId: 'team-1', number: 7, name: 'Pérez, José', active: true },
@@ -74,6 +75,54 @@ function events(): MatchEvent[] {
 }
 
 describe('match statistics CSV', () => {
+  it('exports every event in sequence, including undone substitutions, and the same lineups as statistics', () => {
+    const history: MatchEvent[] = [
+      ...events(),
+      {
+        ...events()[0]!,
+        id: 'change',
+        sequence: 15,
+        timestamp: 0,
+        type: 'SUBSTITUTION',
+        outPlayerId: 'p1',
+        inPlayerId: 'p6',
+      },
+      {
+        ...events()[0]!,
+        id: 'undo',
+        sequence: 16,
+        type: 'EVENT_UNDONE',
+        targetEventId: 'change',
+      },
+    ];
+    const roster = players.map((player) =>
+      player.id === 'p6' ? { ...player, name: 'Línea\n"dos", á' } : player,
+    );
+    const snapshot = buildMatchStatisticsExport(finishedMatch(), [...history].reverse(), roster);
+    expect(snapshot.events.map((event) => event['eventId'])).toEqual(
+      history.map((event) => event.id),
+    );
+    expect(snapshot.events.at(-2)).toMatchObject({
+      playerId: 'p1',
+      secondaryPlayerId: 'p6',
+      playerNumber: 7,
+      secondaryPlayerNumber: 20,
+      undone: true,
+    });
+    const statistics = deriveMatchStatistics(finishedMatch(), history, 0);
+    expect(snapshot.lineups.map((row) => row['totalSeconds'])).toEqual(
+      statistics.lineups.map((lineup) => lineup.playedMs / 1000),
+    );
+    expect(snapshot.rows.find((row) => row.number === 7)).toMatchObject({
+      firstHalfSeconds: 1200,
+      secondHalfSeconds: 0,
+    });
+    const csv = serializeMatchCsv(snapshot);
+    expect(csv).toContain('\r\nEVENTOS\r\n');
+    expect(csv).toContain('\r\nQUINTETOS\r\n');
+    expect(csv).toContain('"Línea\n""dos"", á"');
+    expect(snapshot.events).toHaveLength(history.length);
+  });
   it('projects existing statistics and includes zero-minute players in shirt-number order', () => {
     const result = buildMatchStatisticsExport(finishedMatch(), events(), players);
 
@@ -111,7 +160,7 @@ describe('match statistics CSV', () => {
 
   it('serializes RFC-style escaping, UTF-8 characters and a BOM for Excel', () => {
     const result = buildMatchStatisticsExport(finishedMatch(), events(), players);
-    const csv = serializeMatchCsv(result);
+    const csv = serializeMatchCsv(result).split('\r\nEVENTOS')[0]! + '\r\n';
 
     expect(csv.startsWith(CSV_UTF8_BOM)).toBe(true);
     expect(csv).toContain(
@@ -187,7 +236,7 @@ describe('match statistics CSV', () => {
       opponentSendOffs: 1,
       opponentDirectRedCards: 1,
     });
-    const csv = serializeMatchCsv(snapshot);
+    const csv = serializeMatchCsv(snapshot).split('\r\nEVENTOS')[0]!;
     expect(csv).not.toContain('yellow');
     expect(csv).not.toContain('rival-red');
   });

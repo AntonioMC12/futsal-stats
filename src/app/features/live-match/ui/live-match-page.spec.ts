@@ -119,6 +119,128 @@ describe('LiveMatchPage', () => {
     return { csvExporter, fixture, notifications, store };
   }
 
+  describe('player match detail', () => {
+    // jsdom has no native dialog top layer; focus trapping is also checked in Chromium.
+    beforeEach(() => {
+      Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+        configurable: true,
+        value: function (this: HTMLDialogElement) {
+          this.open = true;
+          this.querySelector<HTMLElement>('[autofocus]')?.focus();
+        },
+      });
+      Object.defineProperty(HTMLDialogElement.prototype, 'close', {
+        configurable: true,
+        value: function (this: HTMLDialogElement) {
+          this.open = false;
+        },
+      });
+    });
+    afterEach(() => {
+      TestBed.resetTestingModule();
+      Reflect.deleteProperty(HTMLDialogElement.prototype, 'showModal');
+      Reflect.deleteProperty(HTMLDialogElement.prototype, 'close');
+      vi.useRealTimers();
+    });
+
+    it.each([true, false])(
+      'opens the selected player and preserves the clock (%s), data, scroll and focus',
+      async (running) => {
+        vi.useFakeTimers();
+        vi.setSystemTime(10_000);
+        const { fixture, store } = await createPage();
+        if (running) await store.startClock();
+        (
+          fixture.nativeElement.querySelectorAll('.match-nav button')[0] as HTMLButtonElement
+        ).click();
+        fixture.detectChanges();
+        const content = fixture.nativeElement.querySelector('.overlay-content') as HTMLElement;
+        content.scrollTop = 120;
+        const trigger = fixture.nativeElement.querySelector(
+          '.statistics-table .player-detail-trigger',
+        ) as HTMLButtonElement;
+        const match = store.match();
+        const events = [...store.events()];
+        trigger.focus();
+        trigger.click();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        const dialog = fixture.nativeElement.querySelector('.player-detail') as HTMLDialogElement;
+        expect(dialog.open).toBe(true);
+        expect(dialog.querySelector('h2')?.textContent).toContain('#1');
+        expect(dialog.querySelector('h2')?.textContent).toContain('Jugador 1');
+        expect(dialog.textContent).toContain('EN PISTA');
+        expect(dialog.textContent).toContain('1.ª mitad');
+        expect(dialog.textContent).toContain('2.ª mitad');
+        await vi.advanceTimersByTimeAsync(2_200);
+        fixture.detectChanges();
+        expect(dialog.querySelector('.total-time dd')?.textContent).toBe(
+          running ? '00:02' : '00:00',
+        );
+        expect(store.clockRunning()).toBe(running);
+        expect(store.match()).toBe(match);
+        expect(store.events()).toEqual(events);
+        dialog.querySelector<HTMLButtonElement>('.close-detail')!.click();
+        fixture.detectChanges();
+        expect(fixture.nativeElement.querySelector('.player-detail')).toBeNull();
+        expect(fixture.nativeElement.querySelector('.overlay-content')).toBe(content);
+        expect(content.scrollTop).toBe(120);
+        expect(document.activeElement).toBe(trigger);
+        expect(store.clockRunning()).toBe(running);
+        expect(store.events()).toEqual(events);
+        fixture.destroy();
+      },
+    );
+
+    it('opens from a row cell, renders substitutions and changes player without residual data', async () => {
+      const { fixture, store } = await createPage();
+      await store.makeSubstitution('p1', 'p6');
+      (fixture.nativeElement.querySelectorAll('.match-nav button')[0] as HTMLButtonElement).click();
+      fixture.detectChanges();
+      const rows = fixture.nativeElement.querySelectorAll(
+        '.statistics-table tbody tr',
+      ) as NodeListOf<HTMLTableRowElement>;
+      rows[0]!.querySelector('td')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const dialog = fixture.nativeElement.querySelector('.player-detail') as HTMLDialogElement;
+      expect(dialog.textContent).toContain('BANQUILLO');
+      expect(dialog.textContent).toContain('Sale por #6 Banquillo');
+      expect(dialog.querySelectorAll('.movements li:not(.empty)')).toHaveLength(2);
+      dialog.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+      );
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.match-overlay')).not.toBeNull();
+      rows[5]!.querySelector<HTMLButtonElement>('button')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const next = fixture.nativeElement.querySelector('.player-detail') as HTMLDialogElement;
+      expect(next.querySelector('h2')?.textContent).toContain('#6');
+      expect(next.textContent).toContain('Entra por #1 Jugador 1');
+      expect(next.textContent).not.toContain('Sale por #6 Banquillo');
+      next.dispatchEvent(new Event('cancel', { cancelable: true }));
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.player-detail')).toBeNull();
+      fixture.destroy();
+    });
+
+    it('also opens unused players from the compact tablet statistics', async () => {
+      const { fixture } = await createPage();
+      const buttons = fixture.nativeElement.querySelectorAll(
+        '.compact-stats-table .player-detail-trigger',
+      ) as NodeListOf<HTMLButtonElement>;
+      buttons[5]!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const dialog = fixture.nativeElement.querySelector('.player-detail') as HTMLDialogElement;
+      expect(dialog.textContent).toContain('NO HA ENTRADO');
+      expect(dialog.textContent).toContain('Sin tramos en pista.');
+      expect(dialog.querySelector('.total-time dd')?.textContent).toBe('00:00');
+      fixture.destroy();
+    });
+  });
+
   it('renders five court players and substitutes directly with the only bench player', async () => {
     const { fixture, notifications, store } = await createPage();
     await store.startClock();
@@ -537,7 +659,8 @@ describe('LiveMatchPage', () => {
   });
 
   it('opens statistics as an overlay and exports with the shared loading state', async () => {
-    const { csvExporter, fixture } = await createPage();
+    const { csvExporter, fixture, store } = await createPage();
+    await store.startClock();
     expect(fixture.nativeElement.querySelector('.statistics-table')).toBeNull();
     (fixture.nativeElement.querySelectorAll('.match-nav button')[0] as HTMLButtonElement).click();
     fixture.detectChanges();
@@ -547,6 +670,15 @@ describe('LiveMatchPage', () => {
 
     expect(button).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.statistics-table')).not.toBeNull();
+    const table = fixture.nativeElement.querySelector('.statistics-table') as HTMLElement;
+    expect(table.textContent).toContain('Min total');
+    expect(table.textContent).toContain('1.ª mitad');
+    expect(table.textContent).toContain('2.ª mitad');
+    const lineups = fixture.nativeElement.querySelector('.lineup-stat-list') as HTMLElement;
+    expect(lineups.querySelectorAll('.lineup-stat')).toHaveLength(store.lineupStatistics().length);
+    expect(lineups.textContent).toContain('1.ª mitad');
+    expect(lineups.textContent).toContain('2.ª mitad');
+    expect(lineups.textContent).toContain('Apariciones');
     expect(button.textContent).toContain('Exportar CSV');
     button.click();
     expect(csvExporter.export).toHaveBeenCalledOnce();
@@ -739,7 +871,7 @@ describe('LiveMatchPage', () => {
     fixture.destroy();
   });
 
-  it('stops the clock and registers a staff protest from the bench discipline sheet', async () => {
+  it('preserves the clock and registers a staff protest from the bench discipline sheet', async () => {
     const { fixture, notifications, store } = await createPage();
     await store.startClock();
     fixture.detectChanges();
@@ -751,8 +883,8 @@ describe('LiveMatchPage', () => {
     fixture.detectChanges();
 
     const sheet = fixture.nativeElement.querySelector('.bench-discipline-sheet') as HTMLElement;
-    expect(stopClock).toHaveBeenCalledOnce();
-    expect(store.clockRunning()).toBe(false);
+    expect(stopClock).not.toHaveBeenCalled();
+    expect(store.clockRunning()).toBe(true);
     expect(sheet).not.toBeNull();
     const memberButtons = sheet
       .querySelectorAll('.bench-discipline-toggle')[1]

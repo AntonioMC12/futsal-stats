@@ -1,3 +1,4 @@
+import { shouldAutoStopClock } from '../domain/event-clock-policy';
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import {
   DEFAULT_PERIOD_DURATION_MS,
@@ -32,7 +33,7 @@ import {
   synchronizeExpiredClock,
 } from '../domain/match-lifecycle';
 import { createEventsForTransition, MatchClockCommand } from '../domain/match-transition-events';
-import { deriveMatchStatistics, MatchStatistics } from '../domain/match-statistics';
+import { createMatchStatisticsProjection, MatchStatistics } from '../domain/match-statistics';
 import { createMatchTimeline } from '../domain/match-timeline';
 import { PlayerPlayingTimes } from '../domain/player-playing-time';
 import { makeSubstitution as createSubstitution } from '../domain/substitution';
@@ -140,12 +141,18 @@ export class LiveMatchStore {
   readonly knownOpponentPlayers = computed(() =>
     this.disciplinaryState().opponentPlayers.map((player) => player.jerseyNumber),
   );
-  readonly statistics = computed<MatchStatistics>(() => {
+  private readonly statisticsProjection = computed(() => {
     const match = this.match();
-    return match
-      ? deriveMatchStatistics(match, this.events(), this.remainingMs())
-      : { players: {}, lineups: [] };
+    return match ? createMatchStatisticsProjection(match, this.events()) : null;
   });
+  readonly statistics = computed<MatchStatistics>(
+    () =>
+      this.statisticsProjection()?.(this.remainingMs()) ?? {
+        players: {},
+        lineups: [],
+        playerStints: {},
+      },
+  );
   readonly playerPlayingTimes = computed<PlayerPlayingTimes>(() => this.statistics().players);
   readonly lineupStatistics = computed(() => this.statistics().lineups);
   readonly canSubstitute = computed(() => {
@@ -564,10 +571,29 @@ export class LiveMatchStore {
         return false;
       }
 
-      await this.eventStore.commit(result.value.match, [result.value.event]);
+      let updatedMatch = result.value.match;
+      const recordedEvents: MatchEvent[] = [result.value.event];
+      if (shouldAutoStopClock(result.value.event.type) && updatedMatch.clock.running) {
+        const stopped = stopMatchClock(updatedMatch, timestamp);
+        if (!stopped.ok) {
+          this.error.set(stopped.error);
+          return false;
+        }
+        recordedEvents.push(
+          ...this.transitionEvents(
+            updatedMatch,
+            stopped.value,
+            'STOP_CLOCK',
+            [...this.events(), ...recordedEvents],
+            timestamp,
+          ),
+        );
+        updatedMatch = stopped.value;
+      }
+      await this.eventStore.commit(updatedMatch, recordedEvents);
       this.now.set(timestamp);
-      this.match.set(result.value.match);
-      this.events.update((events) => [...events, result.value.event]);
+      this.match.set(updatedMatch);
+      this.events.update((events) => [...events, ...recordedEvents]);
       return true;
     } catch {
       this.error.set('No se ha podido guardar el gol.');
@@ -625,10 +651,29 @@ export class LiveMatchStore {
         return false;
       }
 
-      await this.eventStore.commit(result.value.match, [result.value.event]);
+      let updatedMatch = result.value.match;
+      const recordedEvents: MatchEvent[] = [result.value.event];
+      if (shouldAutoStopClock(result.value.event.type) && updatedMatch.clock.running) {
+        const stopped = stopMatchClock(updatedMatch, timestamp);
+        if (!stopped.ok) {
+          this.error.set(stopped.error);
+          return false;
+        }
+        recordedEvents.push(
+          ...this.transitionEvents(
+            updatedMatch,
+            stopped.value,
+            'STOP_CLOCK',
+            [...this.events(), ...recordedEvents],
+            timestamp,
+          ),
+        );
+        updatedMatch = stopped.value;
+      }
+      await this.eventStore.commit(updatedMatch, recordedEvents);
       this.now.set(timestamp);
-      this.match.set(result.value.match);
-      this.events.update((events) => [...events, result.value.event]);
+      this.match.set(updatedMatch);
+      this.events.update((events) => [...events, ...recordedEvents]);
       return true;
     } catch {
       this.error.set('No se ha podido guardar la falta.');

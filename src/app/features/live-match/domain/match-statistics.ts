@@ -1,9 +1,14 @@
 import { lineupId } from '../../../core/utils/lineup-id';
 import { Match } from '../../../shared/models/match';
 import { MatchEvent } from '../../../shared/models/match-event';
-import { deriveMatchState, selectActiveEvents } from './derived-match-state';
+import { selectActiveEvents } from './derived-match-state';
 import { deriveDisciplinaryState } from './discipline';
-import { derivePlayerPlayingTimes, PlayerPlayingTime } from './player-playing-time';
+import {
+  createParticipationProjection,
+  PlayerPlayingTime,
+  LineupPlayingTime,
+  PlayerCourtStint,
+} from './player-playing-time';
 
 export interface PlayerMatchStatistics extends PlayerPlayingTime {
   goals: number;
@@ -17,10 +22,7 @@ export interface PlayerMatchStatistics extends PlayerPlayingTime {
   sendOffs: number;
 }
 
-export interface LineupStatistics {
-  id: string;
-  playerIds: string[];
-  playedMs: number;
+export interface LineupStatistics extends LineupPlayingTime {
   goalsFor: number;
   goalsAgainst: number;
   plusMinus: number;
@@ -29,6 +31,7 @@ export interface LineupStatistics {
 export interface MatchStatistics {
   players: Readonly<Record<string, PlayerMatchStatistics>>;
   lineups: LineupStatistics[];
+  playerStints: Readonly<Record<string, readonly PlayerCourtStint[]>>;
 }
 
 export function deriveMatchStatistics(
@@ -36,7 +39,17 @@ export function deriveMatchStatistics(
   events: readonly MatchEvent[],
   currentRemainingMs: number,
 ): MatchStatistics {
-  const playingTimes = derivePlayerPlayingTimes(match, events, currentRemainingMs);
+  return createMatchStatisticsProjection(match, events)(currentRemainingMs);
+}
+
+export function createMatchStatisticsProjection(
+  match: Match,
+  events: readonly MatchEvent[],
+): (remainingMs: number) => MatchStatistics {
+  const projectParticipation = createParticipationProjection(match, events);
+  // Exclude the live segment here; only its time projection changes on a clock tick.
+  const participation = projectParticipation(Number.POSITIVE_INFINITY);
+  const playingTimes = participation.players;
   const players: Record<string, PlayerMatchStatistics> = Object.fromEntries(
     Object.entries(playingTimes).map(([playerId, time]) => [
       playerId,
@@ -54,123 +67,31 @@ export function deriveMatchStatistics(
       },
     ]),
   );
-  const lineups = new Map<string, LineupStatistics>();
-  const currentLineup = new Set<string>();
-  let clockRunning = false;
-  let segmentRemainingMs: number | null = null;
-
-  const ensureLineup = (playerIds: readonly string[]): LineupStatistics | null => {
-    if (
-      playerIds.length < 3 ||
-      playerIds.length > 5 ||
-      new Set(playerIds).size !== playerIds.length
-    ) {
-      return null;
-    }
-    const id = lineupId(playerIds);
-    const existing = lineups.get(id);
-    if (existing) {
-      return existing;
-    }
-    const created: LineupStatistics = {
-      id,
-      playerIds: [...playerIds].sort(),
-      playedMs: 0,
-      goalsFor: 0,
-      goalsAgainst: 0,
-      plusMinus: 0,
-    };
-    lineups.set(id, created);
-    return created;
-  };
-
-  const accumulateUntil = (remainingMs: number): void => {
-    if (!clockRunning || segmentRemainingMs === null) {
-      return;
-    }
-    const elapsedMs = Math.max(0, segmentRemainingMs - remainingMs);
-    const lineup = ensureLineup([...currentLineup]);
-    if (lineup) {
-      lineup.playedMs += elapsedMs;
-    }
-    segmentRemainingMs = remainingMs;
-  };
-
+  const lineups = new Map<string, LineupStatistics>(
+    participation.lineups.map((time) => [
+      time.id,
+      {
+        ...time,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        plusMinus: 0,
+      },
+    ]),
+  );
   for (const event of selectActiveEvents(events)) {
-    switch (event.type) {
-      case 'CLOCK_STARTED':
-        clockRunning = true;
-        segmentRemainingMs = event.gameClockMs;
-        break;
-      case 'CLOCK_STOPPED':
-      case 'PERIOD_ENDED':
-        accumulateUntil(event.gameClockMs);
-        clockRunning = false;
-        segmentRemainingMs = null;
-        break;
-      case 'CLOCK_RESET':
-        clockRunning = false;
-        segmentRemainingMs = null;
-        break;
-      case 'PLAYER_ENTERED':
-        accumulateUntil(event.gameClockMs);
-        currentLineup.add(event.playerId);
-        break;
-      case 'PLAYER_LEFT':
-        accumulateUntil(event.gameClockMs);
-        currentLineup.delete(event.playerId);
-        break;
-      case 'SUBSTITUTION':
-        accumulateUntil(event.gameClockMs);
-        currentLineup.delete(event.outPlayerId);
-        currentLineup.add(event.inPlayerId);
-        break;
-      case 'FOUL':
-        if (
-          event.team === 'home' &&
-          event.playerId &&
-          (event.disciplinaryAction === 'secondYellow' || event.disciplinaryAction === 'directRed')
-        ) {
-          accumulateUntil(event.gameClockMs);
-          currentLineup.delete(event.playerId);
-        }
-        break;
-      case 'BENCH_DISCIPLINE':
-        break;
-      case 'RED_CARD_REPLACEMENT':
-        if (event.team === 'home' && event.playerId) {
-          accumulateUntil(event.gameClockMs);
-          currentLineup.add(event.playerId);
-        }
-        break;
-      case 'GOAL_FOR':
-        addGoal(players, ensureLineup(event.lineupPlayerIds), event.lineupPlayerIds, 'for');
-        if (event.scorerPlayerId && players[event.scorerPlayerId]) {
-          players[event.scorerPlayerId].goals += 1;
-        }
-        break;
-      case 'GOAL_AGAINST':
-        addGoal(players, ensureLineup(event.lineupPlayerIds), event.lineupPlayerIds, 'against');
-        break;
-      case 'MATCH_FINISHED':
-        accumulateUntil(event.gameClockMs);
-        clockRunning = false;
-        segmentRemainingMs = null;
-        break;
-      case 'MATCH_STARTED':
-      case 'PERIOD_STARTED':
-      case 'EVENT_UNDONE':
-        break;
+    if (event.type === 'GOAL_FOR' || event.type === 'GOAL_AGAINST') {
+      addGoal(
+        players,
+        lineups.get(lineupId(event.lineupPlayerIds)) ?? null,
+        event.lineupPlayerIds,
+        event.type === 'GOAL_FOR' ? 'for' : 'against',
+      );
+      if (event.type === 'GOAL_FOR' && event.scorerPlayerId && players[event.scorerPlayerId]) {
+        players[event.scorerPlayerId].goals += 1;
+      }
     }
   }
-
-  accumulateUntil(currentRemainingMs);
-  const state = deriveMatchState(match, events);
-  const currentSegment =
-    state.clockRunning && state.runningSegmentStartedAtGameClockMs !== null
-      ? Math.max(0, state.runningSegmentStartedAtGameClockMs - currentRemainingMs)
-      : 0;
-  const discipline = deriveDisciplinaryState(events, state.completedElapsedMs + currentSegment);
+  const discipline = deriveDisciplinaryState(events, 0);
   for (const player of Object.values(players)) {
     player.plusMinus = player.goalsForOnCourt - player.goalsAgainstOnCourt;
   }
@@ -182,11 +103,15 @@ export function deriveMatchStatistics(
     lineup.plusMinus = lineup.goalsFor - lineup.goalsAgainst;
   }
 
-  return {
-    players,
-    lineups: [...lineups.values()].sort(
-      (left, right) => right.playedMs - left.playedMs || left.id.localeCompare(right.id),
-    ),
+  return (remainingMs) => {
+    const projected = projectParticipation(remainingMs);
+    return {
+      players: Object.fromEntries(
+        Object.entries(projected.players).map(([id, time]) => [id, { ...players[id], ...time }]),
+      ),
+      lineups: projected.lineups.map((time) => ({ ...lineups.get(time.id)!, ...time })),
+      playerStints: projected.playerStints,
+    };
   };
 }
 

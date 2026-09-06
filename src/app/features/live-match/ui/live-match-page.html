@@ -265,7 +265,9 @@
               <thead>
                 <tr>
                   <th scope="col">Jugador</th>
-                  <th scope="col">Min</th>
+                  <th scope="col">Min total</th>
+                  <th scope="col">1.ª mitad</th>
+                  <th scope="col">2.ª mitad</th>
                   <th scope="col">G</th>
                   <th scope="col">+/-</th>
                 </tr>
@@ -273,12 +275,21 @@
               <tbody>
                 @for (player of store.players(); track player.id) {
                   @if (store.statistics().players[player.id]; as stats) {
-                    <tr>
+                    <tr class="player-stat-row" (click)="openPlayerDetail(player.id, $event)">
                       <th scope="row">
-                        <strong>#{{ player.number }}</strong
-                        ><span>{{ player.name }}</span>
+                        <button
+                          type="button"
+                          class="player-detail-trigger"
+                          aria-haspopup="dialog"
+                          [attr.aria-label]="'Ver detalle de #' + player.number + ' ' + player.name"
+                        >
+                          <strong>#{{ player.number }}</strong
+                          ><span>{{ player.name }}</span>
+                        </button>
                       </th>
                       <td>{{ formatDuration(stats.playedMs) }}</td>
+                      <td>{{ formatDuration(stats.firstHalfMs) }}</td>
+                      <td>{{ formatDuration(stats.secondHalfMs) }}</td>
                       <td>{{ stats.goals }}</td>
                       <td
                         [class.is-positive]="stats.plusMinus > 0"
@@ -431,7 +442,9 @@
                       <thead>
                         <tr>
                           <th scope="col">Jugador</th>
-                          <th scope="col">Min</th>
+                          <th scope="col">Min total</th>
+                          <th scope="col">1.ª mitad</th>
+                          <th scope="col">2.ª mitad</th>
                           <th scope="col">G</th>
                           <th scope="col">GF</th>
                           <th scope="col">GC</th>
@@ -446,9 +459,25 @@
                       <tbody>
                         @for (player of store.players(); track player.id) {
                           @if (store.statistics().players[player.id]; as stats) {
-                            <tr>
-                              <th scope="row">#{{ player.number }} {{ player.name }}</th>
+                            <tr
+                              class="player-stat-row"
+                              (click)="openPlayerDetail(player.id, $event)"
+                            >
+                              <th scope="row">
+                                <button
+                                  type="button"
+                                  class="player-detail-trigger"
+                                  aria-haspopup="dialog"
+                                  [attr.aria-label]="
+                                    'Ver detalle de #' + player.number + ' ' + player.name
+                                  "
+                                >
+                                  #{{ player.number }} {{ player.name }}
+                                </button>
+                              </th>
                               <td>{{ formatDuration(stats.playedMs) }}</td>
+                              <td>{{ formatDuration(stats.firstHalfMs) }}</td>
+                              <td>{{ formatDuration(stats.secondHalfMs) }}</td>
                               <td>{{ stats.goals }}</td>
                               <td>{{ stats.goalsForOnCourt }}</td>
                               <td>{{ stats.goalsAgainstOnCourt }}</td>
@@ -471,7 +500,7 @@
                   </div>
                 </section>
                 <section class="overlay-section lineup-statistics">
-                  <h3>Quintetos</h3>
+                  <h3>Quintetos utilizados</h3>
                   @if (store.lineupStatistics().length === 0) {
                     <p class="empty">Las estadísticas aparecerán al iniciar el partido.</p>
                   } @else {
@@ -480,7 +509,10 @@
                         <article class="lineup-stat">
                           <strong>{{ lineupPlayers(lineup.playerIds) }}</strong
                           ><span
-                            >{{ formatDuration(lineup.playedMs) }} · GF {{ lineup.goalsFor }} · GC
+                            >Total {{ formatDuration(lineup.playedMs) }} · 1.ª mitad
+                            {{ formatDuration(lineup.firstHalfMs) }} · 2.ª mitad
+                            {{ formatDuration(lineup.secondHalfMs) }} · Apariciones
+                            {{ lineup.stints }} · GF {{ lineup.goalsFor }} · GC
                             {{ lineup.goalsAgainst }} ·
                             <b
                               [class.is-positive]="lineup.plusMinus > 0"
@@ -1562,3 +1594,10 @@
     </div>
   }
 </section>
+@if (detailPlayerId(); as playerId) {
+  <app-player-match-detail
+    [playerId]="playerId"
+    [returnFocusTo]="playerDetailTrigger"
+    (closed)="detailPlayerId.set(null)"
+  />
+}

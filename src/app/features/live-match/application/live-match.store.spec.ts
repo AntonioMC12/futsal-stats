@@ -26,6 +26,76 @@ function readyMatch(): Match {
 }
 
 describe('LiveMatchStore', () => {
+  it.each(['substitution', 'goal', 'foul', 'card'] as const)(
+    'preserves or stops the clock for %s and persists the same state on reload',
+    async (action) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(10_000);
+      let persisted = readyMatch();
+      const history: MatchEvent[] = [];
+      TestBed.configureTestingModule({
+        providers: [
+          LiveMatchStore,
+          { provide: MatchRepository, useValue: { get: async () => structuredClone(persisted) } },
+          { provide: PlayerRepository, useValue: { listByIds: async () => [] } },
+          {
+            provide: MatchEventRepository,
+            useValue: {
+              listByMatch: async () => structuredClone(history),
+              commit: async (match: Match, events: MatchEvent[]) => {
+                persisted = structuredClone(match);
+                history.push(...structuredClone(events));
+              },
+            },
+          },
+        ],
+      });
+      const store = TestBed.inject(LiveMatchStore);
+      await store.load(persisted.id);
+      await store.startClock();
+      const record = () =>
+        action === 'substitution'
+          ? store.makeSubstitution(
+              store.lineupPlayerIds().includes('p1') ? 'p1' : 'p6',
+              store.lineupPlayerIds().includes('p1') ? 'p6' : 'p1',
+            )
+          : action === 'goal'
+            ? store.registerGoalAgainst()
+            : action === 'foul'
+              ? store.registerOpponentFoul()
+              : store.registerBenchDiscipline(
+                  'home',
+                  { subjectKind: 'staff', staffRole: 'headCoach' },
+                  'yellow',
+                  'other',
+                );
+      vi.setSystemTime(15_000);
+      expect(await record()).toBe(true);
+      expect(store.clockRunning()).toBe(action === 'substitution' || action === 'card');
+      if (store.clockRunning()) await store.stopClock();
+      const stoppedEvents = history.filter((event) => event.type === 'CLOCK_STOPPED').length;
+      vi.setSystemTime(25_000);
+      const times = store.statistics();
+      // Use another staff identity so this remains a valid first yellow card.
+      const second =
+        action === 'card'
+          ? await store.registerBenchDiscipline(
+              'home',
+              { subjectKind: 'staff', staffRole: 'delegate' },
+              'yellow',
+              'other',
+            )
+          : await record();
+      expect(second).toBe(true);
+      expect(store.clockRunning()).toBe(false);
+      expect(history.filter((event) => event.type === 'CLOCK_STOPPED')).toHaveLength(stoppedEvents);
+      expect(store.statistics().players['p2']?.playedMs).toBe(times.players['p2']?.playedMs);
+      const snapshot = store.statistics();
+      await store.load(persisted.id);
+      expect(store.statistics()).toEqual(snapshot);
+      expect(store.events()).toHaveLength(history.length);
+    },
+  );
   afterEach(() => {
     vi.useRealTimers();
     TestBed.resetTestingModule();
@@ -240,7 +310,7 @@ describe('LiveMatchStore', () => {
 
     vi.setSystemTime(16_000);
     expect(await store.registerGoalFor('p6')).toBe(true);
-    expect(storedEvents.at(-1)).toMatchObject({
+    expect(storedEvents.filter((event) => event.type === 'GOAL_FOR').at(-1)).toMatchObject({
       type: 'GOAL_FOR',
       scorerPlayerId: 'p6',
       lineupPlayerIds: ['p6', 'p2', 'p3', 'p4', 'p5'],
@@ -421,7 +491,11 @@ describe('LiveMatchStore', () => {
     expect(await store.registerGoalAgainst()).toBe(true);
 
     expect(store.score()).toEqual({ home: 3, away: 1 });
-    expect(storedEvents.at(-4)).toMatchObject({
+    expect(
+      storedEvents
+        .filter((event) => event.type === 'GOAL_FOR' || event.type === 'GOAL_AGAINST')
+        .at(-4),
+    ).toMatchObject({
       type: 'GOAL_FOR',
       scorerPlayerId: 'p3',
       gameClockMs: DEFAULT_PERIOD_DURATION_MS - 5_000,
@@ -432,8 +506,8 @@ describe('LiveMatchStore', () => {
     });
     expect(storedEvents.at(-1)).toMatchObject({
       type: 'GOAL_AGAINST',
-      gameClockMs: DEFAULT_PERIOD_DURATION_MS - 8_000,
-      sequence: 12,
+      gameClockMs: DEFAULT_PERIOD_DURATION_MS - 5_000,
+      sequence: 13,
       scoreBefore: { home: 3, away: 0 },
       scoreAfter: { home: 3, away: 1 },
     });
@@ -477,10 +551,10 @@ describe('LiveMatchStore', () => {
       { period: 1, home: 2, away: 1 },
       { period: 2, home: 0, away: 0 },
     ]);
-    expect(storedEvents.slice(-3)).toMatchObject([
+    expect(storedEvents.filter((event) => event.type === 'FOUL').slice(-3)).toMatchObject([
       { type: 'FOUL', team: 'home', periodFoulNumber: 1, sequence: 9 },
-      { type: 'FOUL', team: 'home', playerId: 'p4', periodFoulNumber: 2, sequence: 10 },
-      { type: 'FOUL', team: 'away', periodFoulNumber: 1, sequence: 11 },
+      { type: 'FOUL', team: 'home', playerId: 'p4', periodFoulNumber: 2, sequence: 11 },
+      { type: 'FOUL', team: 'away', periodFoulNumber: 1, sequence: 12 },
     ]);
   });
 

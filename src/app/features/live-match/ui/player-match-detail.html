@@ -1,0 +1,156 @@
+<dialog
+  #dialog
+  class="player-detail"
+  aria-labelledby="player-detail-title"
+  aria-modal="true"
+  (cancel)="dismiss($event)"
+  (keydown.escape)="dismiss($event)"
+>
+  <header class="detail-header">
+    <div>
+      <p class="eyebrow">Detalle del partido</p>
+      <h2 id="player-detail-title">
+        @if (detail(); as player) {
+          <span class="shirt">{{ shirtNumber() }}</span>
+          {{ player.player.name || 'Jugador no disponible' }}
+        } @else {
+          Jugador no disponible
+        }
+      </h2>
+      @if (detail(); as player) {
+        <div class="identity-meta">
+          @if (player.player.position) {
+            <span>{{ player.player.position }}</span>
+          }
+          <span class="status" [class.status--on-court]="player.status === 'onCourt'">{{
+            player.statusLabel
+          }}</span>
+          @if (player.matchContext) {
+            <span>{{ player.matchContext }}</span>
+          }
+        </div>
+      }
+    </div>
+    <button
+      type="button"
+      class="close-detail"
+      aria-label="Cerrar detalle del jugador"
+      autofocus
+      (click)="dismiss()"
+    >
+      ×
+    </button>
+  </header>
+  @if (detail(); as player) {
+    <div class="detail-content">
+      <section class="time-card" aria-labelledby="player-time-title">
+        <h3 id="player-time-title">Tiempo en pista</h3>
+        <dl class="playing-time">
+          <div class="total-time">
+            <dt>Total</dt>
+            <dd>{{ formatTime(player.statistics.playedMs) }}</dd>
+          </div>
+          <div>
+            <dt>1.ª mitad</dt>
+            <dd>{{ formatTime(player.statistics.firstHalfMs) }}</dd>
+          </div>
+          <div>
+            <dt>2.ª mitad</dt>
+            <dd>{{ formatTime(player.statistics.secondHalfMs) }}</dd>
+          </div>
+        </dl>
+      </section>
+      <section class="state-card" aria-labelledby="player-state-title">
+        <h3 id="player-state-title">Estado actual</h3>
+        @if (player.starter) {
+          <p class="starter">Titular</p>
+        }
+        @if (player.lastMovement; as movement) {
+          <p class="last-movement">{{ movement.label }}</p>
+          <p class="muted">
+            {{ formatTime(movement.gameClockMs) }} · {{ periodLabel(movement.period) }}
+            @if (movement.duringBreak) {
+              · Durante el descanso
+            }
+          </p>
+        } @else {
+          <p>Todavía no ha entrado en pista.</p>
+        }
+        @if (player.lastStint; as stint) {
+          <p class="stint-summary">
+            {{ stint.open ? 'Tiempo de este tramo' : 'Último tramo en pista' }}
+            <strong>{{ formatTime(stint.durationMs) }}</strong>
+          </p>
+        }
+      </section>
+      <section class="detail-section" aria-labelledby="player-movements-title">
+        <h3 id="player-movements-title">Entradas y salidas</h3>
+        <p class="muted clock-convention">Los instantes indican el tiempo restante del periodo.</p>
+        <div class="period-grid">
+          @for (period of player.periods; track period.period) {
+            <div>
+              <h4>{{ period.label }}</h4>
+              <ol class="movements">
+                @for (movement of period.movements; track movement.eventId) {
+                  <li [class.latest]="movement.eventId === player.lastMovement?.eventId">
+                    <time>{{ formatTime(movement.gameClockMs) }}</time>
+                    <span
+                      ><span class="direction" aria-hidden="true">{{
+                        movement.direction === 'out' ? '↓' : '↑'
+                      }}</span>
+                      {{ movement.label }}
+                      @if (movement.duringBreak) {
+                        <small>Durante el descanso</small>
+                      }
+                      @if (movement.eventId === player.lastMovement?.eventId) {
+                        <small>Último movimiento</small>
+                      }
+                    </span>
+                  </li>
+                } @empty {
+                  <li class="empty">Sin entradas ni salidas registradas en esta mitad.</li>
+                }
+              </ol>
+            </div>
+          }
+        </div>
+      </section>
+      <section class="detail-section" aria-labelledby="player-stints-title">
+        <h3 id="player-stints-title">Tramos en pista</h3>
+        <div class="period-grid">
+          @for (period of player.periods; track period.period) {
+            <div>
+              <h4>{{ period.label }}</h4>
+              <ul class="stints">
+                @for (stint of period.stints; track stint.id) {
+                  <li>
+                    <span
+                      >{{ formatTime(stint.startGameClockMs) }} →
+                      {{ stint.open ? 'ahora' : formatTime(stint.endGameClockMs ?? 0) }}</span
+                    >
+                    <strong>{{ formatTime(stint.durationMs) }}</strong>
+                  </li>
+                } @empty {
+                  <li class="empty">Sin tramos en pista.</li>
+                }
+              </ul>
+            </div>
+          }
+        </div>
+      </section>
+      <section class="detail-section" aria-labelledby="player-metrics-title">
+        <h3 id="player-metrics-title">Estadísticas del partido</h3>
+        <dl class="metrics">
+          @for (metric of metrics(); track metric.label) {
+            <div>
+              <dt>{{ metric.label }}</dt>
+              <dd>{{ metric.value }}</dd>
+            </div>
+          }
+        </dl>
+      </section>
+    </div>
+  } @else {
+    <p class="unavailable">No se han podido obtener los datos de este jugador.</p>
+  }
+</dialog>
