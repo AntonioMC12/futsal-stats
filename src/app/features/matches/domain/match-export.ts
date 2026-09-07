@@ -1,6 +1,11 @@
 import { eventLabel } from '../../live-match/domain/match-timeline';
 import { formatGameClock, projectRemaining } from '../../../core/clock/match-clock';
-import { Match } from '../../../shared/models/match';
+import {
+  Match,
+  MatchDate,
+  localDateString,
+  matchDateTimestamp,
+} from '../../../shared/models/match';
 import { MatchEvent } from '../../../shared/models/match-event';
 import { Player } from '../../../shared/models/player';
 import { deriveMatchState } from '../../live-match/domain/derived-match-state';
@@ -221,7 +226,9 @@ function compareRows(left: PlayerMatchExportRow, right: PlayerMatchExportRow): n
   return leftNumber - rightNumber || left.playerName.localeCompare(right.playerName);
 }
 
-function formatDisplayDate(timestamp: number): string {
+function formatDisplayDate(value: MatchDate): string {
+  const timestamp = matchDateTimestamp(value);
+  if (!timestamp) return '';
   const date = new Date(timestamp);
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -229,12 +236,12 @@ function formatDisplayDate(timestamp: number): string {
   return `${day}/${month}/${year}`;
 }
 
-function formatFilenameDate(timestamp: number): string {
+function formatFilenameDate(value: MatchDate): string {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const timestamp = matchDateTimestamp(value);
+  if (!timestamp) return 'unknown-date';
   const date = new Date(timestamp);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return localDateString(date);
 }
 
 function formatMatchStatus(status: Match['status']): string {

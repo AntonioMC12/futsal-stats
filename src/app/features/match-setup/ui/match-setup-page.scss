@@ -89,7 +89,8 @@
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   width: 100%;
   min-height: var(--ds-touch-min);
   padding: var(--ds-space-2) var(--ds-space-3);
@@ -98,6 +99,21 @@
   background: var(--ds-bg);
   color: inherit;
   font: inherit;
+}
+
+.field textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.abbreviation-input {
+  text-transform: uppercase;
+}
+
+.field-error {
+  color: var(--ds-danger);
+  font-size: var(--ds-font-xs);
+  font-weight: 700;
 }
 
 .selection-toolbar {
@@ -299,6 +315,9 @@
   .match-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--ds-space-3);
+  }
+  .field--wide {
+    grid-column: 1 / -1;
   }
   .player-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

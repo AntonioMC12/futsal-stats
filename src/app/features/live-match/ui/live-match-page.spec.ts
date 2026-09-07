@@ -27,7 +27,8 @@ function activeMatch(): Match {
     id: 'match-1',
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: 'Rival', shortName: 'RIV' },
-    date: 1,
+    date: '2026-09-07',
+    description: 'Partido amistoso',
     status: 'firstHalf',
     currentPeriod: 1,
     periodCount: 2,
@@ -591,6 +592,12 @@ describe('LiveMatchPage', () => {
       'Modo consulta',
     );
     expect(fixture.nativeElement.querySelector('.finished-duration')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.readonly-metadata')?.textContent).toContain(
+      'Partido amistoso',
+    );
+    expect(fixture.nativeElement.querySelector('.readonly-metadata')?.textContent).toContain(
+      '07/09/2026',
+    );
 
     const consultationButtons = fixture.nativeElement.querySelectorAll(
       '.readonly-actions button',

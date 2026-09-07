@@ -16,6 +16,7 @@ import { SystemNotificationService } from '../../../core/notifications/system-no
 import { BenchDisciplineSubject, createStaffIdentityKey } from '../domain/bench-discipline';
 import { PlayerMatchDetailComponent } from './player-match-detail';
 import type { PlayerMatchStatistics } from '../domain/match-statistics';
+import { MatchDate, matchDateTimestamp } from '../../../shared/models/match';
 
 type MatchOverlay = 'statistics' | 'events' | 'discipline' | 'more';
 
@@ -480,6 +481,16 @@ export class LiveMatchPage {
 
   protected formatDuration(durationMs: number): string {
     return formatGameClock(durationMs);
+  }
+
+  protected formatMatchDate(value: MatchDate): string {
+    const timestamp = matchDateTimestamp(value);
+    if (!timestamp) return '—';
+    return new Intl.DateTimeFormat('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).format(timestamp);
   }
 
   protected compactStatsPeriodTime(

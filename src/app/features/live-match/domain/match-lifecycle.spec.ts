@@ -23,6 +23,7 @@ function match(status: MatchStatus = 'ready', currentPeriod = 1): Match {
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: 'Rival', shortName: 'RIV' },
     date: 1,
+    description: '',
     status,
     currentPeriod,
     periodCount: 2,

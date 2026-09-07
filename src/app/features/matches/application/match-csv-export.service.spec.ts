@@ -14,6 +14,7 @@ function match(status: Match['status']): Match {
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: 'Rival', shortName: 'RIV' },
     date: new Date(2026, 7, 28, 12).getTime(),
+    description: '',
     status,
     currentPeriod: 2,
     periodCount: 2,

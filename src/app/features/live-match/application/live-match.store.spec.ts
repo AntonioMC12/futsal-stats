@@ -14,6 +14,7 @@ function readyMatch(): Match {
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: 'Rival', shortName: 'RIV' },
     date: 1,
+    description: '',
     status: 'ready',
     currentPeriod: 1,
     periodCount: 2,

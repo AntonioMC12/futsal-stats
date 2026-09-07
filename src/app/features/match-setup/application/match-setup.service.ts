@@ -16,7 +16,10 @@ export interface MatchSetupTeam {
 
 export interface SaveMatchSetupInput {
   teamId: string;
+  awayTeamShortName: string;
   awayTeamName: string;
+  matchDate: string;
+  description: string;
   squadPlayerIds: readonly string[];
   startingLineupPlayerIds: readonly string[];
 }

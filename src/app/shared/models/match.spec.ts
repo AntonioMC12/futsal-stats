@@ -1,5 +1,5 @@
 import { Match } from './match';
-import { isMatchActive, isMatchFinished } from './match';
+import { isMatchActive, isMatchFinished, localDateString, matchDateTimestamp } from './match';
 
 describe('match status rules', () => {
   it.each<Match['status']>(['ready', 'firstHalf', 'halftime', 'secondHalf'])(
@@ -14,5 +14,16 @@ describe('match status rules', () => {
     expect(isMatchActive({ status: 'setup' })).toBe(false);
     expect(isMatchActive({ status: 'finished' })).toBe(false);
     expect(isMatchFinished({ status: 'finished' })).toBe(true);
+  });
+});
+
+describe('match dates', () => {
+  it('creates a local calendar date without converting through UTC', () => {
+    expect(localDateString(new Date(2026, 8, 7, 23, 30))).toBe('2026-09-07');
+  });
+
+  it('parses new calendar dates and keeps legacy timestamps compatible', () => {
+    expect(new Date(matchDateTimestamp('2026-09-07')).getDate()).toBe(7);
+    expect(matchDateTimestamp(123)).toBe(123);
   });
 });

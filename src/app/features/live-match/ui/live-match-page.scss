@@ -77,6 +77,10 @@
   white-space: nowrap;
 }
 
+.opponent-name-short {
+  display: none;
+}
+
 .period,
 .section-label {
   color: var(--ds-primary);
@@ -430,6 +434,26 @@
   margin: 0;
   color: var(--ds-text-muted);
   font-size: var(--ds-font-sm);
+}
+
+.readonly-metadata {
+  min-width: 0;
+  display: grid;
+  gap: var(--ds-space-1);
+  font-size: var(--ds-font-xs);
+}
+
+.readonly-metadata strong,
+.readonly-metadata p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.readonly-metadata span,
+.readonly-metadata p {
+  margin: 0;
+  color: var(--ds-text-muted);
 }
 
 .readonly-actions {
@@ -1505,6 +1529,16 @@
 }
 .discipline-strip .is-warning {
   color: var(--ds-warning);
+}
+
+@media (max-width: 639px) {
+  .opponent-name-full {
+    display: none;
+  }
+
+  .opponent-name-short {
+    display: inline;
+  }
 }
 
 @media (max-height: 699px) {

@@ -22,6 +22,7 @@ function finishedMatch(status: Match['status'] = 'finished'): Match {
     homeTeam: { id: 'team-1', name: 'Fútsal Team', shortName: 'FUT' },
     awayTeam: { name: 'Rival FC', shortName: 'RIV' },
     date: new Date(2026, 7, 28, 12).getTime(),
+    description: '',
     status,
     currentPeriod: 2,
     periodCount: 2,
@@ -75,6 +76,14 @@ function events(): MatchEvent[] {
 }
 
 describe('match statistics CSV', () => {
+  it('exports new local calendar dates without a timezone shift', () => {
+    const match = { ...finishedMatch(), date: '2026-09-07' };
+    const result = buildMatchStatisticsExport(match, events(), players);
+
+    expect(result.filenameDate).toBe('2026-09-07');
+    expect(result.rows[0]?.date).toBe('07/09/2026');
+  });
+
   it('exports every event in sequence, including undone substitutions, and the same lineups as statistics', () => {
     const history: MatchEvent[] = [
       ...events(),

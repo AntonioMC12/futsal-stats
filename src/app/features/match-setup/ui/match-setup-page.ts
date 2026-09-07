@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Player } from '../../../shared/models/player';
+import { localDateString } from '../../../shared/models/match';
 import { MatchSetupService, MatchSetupTeam } from '../application/match-setup.service';
 import { STARTING_LINEUP_SIZE } from '../domain/match-setup';
 
@@ -29,7 +30,13 @@ export class MatchSetupPage {
 
   protected readonly form = this.formBuilder.nonNullable.group({
     teamId: ['', Validators.required],
+    awayTeamShortName: [
+      '',
+      [Validators.required, Validators.minLength(2), Validators.maxLength(6)],
+    ],
     awayTeamName: ['', [Validators.required, Validators.maxLength(60)]],
+    matchDate: [localDateString(), Validators.required],
+    description: ['', [Validators.required, Validators.maxLength(500)]],
   });
   protected readonly availablePlayers = computed(() => {
     const teamId = this.form.controls.teamId.value;
@@ -113,10 +120,16 @@ export class MatchSetupPage {
     return this.form.valid && this.selectedCount() >= 5 && this.lineupCount() === 5;
   }
 
+  protected normalizeAbbreviation(): void {
+    const control = this.form.controls.awayTeamShortName;
+    control.setValue(control.value.trim().toUpperCase());
+  }
+
   protected async save(): Promise<void> {
     if (this.saving()) {
       return;
     }
+    this.normalizeAbbreviation();
     this.form.markAllAsTouched();
     if (!this.canSave()) {
       this.error.set('Completa los datos, convoca al menos 5 jugadores y elige 5 titulares.');

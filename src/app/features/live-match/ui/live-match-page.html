@@ -6,7 +6,11 @@
       <header class="match-topbar">
         <a class="back" routerLink="/matches" aria-label="Volver a partidos">←</a>
         <div class="match-identity">
-          <span>{{ match.homeTeam.shortName }} · {{ match.awayTeam.shortName }}</span>
+          <span>
+            {{ match.homeTeam.shortName }} vs
+            <span class="opponent-name-full">{{ match.awayTeam.name }}</span>
+            <span class="opponent-name-short">{{ match.awayTeam.shortName || '—' }}</span>
+          </span>
         </div>
       </header>
 
@@ -220,6 +224,11 @@
           @if (match.status === 'finished') {
             <h2 class="section-label" id="primary-actions-title">Partido finalizado</h2>
             <p class="readonly-message">Modo consulta. Los datos y el cronómetro están cerrados.</p>
+            <div class="readonly-metadata">
+              <strong>{{ match.awayTeam.shortName || '—' }} · {{ match.awayTeam.name }}</strong>
+              <span>{{ formatMatchDate(match.date) }}</span>
+              <p>{{ match.description || 'Sin descripción' }}</p>
+            </div>
             <div class="readonly-actions">
               <button
                 class="btn btn--primary"

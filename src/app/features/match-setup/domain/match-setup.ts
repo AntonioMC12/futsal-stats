@@ -8,7 +8,10 @@ export const STARTING_LINEUP_SIZE = 5;
 
 export interface CreateMatchInput {
   homeTeam: Team;
+  awayTeamShortName: string;
   awayTeamName: string;
+  matchDate: string;
+  description: string;
   players: readonly Player[];
   squadPlayerIds: readonly string[];
   startingLineupPlayerIds: readonly string[];
@@ -19,9 +22,20 @@ export function createMatchRecord(
   id: string,
   now: number,
 ): DomainResult<Match> {
+  const awayTeamShortName = input.awayTeamShortName.trim().toUpperCase();
+  if (awayTeamShortName.length < 2 || awayTeamShortName.length > 6) {
+    return fail('La abreviación debe tener entre 2 y 6 caracteres.');
+  }
   const awayTeamName = input.awayTeamName.trim();
   if (!awayTeamName) {
     return fail('El nombre del rival es obligatorio.');
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.matchDate)) {
+    return fail('La fecha del partido es obligatoria.');
+  }
+  const description = input.description.trim();
+  if (!description) {
+    return fail('La descripción es obligatoria.');
   }
 
   const squadPlayerIds = unique(input.squadPlayerIds);
@@ -56,9 +70,10 @@ export function createMatchRecord(
     },
     awayTeam: {
       name: awayTeamName,
-      shortName: suggestOpponentShortName(awayTeamName),
+      shortName: awayTeamShortName,
     },
-    date: now,
+    date: input.matchDate,
+    description,
     status: 'ready',
     currentPeriod: 1,
     periodCount: 2,
@@ -68,18 +83,6 @@ export function createMatchRecord(
     createdAt: now,
     updatedAt: now,
   });
-}
-
-export function suggestOpponentShortName(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length > 1) {
-    return words
-      .map((word) => word[0])
-      .join('')
-      .slice(0, 5)
-      .toUpperCase();
-  }
-  return (words[0] ?? '').slice(0, 5).toUpperCase();
 }
 
 function unique(ids: readonly string[]): string[] {

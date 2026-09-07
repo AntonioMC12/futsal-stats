@@ -17,6 +17,7 @@ const match: Match = {
   homeTeam: { id: 'team', name: 'Local', shortName: 'LOC' },
   awayTeam: { name: 'Rival', shortName: 'RIV' },
   date: 0,
+  description: '',
   status: 'firstHalf',
   currentPeriod: 1,
   periodCount: 2,

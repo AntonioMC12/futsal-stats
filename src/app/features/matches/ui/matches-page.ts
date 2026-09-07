@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { MatchSummary, MatchesStore } from '../application/matches.store';
 import { MatchCsvExportService } from '../application/match-csv-export.service';
+import { MatchDate, matchDateTimestamp } from '../../../shared/models/match';
 
 @Component({
   selector: 'app-matches-page',
@@ -70,7 +71,9 @@ export class MatchesPage {
     }
   }
 
-  protected formatDate(timestamp: number): string {
+  protected formatDate(value: MatchDate): string {
+    const timestamp = matchDateTimestamp(value);
+    if (!timestamp) return '—';
     return new Intl.DateTimeFormat('es-ES', {
       day: 'numeric',
       month: 'short',
