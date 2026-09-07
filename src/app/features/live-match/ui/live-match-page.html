@@ -260,16 +260,18 @@
             <h2 class="section-label" id="tablet-stats-title">Estadísticas</h2>
             <button type="button" (click)="activeOverlay.set('statistics')">Ver todas</button>
           </div>
-          <div class="compact-stats" tabindex="0" aria-label="Resumen de estadísticas de jugadores">
-            <table class="compact-stats-table">
+          <div class="compact-stats">
+            <table class="compact-stats-table" aria-label="Resumen de estadísticas de jugadores">
+              <colgroup>
+                <col class="compact-stats-table__player" />
+                <col class="compact-stats-table__time" />
+                <col class="compact-stats-table__time" />
+              </colgroup>
               <thead>
                 <tr>
                   <th scope="col">Jugador</th>
-                  <th scope="col">Min total</th>
-                  <th scope="col">1.ª mitad</th>
-                  <th scope="col">2.ª mitad</th>
-                  <th scope="col">G</th>
-                  <th scope="col">+/-</th>
+                  <th scope="col">Total</th>
+                  <th scope="col">{{ compactStatsPeriodLabel() }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -288,15 +290,7 @@
                         </button>
                       </th>
                       <td>{{ formatDuration(stats.playedMs) }}</td>
-                      <td>{{ formatDuration(stats.firstHalfMs) }}</td>
-                      <td>{{ formatDuration(stats.secondHalfMs) }}</td>
-                      <td>{{ stats.goals }}</td>
-                      <td
-                        [class.is-positive]="stats.plusMinus > 0"
-                        [class.is-negative]="stats.plusMinus < 0"
-                      >
-                        {{ signed(stats.plusMinus) }}
-                      </td>
+                      <td>{{ formatDuration(compactStatsPeriodTime(stats)) }}</td>
                     </tr>
                   }
                 }

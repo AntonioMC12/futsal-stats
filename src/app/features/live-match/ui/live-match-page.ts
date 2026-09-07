@@ -15,6 +15,7 @@ import { MatchCsvExportService } from '../../matches/application/match-csv-expor
 import { SystemNotificationService } from '../../../core/notifications/system-notification.service';
 import { BenchDisciplineSubject, createStaffIdentityKey } from '../domain/bench-discipline';
 import { PlayerMatchDetailComponent } from './player-match-detail';
+import type { PlayerMatchStatistics } from '../domain/match-statistics';
 
 type MatchOverlay = 'statistics' | 'events' | 'discipline' | 'more';
 
@@ -182,6 +183,10 @@ export class LiveMatchPage {
       default:
         return '';
     }
+  });
+  protected readonly compactStatsPeriodLabel = computed(() => {
+    const period = this.store.match()?.currentPeriod ?? 1;
+    return period === 1 ? '1.ª parte' : period === 2 ? '2.ª parte' : `Periodo ${period}`;
   });
 
   constructor() {
@@ -466,6 +471,12 @@ export class LiveMatchPage {
 
   protected formatDuration(durationMs: number): string {
     return formatGameClock(durationMs);
+  }
+
+  protected compactStatsPeriodTime(
+    stats: Pick<PlayerMatchStatistics, 'firstHalfMs' | 'secondHalfMs'>,
+  ): number {
+    return this.store.match()?.currentPeriod === 2 ? stats.secondHalfMs : stats.firstHalfMs;
   }
 
   protected signed(value: number): string {

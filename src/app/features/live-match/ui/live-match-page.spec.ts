@@ -691,18 +691,39 @@ describe('LiveMatchPage', () => {
     fixture.destroy();
   });
 
-  it('renders the tablet statistics summary and expands it in the existing overlay', async () => {
+  it('renders only total and first-half time in the compact statistics summary', async () => {
     const { fixture } = await createPage();
     const summary = fixture.nativeElement.querySelector('.tablet-statistics') as HTMLElement;
+    const headers = [...summary.querySelectorAll('thead th')].map((header) =>
+      header.textContent?.trim(),
+    );
 
     expect(summary.textContent).toContain('Estadísticas');
     expect(summary.querySelectorAll('tbody tr')).toHaveLength(players.length);
+    expect(headers).toEqual(['Jugador', 'Total', '1.ª parte']);
+    expect(summary.querySelectorAll('tbody tr:first-child > *')).toHaveLength(3);
     expect(summary.textContent).toContain('#1');
     expect(summary.textContent).toContain('Jugador 1');
 
     (summary.querySelector('.panel-heading button') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.match-overlay .statistics-table')).not.toBeNull();
+    fixture.destroy();
+  });
+
+  it('switches the compact statistics summary to second-half time', async () => {
+    const { fixture, store } = await createPage();
+    store.match.update((match) =>
+      match ? { ...match, status: 'secondHalf', currentPeriod: 2 } : match,
+    );
+    fixture.detectChanges();
+
+    const summary = fixture.nativeElement.querySelector('.tablet-statistics') as HTMLElement;
+    const headers = [...summary.querySelectorAll('thead th')].map((header) =>
+      header.textContent?.trim(),
+    );
+    expect(headers).toEqual(['Jugador', 'Total', '2.ª parte']);
+    expect(summary.textContent).not.toContain('1.ª parte');
     fixture.destroy();
   });
 
