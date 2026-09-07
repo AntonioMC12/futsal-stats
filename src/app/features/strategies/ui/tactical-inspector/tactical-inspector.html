@@ -1,0 +1,66 @@
+<aside class="inspector" aria-label="Propiedades">
+  <p class="inspector__eyebrow">Propiedades</p>
+  @if (piece(); as selected) {
+    <div class="selection-icon" [class.is-away]="selected.type === 'away-player'">
+      {{ selected.type === 'ball' ? '⚽' : selected.label }}
+    </div>
+    <h2>
+      {{
+        selected.type === 'ball'
+          ? 'Balón'
+          : selected.type === 'home-player'
+            ? 'Jugador local'
+            : 'Jugador rival'
+      }}
+    </h2>
+    <dl>
+      <div>
+        <dt>Identidad</dt>
+        <dd>{{ selected.playerId ?? selected.pieceId }}</dd>
+      </div>
+      <div>
+        <dt>Posición</dt>
+        <dd>{{ selected.position.x.toFixed(2) }}, {{ selected.position.y.toFixed(2) }}</dd>
+      </div>
+    </dl>
+  } @else if (arrow(); as selected) {
+    <div class="selection-icon selection-icon--action">→</div>
+    <h2>Acción táctica</h2>
+    <dl>
+      <div>
+        <dt>Tipo</dt>
+        <dd>{{ selected.type === 'pass' ? 'Pase continuo' : 'Movimiento discontinuo' }}</dd>
+      </div>
+    </dl>
+    <button
+      class="danger-action"
+      type="button"
+      [disabled]="disabled()"
+      (click)="arrowDeleted.emit()"
+    >
+      Eliminar acción
+    </button>
+  } @else {
+    <h2>{{ strategy().name }}</h2>
+    <p class="muted">{{ strategy().description || 'Sin descripción' }}</p>
+    <span class="category">{{ strategy().category }}</span>
+  }
+  <div class="sequence-properties">
+    <p class="inspector__eyebrow">Secuencia actual</p>
+    <strong>Secuencia {{ phase().order }}</strong
+    ><label
+      >Duración de transición
+      <div>
+        <input
+          type="number"
+          min="0.2"
+          max="10"
+          step="0.1"
+          [disabled]="disabled()"
+          [value]="phase().durationMs / 1000"
+          (change)="durationChanged.emit(duration($event))"
+        /><span>s</span>
+      </div></label
+    >
+  </div>
+</aside>

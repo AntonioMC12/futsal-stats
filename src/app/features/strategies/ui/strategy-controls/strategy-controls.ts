@@ -1,7 +1,6 @@
 import { Component, input, output } from '@angular/core';
-import { PlaybackSpeed } from '../../application/strategy-playback.store';
+import { PlaybackSpeed, PlaybackStatus } from '../../application/strategy-playback.store';
 import { StrategyPhase } from '../../domain/strategy';
-
 @Component({
   selector: 'app-strategy-controls',
   templateUrl: './strategy-controls.html',
@@ -10,17 +9,21 @@ import { StrategyPhase } from '../../domain/strategy';
 export class StrategyControls {
   readonly phases = input.required<readonly StrategyPhase[]>();
   readonly phaseIndex = input.required<number>();
-  readonly playing = input.required<boolean>();
-  readonly intervalMs = input.required<number>();
+  readonly status = input.required<PlaybackStatus>();
+  readonly playbackRate = input.required<number>();
   readonly speeds = input.required<readonly PlaybackSpeed[]>();
-
+  readonly readonly = input(false);
   readonly playbackToggled = output<void>();
+  readonly stopped = output<void>();
+  readonly restarted = output<void>();
   readonly previousRequested = output<void>();
   readonly nextRequested = output<void>();
   readonly phaseSelected = output<number>();
   readonly speedSelected = output<number>();
-
-  protected changeSpeed(event: Event): void {
-    this.speedSelected.emit(Number((event.target as HTMLSelectElement).value));
+  readonly sequenceAdded = output<void>();
+  readonly sequenceDuplicated = output<void>();
+  readonly sequenceDeleted = output<void>();
+  protected numberValue(event: Event): number {
+    return Number((event.target as HTMLInputElement | HTMLSelectElement).value);
   }
 }

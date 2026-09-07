@@ -1,0 +1,119 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+.inspector {
+  height: 100%;
+  min-height: 0;
+  padding: var(--ds-space-4);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface);
+  overflow: auto;
+}
+.inspector__eyebrow {
+  margin: 0 0 0.75rem;
+  color: var(--ds-text-muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.inspector h2 {
+  margin: 0.65rem 0;
+  font-size: 1.05rem;
+}
+.muted {
+  color: var(--ds-text-secondary);
+  font-size: 0.85rem;
+}
+.category {
+  display: inline-flex;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary);
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.selection-icon {
+  width: 3rem;
+  height: 3rem;
+  border: 3px solid #d7e8ff;
+  border-radius: 50%;
+  background: #2874df;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+}
+.selection-icon.is-away {
+  border-color: #ffd4da;
+  background: #d83d52;
+}
+.selection-icon--action {
+  border-radius: 0.65rem;
+  background: var(--ds-surface-raised);
+}
+dl {
+  margin: 1rem 0;
+  display: grid;
+  gap: 0.65rem;
+}
+dl div {
+  min-width: 0;
+}
+dt {
+  color: var(--ds-text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+dd {
+  margin: 0.1rem 0 0;
+  overflow-wrap: anywhere;
+  color: var(--ds-text-secondary);
+  font-size: 0.8rem;
+}
+.sequence-properties {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--ds-border);
+}
+.sequence-properties > strong {
+  display: block;
+  margin-bottom: 0.8rem;
+}
+.sequence-properties label {
+  color: var(--ds-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.sequence-properties label div {
+  margin-top: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.sequence-properties input {
+  width: 5rem;
+  min-height: 2.75rem;
+  padding: 0.4rem;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-control);
+  background: var(--ds-surface-raised);
+  color: var(--ds-text);
+  font: inherit;
+}
+.danger-action {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid color-mix(in srgb, var(--ds-danger) 40%, transparent);
+  border-radius: var(--ds-radius-button);
+  background: var(--ds-danger-soft);
+  color: var(--ds-danger-strong);
+  font: inherit;
+  font-weight: 800;
+}

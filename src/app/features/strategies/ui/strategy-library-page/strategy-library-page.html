@@ -1,0 +1,110 @@
+<section class="library">
+  <header class="library-header">
+    <div>
+      <p class="eyebrow">Estrategias</p>
+      <h1>Biblioteca de jugadas</h1>
+      <p>
+        Consulta y reproduce las estrategias guardadas de
+        {{ context.teams().find((t) => t.id === context.teamId())?.name }}.
+      </p>
+    </div>
+    <button class="btn btn--primary" type="button" (click)="create()">+ Nueva jugada</button>
+  </header>
+  <div class="library-toolbar" role="search">
+    <label class="search-field"
+      ><span class="sr-only">Buscar por nombre</span><span aria-hidden="true">⌕</span
+      ><input
+        type="search"
+        placeholder="Buscar jugadas…"
+        [value]="query()"
+        (input)="search($event)"
+      />
+      @if (query()) {
+        <button type="button" aria-label="Limpiar búsqueda" (click)="query.set('')">×</button>
+      }</label
+    ><label class="filter-field"
+      ><span>Tipo</span
+      ><select [value]="category()" (change)="filter($event)">
+        <option value="">Todos</option>
+        @for (item of categories(); track item) {
+          <option [value]="item">{{ item }}</option>
+        }
+      </select></label
+    ><span class="result-count">{{ strategies().length }} jugadas</span>
+  </div>
+  @if (store.loading() || !context.ready()) {
+    <div class="library-state" role="status">Cargando biblioteca…</div>
+  } @else if (store.error(); as error) {
+    <div class="library-state" role="alert">
+      <h2>No se pudo abrir la biblioteca</h2>
+      <p>{{ error }}</p>
+    </div>
+  } @else if (store.strategies().length === 0) {
+    <div class="library-state">
+      <h2>Todavía no hay jugadas guardadas</h2>
+      <p>Diseña tu primera estrategia y aparecerá aquí.</p>
+      <button class="btn btn--primary" type="button" (click)="create()">
+        Crear primera jugada
+      </button>
+    </div>
+  } @else if (strategies().length === 0) {
+    <div class="library-state">
+      <h2>Sin resultados</h2>
+      <p>No hay jugadas que coincidan con la búsqueda y el filtro.</p>
+      <button class="btn btn--secondary" type="button" (click)="query.set(''); category.set('')">
+        Limpiar filtros
+      </button>
+    </div>
+  } @else {
+    <app-strategy-list
+      [strategies]="strategies()"
+      (strategyPlayed)="play($event)"
+      (strategyEdited)="edit($event)"
+    />
+  }
+</section>
+@if (viewerOpen() && store.selectedStrategy(); as strategy) {
+  @if (store.currentPhase(); as phase) {
+    <div class="viewer-backdrop" (click)="closeViewer()">
+      <section
+        class="viewer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="viewer-title"
+        (click)="$event.stopPropagation()"
+      >
+        <header>
+          <div>
+            <span>Visor de jugada</span>
+            <h2 id="viewer-title">{{ strategy.name }}</h2>
+          </div>
+          <button type="button" aria-label="Cerrar visor" (click)="closeViewer()">×</button>
+        </header>
+        <div class="viewer-board">
+          <app-tactical-board
+            [strategy]="strategy"
+            [phase]="phase"
+            [pieces]="store.renderedPieces()"
+            [locked]="true"
+            [compact]="true"
+          />
+        </div>
+        <app-strategy-controls
+          [readonly]="true"
+          [phases]="strategy.phases"
+          [phaseIndex]="store.phaseIndex()"
+          [status]="store.status()"
+          [playbackRate]="store.playbackRate()"
+          [speeds]="speeds"
+          (playbackToggled)="store.togglePlayback()"
+          (stopped)="store.stop()"
+          (restarted)="store.restart()"
+          (previousRequested)="store.previous()"
+          (nextRequested)="store.next()"
+          (phaseSelected)="store.selectPhase($event)"
+          (speedSelected)="store.setSpeed($event)"
+        />
+      </section>
+    </div>
+  }
+}

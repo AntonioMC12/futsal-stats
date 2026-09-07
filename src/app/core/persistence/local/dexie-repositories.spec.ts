@@ -14,6 +14,7 @@ import {
 } from '../persistence.tokens';
 import { provideLocalPersistence } from '../provide-local-persistence';
 import { FutsalStatsDb } from './futsal-stats.db';
+import { StrategyRepository, createStrategy } from '../../../features/strategies/domain/strategy';
 
 describe('local Dexie repository adapters', () => {
   let db: FutsalStatsDb;
@@ -64,6 +65,21 @@ describe('local Dexie repository adapters', () => {
         ['team-c', 0],
       ]),
     );
+  });
+
+  it('persists tactical strategies behind the team boundary', async () => {
+    const repository = TestBed.inject(StrategyRepository);
+    let sequence = 0;
+    const strategy = createStrategy('team-a', [], () => `strategy-id-${++sequence}`);
+
+    await repository.save(strategy);
+
+    expect(await repository.get(strategy.id)).toEqual(strategy);
+    expect(await repository.list('team-a')).toEqual([strategy]);
+    expect(await repository.list('team-b')).toEqual([]);
+
+    await repository.delete(strategy.id);
+    expect(await repository.get(strategy.id)).toBeUndefined();
   });
 
   it('supports match put, get, list and findActive', async () => {

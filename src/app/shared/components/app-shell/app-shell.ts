@@ -16,4 +16,8 @@ export class AppShell {
   get liveMatchActive(): boolean {
     return this.router.url.startsWith('/live/');
   }
+
+  get strategiesActive(): boolean {
+    return this.router.url.startsWith('/strategies');
+  }
 }

@@ -1,22 +1,23 @@
-<div class="board-frame">
+<div class="board-frame" [class.board-frame--compact]="compact()">
   <svg
     class="board"
+    [class.board--drawing]="tool() === 'pass' || tool() === 'movement'"
     viewBox="0 0 1000 600"
-    role="img"
-    [attr.aria-labelledby]="'board-title board-description'"
+    preserveAspectRatio="xMidYMid meet"
+    role="application"
+    tabindex="0"
+    [attr.aria-label]="strategy().name + ', ' + phase().title + '. Pizarra táctica editable'"
+    (pointerdown)="boardPointerDown($event)"
+    (keydown)="keydown($event)"
   >
-    <title id="board-title">{{ strategy().name }}: {{ phase().title }}</title>
-    <desc id="board-description">
-      Pizarra de fútbol sala con las posiciones y movimientos de la fase {{ phase().order }}.
-    </desc>
     <defs>
       <linearGradient id="pitch-gradient" x1="0" x2="1">
         <stop offset="0" stop-color="#0b5b43" />
-        <stop offset="0.5" stop-color="#126b4d" />
+        <stop offset=".5" stop-color="#126b4d" />
         <stop offset="1" stop-color="#0b5b43" />
       </linearGradient>
-      <filter id="player-shadow" x="-50%" y="-50%" width="200%" height="200%">
-        <feDropShadow dx="0" dy="5" stdDeviation="6" flood-opacity="0.34" />
+      <filter id="piece-shadow" x="-50%" y="-50%" width="200%" height="200%">
+        <feDropShadow dx="0" dy="4" stdDeviation="5" flood-opacity=".36" />
       </filter>
       <marker
         id="pass-arrow"
@@ -25,23 +26,22 @@
         refY="6"
         markerWidth="9"
         markerHeight="9"
-        orient="auto-start-reverse"
+        orient="auto"
       >
-        <path d="M1 1l10 5-10 5z" fill="#ffb84d" />
+        <path d="M1 1l10 5-10 5z" />
       </marker>
       <marker
-        id="run-arrow"
+        id="movement-arrow"
         viewBox="0 0 12 12"
         refX="9"
         refY="6"
         markerWidth="9"
         markerHeight="9"
-        orient="auto-start-reverse"
+        orient="auto"
       >
-        <path d="M1 1l10 5-10 5z" fill="#59e3f5" />
+        <path d="M1 1l10 5-10 5z" />
       </marker>
     </defs>
-
     <rect class="pitch" x="18" y="18" width="964" height="564" rx="26" />
     <g class="pitch-lines" aria-hidden="true">
       <rect x="34" y="34" width="932" height="532" rx="17" />
@@ -54,41 +54,91 @@
       <circle class="pitch-dot" cx="865" cy="300" r="4" />
       <path class="goal" d="M34 245H8v110h26M966 245h26v110h-26" />
     </g>
-
-    <g class="actions" aria-hidden="true">
-      @for (action of visibleActions(); track action.id) {
+    <g class="arrows">
+      @for (arrow of phase().arrows; track arrow.id) {
         <path
-          class="action"
-          [class.action--pass]="action.type === 'pass'"
-          [class.action--run]="action.type === 'run'"
-          [attr.d]="actionPath(action)"
-          [attr.marker-end]="action.type === 'pass' ? 'url(#pass-arrow)' : 'url(#run-arrow)'"
+          class="arrow arrow--hit"
+          [attr.d]="arrowPath(arrow)"
+          (pointerdown)="arrowPointerDown($event, arrow.id)"
         />
+        <path
+          class="arrow"
+          [class.arrow--pass]="arrow.type === 'pass'"
+          [class.arrow--movement]="arrow.type === 'movement'"
+          [class.is-selected]="selectedArrowId() === arrow.id"
+          [attr.d]="arrowPath(arrow)"
+          [attr.marker-end]="arrow.type === 'pass' ? 'url(#pass-arrow)' : 'url(#movement-arrow)'"
+          aria-hidden="true"
+        />
+        @if (selectedArrowId() === arrow.id && !locked()) {
+          <circle
+            class="arrow-handle"
+            r="13"
+            [style.transform]="draftPosition(arrow.from)"
+            (pointerdown)="arrowHandleDown($event, arrow.id, 'from')"
+            (pointermove)="arrowHandleMove($event)"
+            (pointerup)="arrowHandleEnd($event)"
+            (pointercancel)="arrowHandleEnd($event)"
+          />
+          <circle
+            class="arrow-handle"
+            r="13"
+            [style.transform]="draftPosition(arrow.to)"
+            (pointerdown)="arrowHandleDown($event, arrow.id, 'to')"
+            (pointermove)="arrowHandleMove($event)"
+            (pointerup)="arrowHandleEnd($event)"
+            (pointercancel)="arrowHandleEnd($event)"
+          />
+        }
       }
     </g>
-
-    <g class="players" aria-hidden="true">
-      @for (player of strategy().players; track player.id) {
-        <g class="player" [style.transform]="translate(playerPosition(player.id))">
-          <circle
-            r="28"
-            [class.player__disc--goalkeeper]="player.kind === 'goalkeeper'"
-            class="player__disc"
-          />
-          <circle class="player__ring" r="21" />
-          <text dy="0.36em">{{ player.label }}</text>
+    @if (draftStart(); as draft) {
+      <circle
+        class="draft-point"
+        r="12"
+        [style.transform]="draftPosition(draft.point)"
+        aria-hidden="true"
+      />
+    }
+    <g class="pieces">
+      @for (piece of pieces(); track piece.pieceId) {
+        <g
+          class="piece"
+          [class.piece--home]="piece.type === 'home-player'"
+          [class.piece--away]="piece.type === 'away-player'"
+          [class.piece--ball]="piece.type === 'ball'"
+          [class.is-selected]="selectedPieceId() === piece.pieceId"
+          [class.is-locked]="locked()"
+          [style.transform]="position(piece.position)"
+          role="button"
+          tabindex="0"
+          [attr.aria-label]="
+            (piece.type === 'ball' ? 'Balón' : 'Ficha ' + piece.label) +
+            '. Usa las flechas del teclado para moverla'
+          "
+          (keydown)="pieceKeydown($event, piece)"
+          (pointerdown)="piecePointerDown($event, piece)"
+          (pointermove)="piecePointerMove($event)"
+          (pointerup)="piecePointerEnd($event)"
+          (pointercancel)="piecePointerEnd($event)"
+        >
+          @if (piece.type === 'ball') {
+            <circle r="16" />
+            <path d="M0-8l7 5-3 8h-8l-3-8zM0-8v-5M7-3l6-2M4 5l4 6M-4 5l-4 6M-7-3l-6-2" />
+          } @else {
+            <circle class="piece__disc" r="29" />
+            <circle class="piece__ring" r="22" />
+            <text dy=".36em">{{ piece.label }}</text>
+          }
         </g>
       }
     </g>
-
-    <g class="ball" aria-hidden="true" [style.transform]="translate(phase().ballPosition)">
-      <circle r="13" />
-      <path d="M0-7l7 5-3 8h-8l-3-8zM0-7v-5M7-2l5-2M4 6l3 5M-4 6l-3 5M-7-2l-5-2" />
-    </g>
   </svg>
-  <div class="board-legend" aria-hidden="true">
-    <span><i class="legend-player"></i>Jugador</span>
-    <span><i class="legend-pass"></i>Pase</span>
-    <span><i class="legend-run"></i>Desmarque</span>
-  </div>
+  @if (!compact()) {
+    <div class="board-legend" aria-label="Leyenda">
+      <span><i class="legend-home"></i>Local</span><span><i class="legend-away"></i>Rival</span
+      ><span><i class="legend-pass"></i>Pase continuo</span
+      ><span><i class="legend-movement"></i>Movimiento discontinuo</span>
+    </div>
+  }
 </div>

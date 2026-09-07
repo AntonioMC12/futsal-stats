@@ -42,6 +42,30 @@ export const routes: Routes = [
       import('./features/strategies/ui/strategies-page/strategies-page').then(
         (m) => m.StrategiesPage,
       ),
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'designer' },
+      {
+        path: 'designer',
+        loadComponent: () =>
+          import('./features/strategies/ui/strategy-designer-page/strategy-designer-page').then(
+            (m) => m.StrategyDesignerPage,
+          ),
+      },
+      {
+        path: 'designer/:strategyId',
+        loadComponent: () =>
+          import('./features/strategies/ui/strategy-designer-page/strategy-designer-page').then(
+            (m) => m.StrategyDesignerPage,
+          ),
+      },
+      {
+        path: 'library',
+        loadComponent: () =>
+          import('./features/strategies/ui/strategy-library-page/strategy-library-page').then(
+            (m) => m.StrategyLibraryPage,
+          ),
+      },
+    ],
   },
   {
     path: 'live/:matchId',

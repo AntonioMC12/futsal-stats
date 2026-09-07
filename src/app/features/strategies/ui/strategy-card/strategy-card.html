@@ -1,22 +1,23 @@
-<button
-  class="strategy-card"
-  type="button"
-  [class.is-active]="active()"
-  [attr.aria-pressed]="active()"
-  (click)="selected.emit(strategy().id)"
->
-  <span class="strategy-card__mark" aria-hidden="true">
-    <svg viewBox="0 0 32 32">
-      <rect x="3" y="5" width="26" height="22" rx="3" />
-      <path d="M16 5v22M3 16h26M9 11l4 2-4 2" />
-    </svg>
-  </span>
-  <span class="strategy-card__content">
-    <span class="strategy-card__topline">
-      <strong>{{ strategy().name }}</strong>
-      <span>{{ strategy().phases.length }} fases</span>
-    </span>
-    <span class="strategy-card__category">{{ strategy().category }}</span>
-    <span class="strategy-card__description">{{ strategy().description }}</span>
-  </span>
-</button>
+<article class="strategy-card">
+  <div class="strategy-card__preview" aria-hidden="true">
+    <app-tactical-board
+      [strategy]="strategy()"
+      [phase]="strategy().phases[0]!"
+      [pieces]="strategy().phases[0]!.pieces"
+      [locked]="true"
+      [compact]="true"
+    />
+  </div>
+  <div class="strategy-card__body">
+    <div>
+      <h2>{{ strategy().name }}</h2>
+      <span>{{ strategy().category }}</span>
+    </div>
+    <p>{{ strategy().phases.length }} secuencias · Actualizada {{ date(strategy().updatedAt) }}</p>
+  </div>
+  <footer>
+    <button class="play-action" type="button" (click)="played.emit(strategy().id)">
+      ▶ Reproducir</button
+    ><button type="button" (click)="edited.emit(strategy().id)">Editar</button>
+  </footer>
+</article>

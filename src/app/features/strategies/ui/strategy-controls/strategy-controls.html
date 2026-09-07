@@ -1,63 +1,100 @@
+<section class="sequence-editor" aria-label="Secuencias">
+  <div class="timeline">
+    @for (phase of phases(); track phase.id; let index = $index) {
+      <button
+        class="timeline__step"
+        type="button"
+        [disabled]="status() !== 'idle'"
+        [class.is-active]="index === phaseIndex()"
+        [attr.aria-current]="index === phaseIndex() ? 'step' : null"
+        [attr.aria-label]="'Ir a secuencia ' + phase.order"
+        (click)="phaseSelected.emit(index)"
+      >
+        <strong>{{ phase.order }}</strong
+        ><small>{{ phase.durationMs / 1000 }} s</small>
+      </button>
+    }
+    @if (!readonly()) {
+      <button
+        class="timeline__add"
+        type="button"
+        aria-label="Añadir secuencia"
+        [disabled]="status() !== 'idle'"
+        (click)="sequenceAdded.emit()"
+      >
+        +
+      </button>
+    }
+  </div>
+  @if (!readonly()) {
+    <div class="sequence-actions">
+      <button type="button" [disabled]="status() !== 'idle'" (click)="sequenceDuplicated.emit()">
+        Duplicar</button
+      ><button
+        type="button"
+        [disabled]="status() !== 'idle' || phases().length === 1"
+        (click)="sequenceDeleted.emit()"
+      >
+        Eliminar
+      </button>
+    </div>
+  }
+</section>
 <section class="controls" aria-label="Controles de reproducción">
   <div class="controls__transport">
     <button
       class="control-button control-button--secondary"
       type="button"
-      aria-label="Fase anterior"
-      [disabled]="phaseIndex() === 0"
+      aria-label="Secuencia anterior"
+      [disabled]="status() !== 'idle' || phaseIndex() === 0"
       (click)="previousRequested.emit()"
     >
-      <span aria-hidden="true">←</span>
+      |◀
     </button>
     <button
       class="control-button control-button--play"
       type="button"
-      [attr.aria-label]="playing() ? 'Pausar reproducción' : 'Reproducir estrategia'"
-      [attr.aria-pressed]="playing()"
+      [disabled]="phases().length < 2"
+      [attr.aria-label]="status() === 'playing' ? 'Pausar reproducción' : 'Reproducir estrategia'"
       (click)="playbackToggled.emit()"
     >
-      <span aria-hidden="true">{{ playing() ? 'Ⅱ' : '▶' }}</span>
-      <span>{{ playing() ? 'Pausar' : 'Reproducir' }}</span>
+      {{
+        status() === 'playing' ? 'Ⅱ Pausar' : status() === 'paused' ? '▶ Reanudar' : '▶ Reproducir'
+      }}
     </button>
     <button
       class="control-button control-button--secondary"
       type="button"
-      aria-label="Fase siguiente"
-      [disabled]="phaseIndex() === phases().length - 1"
+      aria-label="Detener"
+      [disabled]="status() === 'idle'"
+      (click)="stopped.emit()"
+    >
+      ■
+    </button>
+    <button
+      class="control-button control-button--secondary"
+      type="button"
+      aria-label="Reiniciar"
+      (click)="restarted.emit()"
+    >
+      ↺
+    </button>
+    <button
+      class="control-button control-button--secondary"
+      type="button"
+      aria-label="Secuencia siguiente"
+      [disabled]="status() !== 'idle' || phaseIndex() === phases().length - 1"
       (click)="nextRequested.emit()"
     >
-      <span aria-hidden="true">→</span>
+      ▶|
     </button>
   </div>
-
-  <div class="timeline" aria-label="Línea de tiempo">
-    <span class="timeline__track" aria-hidden="true"></span>
-    @for (phase of phases(); track phase.id; let index = $index) {
-      <button
-        class="timeline__step"
-        type="button"
-        [class.is-active]="index === phaseIndex()"
-        [class.is-complete]="index < phaseIndex()"
-        [attr.aria-label]="'Ir a la fase ' + phase.order + ': ' + phase.title"
-        [attr.aria-current]="index === phaseIndex() ? 'step' : null"
-        (click)="phaseSelected.emit(index)"
-      >
-        {{ phase.order }}
-      </button>
-    }
-  </div>
-
-  <label class="speed-control">
-    <span>Velocidad</span>
-    <select [value]="intervalMs()" (change)="changeSpeed($event)">
-      @for (speed of speeds(); track speed.intervalMs) {
-        <option
-          [value]="speed.intervalMs"
-          [selected]="speed.intervalMs === intervalMs()"
-        >
-          {{ speed.label }}
-        </option>
+  <label class="speed-control"
+    ><span>Velocidad</span
+    ><select [value]="playbackRate()" (change)="speedSelected.emit(numberValue($event))">
+      @for (speed of speeds(); track speed.rate) {
+        <option [value]="speed.rate">{{ speed.label }}</option>
       }
-    </select>
-  </label>
+    </select></label
+  >
 </section>
