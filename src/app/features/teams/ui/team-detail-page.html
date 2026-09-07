@@ -1,5 +1,5 @@
 <section class="stack">
-  <a class="back" routerLink="/teams">← Equipos</a>
+  <a class="back" [routerLink]="backLink()">← {{ workspaceMode() ? 'Dashboard' : 'Equipos' }}</a>
 
   @if (loadFailed()) {
     <p class="banner banner--warn" role="alert">No se ha podido cargar el equipo.</p>
@@ -11,7 +11,11 @@
         <p class="eyebrow">{{ current.shortName }}</p>
         <h1>{{ current.name }}</h1>
       </div>
-      <a class="btn btn--secondary" [routerLink]="['/teams', current.id, 'edit']">Editar</a>
+      <a
+        class="btn btn--secondary"
+        [routerLink]="workspaceMode() ? '/settings' : ['/teams', current.id, 'edit']"
+        >Editar</a
+      >
     </div>
 
     <h2>Plantilla</h2>
@@ -68,7 +72,12 @@
         </button>
         @if (editing()) {
           <button class="btn btn--secondary" type="button" (click)="cancelEdit()">Cancelar</button>
-          <button class="btn btn--danger" type="button" (click)="removePlayer()" [disabled]="saving()">
+          <button
+            class="btn btn--danger"
+            type="button"
+            (click)="removePlayer()"
+            [disabled]="saving()"
+          >
             Quitar
           </button>
         }

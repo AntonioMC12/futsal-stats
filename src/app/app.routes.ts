@@ -1,11 +1,35 @@
 import { Routes } from '@angular/router';
 import { noActiveMatchGuard } from './features/match-setup/application/no-active-match.guard';
+import {
+  matchTeamWorkspaceGuard,
+  teamWorkspaceGuard,
+} from './core/team-workspace/team-workspace.guard';
 
 export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    redirectTo: 'matches',
+    redirectTo: 'dashboard',
+  },
+  {
+    path: 'dashboard',
+    canActivate: [teamWorkspaceGuard],
+    loadComponent: () =>
+      import('./features/workspace/ui/team-dashboard-page').then((m) => m.TeamDashboardPage),
+  },
+  {
+    path: 'players',
+    canActivate: [teamWorkspaceGuard],
+    data: { workspaceMode: true },
+    loadComponent: () =>
+      import('./features/teams/ui/team-detail-page').then((m) => m.TeamDetailPage),
+  },
+  {
+    path: 'settings',
+    canActivate: [teamWorkspaceGuard],
+    data: { workspaceMode: true },
+    loadComponent: () =>
+      import('./features/teams/ui/team-editor-page').then((m) => m.TeamEditorPage),
   },
   {
     path: 'teams',
@@ -28,16 +52,18 @@ export const routes: Routes = [
   },
   {
     path: 'matches/new',
-    canActivate: [noActiveMatchGuard],
+    canActivate: [teamWorkspaceGuard, noActiveMatchGuard],
     loadComponent: () =>
       import('./features/match-setup/ui/match-setup-page').then((m) => m.MatchSetupPage),
   },
   {
     path: 'matches',
+    canActivate: [teamWorkspaceGuard],
     loadComponent: () => import('./features/matches/ui/matches-page').then((m) => m.MatchesPage),
   },
   {
     path: 'strategies',
+    canActivate: [teamWorkspaceGuard],
     loadComponent: () =>
       import('./features/strategies/ui/strategies-page/strategies-page').then(
         (m) => m.StrategiesPage,
@@ -69,6 +95,7 @@ export const routes: Routes = [
   },
   {
     path: 'live/:matchId',
+    canActivate: [matchTeamWorkspaceGuard],
     loadComponent: () =>
       import('./features/live-match/ui/live-match-page').then((m) => m.LiveMatchPage),
   },
@@ -79,5 +106,5 @@ export const routes: Routes = [
         (m) => m.RfefRegulationsPage,
       ),
   },
-  { path: '**', redirectTo: 'matches' },
+  { path: '**', redirectTo: 'dashboard' },
 ];

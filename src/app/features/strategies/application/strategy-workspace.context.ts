@@ -8,12 +8,14 @@ import { PLAYER_REPOSITORY, TEAM_REPOSITORY } from '../../../core/persistence/pe
 import { Player } from '../../../shared/models/player';
 import { Team } from '../../../shared/models/team';
 import { StrategyPlaybackStore } from './strategy-playback.store';
+import { TeamWorkspaceContext } from '../../../core/team-workspace/team-workspace.context';
 
 @Injectable()
 export class StrategyWorkspaceContext {
   private readonly teamsRepository = inject(TEAM_REPOSITORY, { optional: true });
   private readonly playersRepository = inject(PLAYER_REPOSITORY, { optional: true });
   private readonly store = inject(StrategyPlaybackStore);
+  private readonly workspace = inject(TeamWorkspaceContext, { optional: true });
   readonly teams = signal<readonly Team[]>([]);
   readonly roster = signal<readonly Player[]>([]);
   readonly teamId = signal(APAGA_TEAM_ID);
@@ -27,12 +29,18 @@ export class StrategyWorkspaceContext {
     } catch {
       this.teams.set([fallback]);
     }
-    this.teamId.set(this.teams()[0]?.id ?? APAGA_TEAM_ID);
+    const activeTeamId = this.workspace?.activeTeamId();
+    this.teamId.set(
+      this.teams().some(({ id }) => id === activeTeamId)
+        ? activeTeamId!
+        : (this.teams()[0]?.id ?? APAGA_TEAM_ID),
+    );
     await this.loadTeam();
     this.ready.set(true);
   }
 
   async selectTeam(teamId: string): Promise<void> {
+    await this.workspace?.selectTeam(teamId);
     this.teamId.set(teamId);
     await this.loadTeam();
   }

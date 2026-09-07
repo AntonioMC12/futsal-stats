@@ -19,9 +19,9 @@ contain several entity references, so changing only primary keys would corrupt t
 
 ## Decision
 
-Use option 3. Dexie v3 builds maps for Team, Player, Match and MatchEvent IDs. Valid UUIDs are
+Use option 3. Dexie v4 builds maps for Team, Player, Match and MatchEvent IDs. Valid UUIDs are
 preserved. Other IDs receive UUIDs, except known Apaga IDs, which map to documented fixed UUIDs.
-All foreign keys, player snapshots and event-to-event references are rewritten before any v3 data
+All foreign keys, player snapshots and event-to-event references are rewritten before any v4 data
 is committed.
 
 The migration refuses duplicate global UUIDs and orphan references. It does not silently remove,
@@ -32,8 +32,8 @@ repair or invent parent records. Sync metadata is stored only in local persisten
 Dexie runs schema upgrades in a transaction. A thrown validation error rolls back all clears and
 writes, leaving version 2 intact. The application must never respond by deleting IndexedDB.
 Operators can inspect the diagnostic error, repair/export the invalid record with a dedicated tool,
-and retry. There is no reverse v3→v2 migration because the upgrade preserves the complete logical
-dataset and production rollback should deploy code capable of reading v3.
+and retry. There is no reverse v4→v2 migration because the upgrade preserves the complete logical
+dataset and production rollback should deploy code capable of reading v4.
 
 ## Consequences
 
@@ -44,7 +44,7 @@ dataset and production rollback should deploy code capable of reading v3.
 
 ## Verification
 
-Automated tests create a real v2 fake IndexedDB database, upgrade it through the production v3
+Automated tests create real v2 and v3 fake IndexedDB databases, upgrade them through the production v4
 migration and verify counts, UUIDs, ownership, player snapshots, event ordering, undo references,
 active-match recovery and derived statistics. A separate invalid fixture verifies transactional
 rollback to v2, and the seed fixture verifies idempotence.

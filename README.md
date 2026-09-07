@@ -15,7 +15,7 @@ La aplicación funciona de forma **local-first y sin backend**: equipos, jugador
 
 Futsal Stats concentra en una única interfaz las operaciones principales de un partido:
 
-- preparación de equipos, convocatoria y quinteto inicial;
+- preparación de equipos y convocatoria, con elección posterior del quinteto inicial;
 - cronómetro y control del periodo;
 - marcador, faltas y sanciones;
 - sustituciones y quinteto actual;
@@ -63,7 +63,7 @@ Flujo contextual para seleccionar al jugador que comete la falta y, cuando corre
 - Creación y edición de equipos.
 - Equipo **Apaga** preconfigurado con 16 jugadores, disponible automáticamente en cada instalación.
 - Gestión de dorsales, nombres, posiciones y estado de los jugadores.
-- Selección de convocatoria y quinteto inicial antes de cada partido.
+- Selección de convocatoria y elección del quinteto inicial desde la pista antes de iniciar.
 
 ## Gestión de partidos
 
@@ -131,7 +131,10 @@ El flujo de preparación permite seleccionar:
 1. el equipo propio;
 2. el rival y la información disponible del encuentro;
 3. la convocatoria;
-4. el quinteto inicial.
+4. la convocatoria del equipo activo.
+
+El quinteto inicial se selecciona después, desde la pista, y el partido no puede iniciarse hasta
+confirmar exactamente cinco jugadores.
 
 Una vez creado, el partido pasa a ser el único partido activo de la aplicación.
 
@@ -522,15 +525,19 @@ npm run ng -- <comando>
 
 # Rutas principales
 
-| Ruta                  | Descripción                                    |
-| --------------------- | ---------------------------------------------- |
-| `/matches`            | Gestor de partidos activos y finalizados       |
-| `/matches/new`        | Preparación de convocatoria y quinteto inicial |
-| `/live/:matchId`      | Registro del partido en directo                |
-| `/teams`              | Listado de equipos                             |
-| `/teams/new`          | Creación de un equipo                          |
-| `/teams/:teamId`      | Plantilla de un equipo                         |
-| `/teams/:teamId/edit` | Edición de un equipo                           |
+| Ruta                  | Descripción                              |
+| --------------------- | ---------------------------------------- |
+| `/dashboard`          | Resumen del espacio de equipo activo     |
+| `/players`            | Plantilla del equipo activo              |
+| `/matches`            | Gestor de partidos activos y finalizados |
+| `/matches/new`        | Datos y convocatoria del nuevo partido   |
+| `/settings`           | Ajustes y cambio del equipo activo       |
+| `/strategies`         | Diseñador y biblioteca táctica           |
+| `/live/:matchId`      | Registro del partido en directo          |
+| `/teams`              | Listado de equipos                       |
+| `/teams/new`          | Creación de un equipo                    |
+| `/teams/:teamId`      | Plantilla de un equipo                   |
+| `/teams/:teamId/edit` | Edición de un equipo                     |
 
 El acceso directo a `/matches/new` se protege cuando ya existe un partido activo.
 
@@ -576,7 +583,7 @@ La base de datos local contiene cuatro tablas:
 
 El seed integrado de Apaga es infraestructura local, transaccional e idempotente. Sus IDs
 son UUIDs fijos para garantizar esa idempotencia; el resto de altas continúa usando
-`createId()`/`crypto.randomUUID()`. Dexie v3 migra los IDs históricos y todas sus referencias sin
+`createId()`/`crypto.randomUUID()`. Dexie v4 migra los IDs históricos y todas sus referencias sin
 borrar la base local. Consulta [`docs/architecture/cloud-data-model.md`](docs/architecture/cloud-data-model.md).
 
 El reloj persistido forma parte del registro `Match`. Marcador, faltas, quintetos, minutos y estadísticas se calculan a partir de los eventos; no se guardan copias derivadas innecesarias.

@@ -1,6 +1,10 @@
 <section class="stack">
-  <a class="back" routerLink="/teams">← Equipos</a>
-  <h1>{{ isEdit() ? 'Editar equipo' : 'Nuevo equipo' }}</h1>
+  <a class="back" [routerLink]="workspaceMode() ? '/dashboard' : '/teams'"
+    >← {{ workspaceMode() ? 'Dashboard' : 'Equipos' }}</a
+  >
+  <h1>
+    {{ workspaceMode() ? 'Ajustes del equipo' : isEdit() ? 'Editar equipo' : 'Nuevo equipo' }}
+  </h1>
 
   @if (missing()) {
     <p class="banner banner--warn">Este equipo no existe.</p>
@@ -34,6 +38,9 @@
       <button class="btn btn--primary" type="submit" [disabled]="saving()">
         {{ isEdit() ? 'Guardar' : 'Crear equipo' }}
       </button>
+      @if (workspaceMode()) {
+        <a class="btn btn--secondary" routerLink="/teams">Gestionar y cambiar equipos</a>
+      }
     </form>
   }
 </section>

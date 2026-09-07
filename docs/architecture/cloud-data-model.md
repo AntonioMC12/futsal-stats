@@ -30,7 +30,7 @@ factory, backed by `crypto.randomUUID()` with an RFC 4122-compatible fallback. I
 array positions, timestamps or IndexedDB auto-increment keys.
 
 The built-in Apaga seed uses documented, fixed UUIDs. Stable constants are necessary to keep the
-seed idempotent and preserve later user edits. The v3 migration maps its historical
+seed idempotent and preserve later user edits. The v4 migration maps its historical
 `built-in-*` IDs to those UUIDs.
 
 ## Domain entities and local records
@@ -67,7 +67,8 @@ not silently soft-deleted in this iteration.
 
 ## IndexedDB schema
 
-Dexie v3 keeps the four existing stores and primary keys:
+Dexie v4 keeps the existing stores and primary keys. Version 3 introduced tactical strategies;
+version 4 adds the cloud-ready indexes without removing that store:
 
 - `teams`: adds the `syncStatus` index.
 - `players`: adds `updatedAt` and `syncStatus` indexes.
@@ -77,7 +78,7 @@ Dexie v3 keeps the four existing stores and primary keys:
 No table is renamed. Live event commit, single-active-match creation, match deletion and the built-in
 seed remain transactional.
 
-## Legacy v2 → v3 migration
+## Legacy v2/v3 → v4 migration
 
 The Dexie version upgrade runs in its native transaction:
 
@@ -89,9 +90,10 @@ The Dexie version upgrade runs in its native transaction:
    event reference.
 6. Derive missing timestamps deterministically from existing owner/match/event timestamps.
 7. Validate every relationship; any orphan or collision throws a diagnostic migration error.
-8. Replace store contents with v3 records inside the same upgrade transaction.
+8. Replace store contents with v4 records inside the same upgrade transaction, preserving tactical
+   strategies and rewriting their Team ownership.
 
-If any step fails, Dexie aborts the upgrade and IndexedDB retains the complete v2 database. The app
+If any step fails, Dexie aborts the upgrade and IndexedDB retains the complete source database. The app
 must not clear the database automatically. Recovery is to correct/export the invalid legacy data in
 a diagnostic build and retry the same migration. Migration tests verify this rollback behavior.
 

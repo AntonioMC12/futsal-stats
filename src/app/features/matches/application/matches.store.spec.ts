@@ -8,6 +8,7 @@ import { Match, MatchDate } from '../../../shared/models/match';
 import { MatchEvent } from '../../../shared/models/match-event';
 import { DeleteMatchService } from './delete-match.service';
 import { MatchesStore } from './matches.store';
+import { TeamWorkspaceContext } from '../../../core/team-workspace/team-workspace.context';
 
 function match(id: string, status: Match['status'], date: MatchDate): Match {
   return {
@@ -140,5 +141,29 @@ describe('MatchesStore', () => {
 
     expect(store.activeMatch()?.match.id).toBe('active');
     expect(store.error()).toContain('siguen guardados');
+  });
+
+  it('loads matches only from the active team workspace', async () => {
+    vi.useFakeTimers();
+    const teamMatch = match('team-match', 'finished', 20);
+    const listByTeam = vi.fn(async () => [teamMatch]);
+    TestBed.configureTestingModule({
+      providers: [
+        MatchesStore,
+        { provide: TeamWorkspaceContext, useValue: { activeTeamId: () => 'team-1' } },
+        {
+          provide: MatchRepository,
+          useValue: { list: vi.fn(), listByTeam },
+        },
+        { provide: MatchEventRepository, useValue: { listByMatch: async () => [] } },
+        { provide: DeleteMatchService, useValue: { execute: async () => undefined } },
+      ],
+    });
+
+    const store = TestBed.inject(MatchesStore);
+    await store.load();
+
+    expect(listByTeam).toHaveBeenCalledWith('team-1');
+    expect(store.matches().map(({ match }) => match.id)).toEqual(['team-match']);
   });
 });

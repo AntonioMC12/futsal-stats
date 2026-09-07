@@ -18,6 +18,22 @@
   gap: var(--ds-space-3);
 }
 
+.card-list > li {
+  display: grid;
+  gap: var(--ds-space-2);
+}
+
+.card.is-active {
+  border-color: var(--ds-primary);
+}
+
+.active-workspace-label {
+  color: var(--ds-primary);
+  font-size: var(--ds-font-xs);
+  font-weight: 800;
+  text-align: right;
+}
+
 .card {
   display: flex;
   align-items: center;

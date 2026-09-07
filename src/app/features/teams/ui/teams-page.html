@@ -16,13 +16,24 @@
     <ul class="card-list">
       @for (item of summaries(); track item.team.id) {
         <li>
-          <a class="card" [routerLink]="['/teams', item.team.id]">
+          <a
+            class="card"
+            [class.is-active]="workspace?.activeTeamId() === item.team.id"
+            [routerLink]="['/teams', item.team.id]"
+          >
             <span class="card__badge">{{ item.team.shortName }}</span>
             <span class="card__body">
               <strong>{{ item.team.name }}</strong>
               <span>{{ item.playerCount }} jugadores</span>
             </span>
           </a>
+          @if (workspace && workspace.activeTeamId() !== item.team.id) {
+            <button class="btn btn--secondary" type="button" (click)="activate(item.team.id)">
+              Usar este equipo
+            </button>
+          } @else if (workspace) {
+            <span class="active-workspace-label">Equipo activo</span>
+          }
         </li>
       }
     </ul>

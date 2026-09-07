@@ -1,10 +1,11 @@
-import { Component, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Player } from '../../../shared/models/player';
 import { Team } from '../../../shared/models/team';
 import { PLAYER_NAME_MAX_LENGTH } from '../domain/roster';
 import { TeamsService } from '../application/teams.service';
+import { TeamWorkspaceContext } from '../../../core/team-workspace/team-workspace.context';
 
 @Component({
   selector: 'app-team-detail-page',
@@ -15,8 +16,14 @@ import { TeamsService } from '../application/teams.service';
 export class TeamDetailPage {
   private readonly teams = inject(TeamsService);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly workspace = inject(TeamWorkspaceContext, { optional: true });
 
-  readonly teamId = input.required<string>();
+  readonly teamId = input<string>();
+  readonly workspaceMode = input(false);
+  protected readonly resolvedTeamId = computed(
+    () => this.teamId() ?? (this.workspaceMode() ? this.workspace?.activeTeamId() : null) ?? '',
+  );
+  protected readonly backLink = computed(() => (this.workspaceMode() ? '/dashboard' : '/teams'));
 
   protected readonly team = signal<Team | null>(null);
   protected readonly roster = signal<Player[]>([]);
@@ -34,7 +41,8 @@ export class TeamDetailPage {
 
   constructor() {
     effect(() => {
-      void this.load(this.teamId());
+      const teamId = this.resolvedTeamId();
+      if (teamId) void this.load(teamId);
     });
   }
 
@@ -63,7 +71,7 @@ export class TeamDetailPage {
       return;
     }
 
-    const teamId = this.teamId();
+    const teamId = this.resolvedTeamId();
     const values = this.playerForm.getRawValue();
     this.saving.set(true);
     this.error.set(null);
@@ -103,14 +111,14 @@ export class TeamDetailPage {
     this.saving.set(true);
     this.error.set(null);
     try {
-      const result = await this.teams.removePlayer(this.teamId(), playerId);
+      const result = await this.teams.removePlayer(this.resolvedTeamId(), playerId);
       if (!result.ok) {
         this.error.set(result.error);
         return;
       }
 
       this.cancelEdit();
-      await this.load(this.teamId());
+      await this.load(this.resolvedTeamId());
     } catch {
       this.error.set('No se ha podido quitar el jugador.');
     } finally {

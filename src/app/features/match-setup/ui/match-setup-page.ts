@@ -133,7 +133,12 @@ export class MatchSetupPage {
 
   private async loadTeams(): Promise<void> {
     try {
-      this.teams.set(await this.setup.listTeams());
+      const teams = await this.setup.listTeams();
+      this.teams.set(teams);
+      if (teams.length === 1) {
+        this.form.controls.teamId.setValue(teams[0]!.team.id);
+        await this.selectTeam();
+      }
     } catch {
       this.loadFailed.set(true);
     }

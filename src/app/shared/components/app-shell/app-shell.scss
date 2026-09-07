@@ -72,6 +72,22 @@
   font-size: 0.75rem;
   font-weight: 800;
 }
+.workspace-switcher {
+  display: grid;
+  gap: 0.25rem;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-font-xs);
+  font-weight: 800;
+}
+.workspace-switcher select {
+  min-height: 2.5rem;
+  max-width: 12rem;
+  padding-inline: var(--ds-space-3);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-bg);
+  color: var(--ds-text);
+}
 .shell__nav {
   display: flex;
   gap: var(--ds-space-1);
@@ -151,6 +167,9 @@
   .shell:not(.shell--live-match) .offline-status {
     margin: var(--ds-space-4) 0 0;
   }
+  .shell:not(.shell--live-match) .workspace-switcher {
+    margin-top: var(--ds-space-5);
+  }
   .shell:not(.shell--live-match) .shell__nav {
     margin-top: var(--ds-space-7);
     flex-direction: column;
@@ -188,6 +207,15 @@
     margin-left: 0;
     line-height: 1.1;
     text-align: center;
+  }
+  .workspace-switcher {
+    margin-left: auto;
+  }
+  .workspace-switcher span {
+    display: none;
+  }
+  .workspace-switcher select {
+    max-width: 7.5rem;
   }
   .shell__nav {
     position: fixed;

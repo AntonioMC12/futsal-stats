@@ -13,14 +13,20 @@ import { routes } from './app.routes';
 import { BuiltInDataInitializer } from './core/initialization/built-in-data.initializer';
 import { WebGpuDiagnosticsService } from './core/diagnostics/web-gpu-diagnostics.service';
 import { provideLocalPersistence } from './core/persistence/provide-local-persistence';
+import { TeamWorkspaceContext } from './core/team-workspace/team-workspace.context';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideZonelessChangeDetection(),
     ...provideLocalPersistence(),
+    TeamWorkspaceContext,
     provideAppInitializer(() => inject(WebGpuDiagnosticsService).initialize()),
-    provideAppInitializer(() => inject(BuiltInDataInitializer).ensureBuiltInTeams()),
+    provideAppInitializer(() => {
+      const builtInData = inject(BuiltInDataInitializer);
+      const workspace = inject(TeamWorkspaceContext);
+      return builtInData.ensureBuiltInTeams().then(() => workspace.initialize());
+    }),
     provideHttpClient(),
     provideRouter(routes, withComponentInputBinding()),
     provideServiceWorker('ngsw-worker.js', {

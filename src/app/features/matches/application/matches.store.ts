@@ -13,6 +13,7 @@ import {
 import { ScoreSnapshot } from '../../../shared/models/match-event';
 import { deriveMatchState } from '../../live-match/domain/derived-match-state';
 import { DeleteMatchService } from './delete-match.service';
+import { TeamWorkspaceContext } from '../../../core/team-workspace/team-workspace.context';
 
 export interface MatchSummary {
   match: Match;
@@ -25,6 +26,7 @@ export class MatchesStore {
   private readonly eventsRepository = inject(MATCH_EVENT_REPOSITORY);
   private readonly deleteMatchService = inject(DeleteMatchService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly workspace = inject(TeamWorkspaceContext, { optional: true });
   private readonly now = signal(Date.now());
 
   readonly matches = signal<MatchSummary[]>([]);
@@ -56,7 +58,10 @@ export class MatchesStore {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const matches = await this.matchesRepository.list();
+      const teamId = this.workspace?.activeTeamId();
+      const matches = teamId
+        ? await this.matchesRepository.listByTeam(teamId)
+        : await this.matchesRepository.list();
       const summaries = await Promise.all(
         matches.map(async (match): Promise<MatchSummary> => {
           const events = await this.eventsRepository.listByMatch(match.id);
