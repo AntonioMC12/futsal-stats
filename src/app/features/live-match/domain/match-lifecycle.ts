@@ -6,9 +6,13 @@ import {
 } from '../../../core/clock/match-clock';
 import { DomainResult, fail, ok } from '../../../core/utils/result';
 import { Match } from '../../../shared/models/match';
+import { hasValidStartingLineup } from './starting-lineup';
 
 export function startMatchClock(match: Match, now: number): DomainResult<Match> {
   if (match.status === 'ready') {
+    if (!hasValidStartingLineup(match)) {
+      return fail('Selecciona un quinteto inicial válido para comenzar el partido.');
+    }
     return ok(
       update(match, now, {
         status: 'firstHalf',
@@ -62,6 +66,36 @@ export function finishPeriod(match: Match, now: number): DomainResult<Match> {
     return ok(update(match, now, { status: 'halftime', clock }));
   }
   return ok(update(match, now, { status: 'finished', clock }));
+}
+
+export function finishMatch(match: Match, now: number): DomainResult<Match> {
+  if (match.status === 'setup' || match.status === 'finished') {
+    return fail('El partido no se puede finalizar en el estado actual.');
+  }
+
+  return ok(
+    update(match, now, {
+      status: 'finished',
+      clock: stopClock(match.clock, now),
+    }),
+  );
+}
+
+export function freezeFinishedClock(match: Match, now: number): Match {
+  if (
+    match.status !== 'finished' ||
+    (!match.clock.running && match.clock.startedAtEpochMs === null)
+  ) {
+    return match;
+  }
+
+  return update(match, now, {
+    clock: {
+      ...match.clock,
+      running: false,
+      startedAtEpochMs: null,
+    },
+  });
 }
 
 export function startNextPeriod(match: Match, now: number): DomainResult<Match> {

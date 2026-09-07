@@ -7,7 +7,9 @@ import {
 } from '../../../core/clock/match-clock';
 import { Match, MatchStatus } from '../../../shared/models/match';
 import {
+  finishMatch,
   finishPeriod,
+  freezeFinishedClock,
   resetMatchClock,
   startMatchClock,
   startNextPeriod,
@@ -21,6 +23,7 @@ function match(status: MatchStatus = 'ready', currentPeriod = 1): Match {
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: 'Rival', shortName: 'RIV' },
     date: 1,
+    description: '',
     status,
     currentPeriod,
     periodCount: 2,
@@ -43,6 +46,22 @@ describe('match clock lifecycle', () => {
     expect(result.value.clock.running).toBe(true);
     expect(result.value.clock.startedAtEpochMs).toBe(1_000);
     expect(result.value.updatedAt).toBe(1_000);
+  });
+
+  it('does not start a ready match without exactly five valid starters', () => {
+    const withoutLineup = match();
+    withoutLineup.startingLineupPlayerIds = [];
+    expect(startMatchClock(withoutLineup, 1_000)).toEqual({
+      ok: false,
+      error: 'Selecciona un quinteto inicial válido para comenzar el partido.',
+    });
+
+    const outsider = match();
+    outsider.startingLineupPlayerIds = ['p1', 'p2', 'p3', 'p4', 'outside'];
+    expect(startMatchClock(outsider, 1_000)).toEqual({
+      ok: false,
+      error: 'Selecciona un quinteto inicial válido para comenzar el partido.',
+    });
   });
 
   it('stops and resumes without losing elapsed time', () => {
@@ -144,6 +163,47 @@ describe('match clock lifecycle', () => {
     const result = finishPeriod(active, DEFAULT_PERIOD_DURATION_MS + 5_000);
     expect(result.ok && result.value.status).toBe('finished');
     expect(result.ok && result.value.clock.running).toBe(false);
+  });
+
+  it.each<MatchStatus>(['ready', 'firstHalf', 'halftime', 'secondHalf'])(
+    'allows manually finishing a match from %s',
+    (status) => {
+      const active = match(status, status === 'secondHalf' ? 2 : 1);
+      active.clock = { ...active.clock, remainingMs: 763_000 };
+      const result = finishMatch(active, 50_000);
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.status).toBe('finished');
+      expect(result.value.clock.remainingMs).toBe(763_000);
+      expect(result.value.clock.running).toBe(false);
+    },
+  );
+
+  it('freezes the exact projected time when manually finishing a running match', () => {
+    const active = match('firstHalf');
+    active.clock = startClock({ ...active.clock, remainingMs: 763_000 }, 10_000);
+
+    const result = finishMatch(active, 15_250);
+    expect(result.ok && result.value.clock).toEqual({
+      ...createMatchClock(),
+      remainingMs: 757_750,
+    });
+  });
+
+  it('defensively freezes a legacy finished match without consuming more time', () => {
+    const finished = match('finished');
+    finished.clock = {
+      ...finished.clock,
+      remainingMs: 763_000,
+      running: true,
+      startedAtEpochMs: 10_000,
+    };
+
+    expect(freezeFinishedClock(finished, 50_000).clock).toEqual({
+      ...createMatchClock(),
+      remainingMs: 763_000,
+    });
   });
 
   it('does not start a next period outside halftime', () => {

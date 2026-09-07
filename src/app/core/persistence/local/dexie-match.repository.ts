@@ -9,15 +9,18 @@ export class DexieMatchRepository implements MatchRepository {
 
   async findActive(): Promise<Match | null> {
     const matches = await this.db.matches.orderBy('updatedAt').reverse().toArray();
-    return matches.find(isMatchActive) ?? null;
+    const match = matches.find(isMatchActive);
+    return match ? normalizeMatch(match) : null;
   }
 
-  list(): Promise<Match[]> {
-    return this.db.matches.orderBy('updatedAt').reverse().toArray();
+  async list(): Promise<Match[]> {
+    const matches = await this.db.matches.orderBy('updatedAt').reverse().toArray();
+    return matches.map(normalizeMatch);
   }
 
-  get(id: string): Promise<Match | undefined> {
-    return this.db.matches.get(id);
+  async get(id: string): Promise<Match | undefined> {
+    const match = await this.db.matches.get(id);
+    return match ? normalizeMatch(match) : undefined;
   }
 
   put(match: Match): Promise<string> {
@@ -42,4 +45,20 @@ export class DexieMatchRepository implements MatchRepository {
       await this.db.matches.delete(matchId);
     });
   }
+}
+
+export function normalizeMatch(match: Match): Match {
+  const legacy = match as Match & { date?: Match['date']; description?: string };
+  return {
+    ...match,
+    awayTeam: {
+      ...match.awayTeam,
+      name: match.awayTeam?.name ?? '',
+      shortName: match.awayTeam?.shortName ?? '',
+    },
+    date: legacy.date ?? '',
+    description: legacy.description ?? '',
+    squadPlayerIds: match.squadPlayerIds ?? [],
+    startingLineupPlayerIds: match.startingLineupPlayerIds ?? [],
+  };
 }

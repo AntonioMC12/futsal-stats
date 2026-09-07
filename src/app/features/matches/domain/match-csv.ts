@@ -34,6 +34,10 @@ const HEADERS: readonly (keyof PlayerMatchExportRow)[] = [
   'opponentDirectRedCards',
   'teamSendOffs',
   'opponentSendOffs',
+  'firstHalfTime',
+  'secondHalfTime',
+  'firstHalfSeconds',
+  'secondHalfSeconds',
 ];
 
 const CSV_HEADERS = [
@@ -68,6 +72,10 @@ const CSV_HEADERS = [
   'rojas_directas_rival',
   'expulsiones_equipo',
   'expulsiones_rival',
+  'tiempo_primera_mitad',
+  'tiempo_segunda_mitad',
+  'segundos_primera_mitad',
+  'segundos_segunda_mitad',
 ] as const;
 
 export function serializeMatchCsv(exportData: MatchStatisticsExport): string {
@@ -75,6 +83,60 @@ export function serializeMatchCsv(exportData: MatchStatisticsExport): string {
     CSV_HEADERS.map(escapeCsvField).join(','),
     ...exportData.rows.map((row) => HEADERS.map((header) => escapeCsvField(row[header])).join(',')),
   ];
+  const section = (
+    title: string,
+    headers: string[],
+    rows: Record<string, string | number | boolean>[],
+  ): void => {
+    lines.push(
+      '',
+      title,
+      headers.join(','),
+      ...rows.map((row) => headers.map((key) => escapeCsvField(row[key] ?? '')).join(',')),
+    );
+  };
+  section(
+    'EVENTOS',
+    [
+      'eventId',
+      'sequence',
+      'period',
+      'gameTime',
+      'gameClockMs',
+      'eventType',
+      'team',
+      'playerId',
+      'playerNumber',
+      'playerName',
+      'secondaryPlayerId',
+      'secondaryPlayerNumber',
+      'secondaryPlayerName',
+      'description',
+      'metadata',
+      'createdAt',
+      'undone',
+    ],
+    exportData.events,
+  );
+  section(
+    'QUINTETOS',
+    [
+      'lineup',
+      'playerIds',
+      'players',
+      'totalTime',
+      'firstHalfTime',
+      'secondHalfTime',
+      'totalSeconds',
+      'firstHalfSeconds',
+      'secondHalfSeconds',
+      'stints',
+      'goalsFor',
+      'goalsAgainst',
+      'plusMinus',
+    ],
+    exportData.lineups,
+  );
   return CSV_UTF8_BOM + lines.join('\r\n') + '\r\n';
 }
 

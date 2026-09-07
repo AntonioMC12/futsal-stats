@@ -16,6 +16,7 @@ function readyMatch(): Match {
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: 'Rival', shortName: 'RIV' },
     date: 1,
+    description: '',
     status: 'ready',
     currentPeriod: 1,
     periodCount: 2,
@@ -28,6 +29,76 @@ function readyMatch(): Match {
 }
 
 describe('LiveMatchStore', () => {
+  it.each(['substitution', 'goal', 'foul', 'card'] as const)(
+    'preserves or stops the clock for %s and persists the same state on reload',
+    async (action) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(10_000);
+      let persisted = readyMatch();
+      const history: MatchEvent[] = [];
+      TestBed.configureTestingModule({
+        providers: [
+          LiveMatchStore,
+          { provide: MatchRepository, useValue: { get: async () => structuredClone(persisted) } },
+          { provide: PlayerRepository, useValue: { listByIds: async () => [] } },
+          {
+            provide: MatchEventRepository,
+            useValue: {
+              listByMatch: async () => structuredClone(history),
+              commit: async (match: Match, events: MatchEvent[]) => {
+                persisted = structuredClone(match);
+                history.push(...structuredClone(events));
+              },
+            },
+          },
+        ],
+      });
+      const store = TestBed.inject(LiveMatchStore);
+      await store.load(persisted.id);
+      await store.startClock();
+      const record = () =>
+        action === 'substitution'
+          ? store.makeSubstitution(
+              store.lineupPlayerIds().includes('p1') ? 'p1' : 'p6',
+              store.lineupPlayerIds().includes('p1') ? 'p6' : 'p1',
+            )
+          : action === 'goal'
+            ? store.registerGoalAgainst()
+            : action === 'foul'
+              ? store.registerOpponentFoul()
+              : store.registerBenchDiscipline(
+                  'home',
+                  { subjectKind: 'staff', staffRole: 'headCoach' },
+                  'yellow',
+                  'other',
+                );
+      vi.setSystemTime(15_000);
+      expect(await record()).toBe(true);
+      expect(store.clockRunning()).toBe(action === 'substitution' || action === 'card');
+      if (store.clockRunning()) await store.stopClock();
+      const stoppedEvents = history.filter((event) => event.type === 'CLOCK_STOPPED').length;
+      vi.setSystemTime(25_000);
+      const times = store.statistics();
+      // Use another staff identity so this remains a valid first yellow card.
+      const second =
+        action === 'card'
+          ? await store.registerBenchDiscipline(
+              'home',
+              { subjectKind: 'staff', staffRole: 'delegate' },
+              'yellow',
+              'other',
+            )
+          : await record();
+      expect(second).toBe(true);
+      expect(store.clockRunning()).toBe(false);
+      expect(history.filter((event) => event.type === 'CLOCK_STOPPED')).toHaveLength(stoppedEvents);
+      expect(store.statistics().players['p2']?.playedMs).toBe(times.players['p2']?.playedMs);
+      const snapshot = store.statistics();
+      await store.load(persisted.id);
+      expect(store.statistics()).toEqual(snapshot);
+      expect(store.events()).toHaveLength(history.length);
+    },
+  );
   afterEach(() => {
     vi.useRealTimers();
     TestBed.resetTestingModule();
@@ -80,6 +151,144 @@ describe('LiveMatchStore', () => {
       'CLOCK_STARTED',
     ]);
     expect(store.timeline()).toHaveLength(8);
+  });
+
+  it('persists and rehydrates the initial lineup without starting the ready match', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(10_000);
+    let persisted = readyMatch();
+    persisted.startingLineupPlayerIds = [];
+    const history: MatchEvent[] = [];
+    const commits: { match: Match; events: MatchEvent[] }[] = [];
+    TestBed.configureTestingModule({
+      providers: [
+        LiveMatchStore,
+        { provide: MatchRepository, useValue: { get: async () => structuredClone(persisted) } },
+        { provide: PlayerRepository, useValue: { listByIds: async () => [] } },
+        {
+          provide: MatchEventRepository,
+          useValue: {
+            listByMatch: async () => structuredClone(history),
+            commit: async (match: Match, events: MatchEvent[]) => {
+              persisted = structuredClone(match);
+              history.push(...structuredClone(events));
+              commits.push({ match: structuredClone(match), events: structuredClone(events) });
+            },
+          },
+        },
+      ],
+    });
+
+    const store = TestBed.inject(LiveMatchStore);
+    await store.load(persisted.id);
+    expect(store.formattedClock()).toBe('00:00');
+    expect(store.canStartClock()).toBe(false);
+    await store.startClock();
+    expect(store.match()?.status).toBe('ready');
+    expect(history).toEqual([]);
+
+    expect(await store.saveStartingLineup(['p1', 'p2', 'p3', 'p4', 'p5'])).toBe(true);
+    expect(store.match()).toMatchObject({
+      status: 'ready',
+      startingLineupPlayerIds: ['p1', 'p2', 'p3', 'p4', 'p5'],
+      clock: { running: false },
+    });
+    expect(store.formattedClock()).toBe('00:00');
+    expect(store.canStartClock()).toBe(true);
+    expect(commits.at(-1)?.events).toEqual([]);
+    expect(history).toEqual([]);
+
+    await store.load(persisted.id);
+    expect(store.match()?.startingLineupPlayerIds).toEqual(['p1', 'p2', 'p3', 'p4', 'p5']);
+    expect(store.formattedClock()).toBe('00:00');
+
+    vi.setSystemTime(20_000);
+    await store.startClock();
+    expect(store.match()?.status).toBe('firstHalf');
+    expect(store.clockRunning()).toBe(true);
+    expect(history.filter((event) => event.type === 'PLAYER_ENTERED')).toHaveLength(5);
+    expect(history.some((event) => event.type === 'SUBSTITUTION')).toBe(false);
+  });
+
+  it('finishes a running match early, persists it and keeps statistics frozen after reload', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(10_000);
+    let persisted = readyMatch();
+    const history: MatchEvent[] = [];
+    TestBed.configureTestingModule({
+      providers: [
+        LiveMatchStore,
+        { provide: MatchRepository, useValue: { get: async () => structuredClone(persisted) } },
+        { provide: PlayerRepository, useValue: { listByIds: async () => [] } },
+        {
+          provide: MatchEventRepository,
+          useValue: {
+            listByMatch: async () => structuredClone(history),
+            commit: async (match: Match, events: MatchEvent[]) => {
+              persisted = structuredClone(match);
+              history.push(...structuredClone(events));
+            },
+          },
+        },
+      ],
+    });
+
+    const store = TestBed.inject(LiveMatchStore);
+    await store.load(persisted.id);
+    await store.startClock();
+    vi.setSystemTime(15_250);
+    await store.finishMatch();
+
+    expect(persisted.status).toBe('finished');
+    expect(persisted.clock).toEqual({
+      ...createMatchClock(),
+      remainingMs: DEFAULT_PERIOD_DURATION_MS - 5_250,
+    });
+    expect(history.at(-1)?.type).toBe('MATCH_FINISHED');
+    expect(history.some((event) => event.type === 'PERIOD_ENDED')).toBe(false);
+    const statistics = structuredClone(store.statistics());
+
+    vi.setSystemTime(45_250);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(store.statistics()).toEqual(statistics);
+    await store.load(persisted.id);
+    expect(store.match()?.status).toBe('finished');
+    expect(store.clockRunning()).toBe(false);
+    expect(store.statistics()).toEqual(statistics);
+  });
+
+  it('repairs a legacy finished running clock without advancing its stored time', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(50_000);
+    const original = readyMatch();
+    original.status = 'finished';
+    original.clock = {
+      ...original.clock,
+      remainingMs: 763_000,
+      running: true,
+      startedAtEpochMs: 10_000,
+    };
+    const stored: Match[] = [];
+    TestBed.configureTestingModule({
+      providers: [
+        LiveMatchStore,
+        { provide: MatchRepository, useValue: { get: async () => original } },
+        { provide: PlayerRepository, useValue: { listByIds: async () => [] } },
+        {
+          provide: MatchEventRepository,
+          useValue: {
+            listByMatch: async () => [],
+            commit: async (match: Match) => stored.push(match),
+          },
+        },
+      ],
+    });
+
+    const store = TestBed.inject(LiveMatchStore);
+    await store.load(original.id);
+    expect(store.clockRunning()).toBe(false);
+    expect(store.remainingMs()).toBe(763_000);
+    expect(stored[0]?.clock.remainingMs).toBe(763_000);
   });
 
   it('recovers an expired clock at 00:00 and persists the stopped snapshot', async () => {
@@ -242,7 +451,7 @@ describe('LiveMatchStore', () => {
 
     vi.setSystemTime(16_000);
     expect(await store.registerGoalFor('p6')).toBe(true);
-    expect(storedEvents.at(-1)).toMatchObject({
+    expect(storedEvents.filter((event) => event.type === 'GOAL_FOR').at(-1)).toMatchObject({
       type: 'GOAL_FOR',
       scorerPlayerId: 'p6',
       lineupPlayerIds: ['p6', 'p2', 'p3', 'p4', 'p5'],
@@ -423,7 +632,11 @@ describe('LiveMatchStore', () => {
     expect(await store.registerGoalAgainst()).toBe(true);
 
     expect(store.score()).toEqual({ home: 3, away: 1 });
-    expect(storedEvents.at(-4)).toMatchObject({
+    expect(
+      storedEvents
+        .filter((event) => event.type === 'GOAL_FOR' || event.type === 'GOAL_AGAINST')
+        .at(-4),
+    ).toMatchObject({
       type: 'GOAL_FOR',
       scorerPlayerId: 'p3',
       gameClockMs: DEFAULT_PERIOD_DURATION_MS - 5_000,
@@ -434,8 +647,8 @@ describe('LiveMatchStore', () => {
     });
     expect(storedEvents.at(-1)).toMatchObject({
       type: 'GOAL_AGAINST',
-      gameClockMs: DEFAULT_PERIOD_DURATION_MS - 8_000,
-      sequence: 12,
+      gameClockMs: DEFAULT_PERIOD_DURATION_MS - 5_000,
+      sequence: 13,
       scoreBefore: { home: 3, away: 0 },
       scoreAfter: { home: 3, away: 1 },
     });
@@ -479,10 +692,10 @@ describe('LiveMatchStore', () => {
       { period: 1, home: 2, away: 1 },
       { period: 2, home: 0, away: 0 },
     ]);
-    expect(storedEvents.slice(-3)).toMatchObject([
+    expect(storedEvents.filter((event) => event.type === 'FOUL').slice(-3)).toMatchObject([
       { type: 'FOUL', team: 'home', periodFoulNumber: 1, sequence: 9 },
-      { type: 'FOUL', team: 'home', playerId: 'p4', periodFoulNumber: 2, sequence: 10 },
-      { type: 'FOUL', team: 'away', periodFoulNumber: 1, sequence: 11 },
+      { type: 'FOUL', team: 'home', playerId: 'p4', periodFoulNumber: 2, sequence: 11 },
+      { type: 'FOUL', team: 'away', periodFoulNumber: 1, sequence: 12 },
     ]);
   });
 
@@ -1101,7 +1314,7 @@ describe('LiveMatchStore', () => {
     expect(await store.deleteCurrentMatch()).toBe(false);
 
     expect(store.match()).toBe(original);
-    expect(store.formattedClock()).toBe('20:00');
+    expect(store.formattedClock()).toBe('00:00');
     expect(store.error()).toContain('siguen guardados');
   });
 });

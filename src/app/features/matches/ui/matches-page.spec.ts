@@ -17,6 +17,7 @@ function match(id: string, status: Match['status'], date: number): Match {
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: 'Rival', shortName: 'RIV' },
     date,
+    description: `Partido amistoso ${id}`,
     status,
     currentPeriod: 1,
     periodCount: 2,
@@ -60,6 +61,12 @@ describe('MatchesPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Partido en curso');
     expect(fixture.nativeElement.textContent).toContain('Continuar partido');
     expect(fixture.nativeElement.textContent).toContain('Finalizados');
+    const finishedLink = fixture.nativeElement.querySelector('.history-actions > a');
+    expect(finishedLink.textContent).toContain('Ver partido');
+    expect(finishedLink.getAttribute('href')).toBe('/live/finished');
+    expect(fixture.nativeElement.querySelector('.history-item')?.textContent).toContain(
+      'Partido amistoso finished',
+    );
 
     const exportButtons = fixture.nativeElement.querySelectorAll(
       'details.secondary-actions .export-csv',

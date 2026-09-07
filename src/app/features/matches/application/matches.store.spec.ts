@@ -4,25 +4,26 @@ import {
   MATCH_EVENT_REPOSITORY as MatchEventRepository,
   MATCH_REPOSITORY as MatchRepository,
 } from '../../../core/persistence/persistence.tokens';
-import { Match } from '../../../shared/models/match';
+import { Match, MatchDate } from '../../../shared/models/match';
 import { MatchEvent } from '../../../shared/models/match-event';
 import { DeleteMatchService } from './delete-match.service';
 import { MatchesStore } from './matches.store';
 
-function match(id: string, status: Match['status'], date: number): Match {
+function match(id: string, status: Match['status'], date: MatchDate): Match {
   return {
     id,
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: `Rival ${id}`, shortName: `R${id}` },
     date,
+    description: '',
     status,
     currentPeriod: status === 'secondHalf' || status === 'finished' ? 2 : 1,
     periodCount: 2,
     clock: createMatchClock(),
     squadPlayerIds: ['p1', 'p2', 'p3', 'p4', 'p5'],
     startingLineupPlayerIds: ['p1', 'p2', 'p3', 'p4', 'p5'],
-    createdAt: date,
-    updatedAt: date,
+    createdAt: typeof date === 'number' ? date : 1,
+    updatedAt: typeof date === 'number' ? date : 1,
   };
 }
 
@@ -54,8 +55,8 @@ describe('MatchesStore', () => {
   it('loads one active match and finished history with derived scores', async () => {
     vi.useFakeTimers();
     const active = match('active', 'firstHalf', 30);
-    const older = match('old', 'finished', 10);
-    const newer = match('new', 'finished', 20);
+    const older = match('old', 'finished', '2026-08-10');
+    const newer = match('new', 'finished', '2026-09-07');
     TestBed.configureTestingModule({
       providers: [
         MatchesStore,

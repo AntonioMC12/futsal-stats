@@ -89,7 +89,8 @@
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   width: 100%;
   min-height: var(--ds-touch-min);
   padding: var(--ds-space-2) var(--ds-space-3);
@@ -98,6 +99,21 @@
   background: var(--ds-bg);
   color: inherit;
   font: inherit;
+}
+
+.field textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.abbreviation-input {
+  text-transform: uppercase;
+}
+
+.field-error {
+  color: var(--ds-danger);
+  font-size: var(--ds-font-xs);
+  font-weight: 700;
 }
 
 .selection-toolbar {
@@ -193,14 +209,13 @@
   accent-color: var(--ds-primary);
 }
 
-.player--selected,
-.player--starter {
+.player--selected {
   border-color: var(--ds-primary);
   background: var(--ds-primary-soft);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ds-primary) 22%, transparent);
 }
 
-.player--selected:not(.player--lineup)::after {
+.player--selected::after {
   position: absolute;
   top: var(--ds-space-1);
   right: var(--ds-space-1);
@@ -214,10 +229,6 @@
   place-items: center;
   font-size: 0.68rem;
   font-weight: 900;
-}
-
-.player--lineup:not(.player--starter) {
-  border-style: dashed;
 }
 
 .number {
@@ -235,17 +246,6 @@
   font-weight: 750;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.starter-mark {
-  position: absolute;
-  top: 0.12rem;
-  right: 0.25rem;
-  color: var(--ds-primary);
-  font-size: 0.55rem;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .create-match-cta {
@@ -282,9 +282,6 @@
   .match-data-panel {
     padding-block: var(--ds-space-2);
   }
-  .selection-toolbar--lineup > small {
-    display: none;
-  }
 }
 
 @media (min-width: 640px) {
@@ -299,6 +296,9 @@
   .match-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--ds-space-3);
+  }
+  .field--wide {
+    grid-column: 1 / -1;
   }
   .player-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -6,17 +6,30 @@
       <header class="match-topbar">
         <a class="back" routerLink="/matches" aria-label="Volver a partidos">←</a>
         <div class="match-identity">
-          <span>{{ match.homeTeam.shortName }} · {{ match.awayTeam.shortName }}</span>
+          <span>
+            {{ match.homeTeam.shortName }} vs
+            <span class="opponent-name-full">{{ match.awayTeam.name }}</span>
+            <span class="opponent-name-short">{{ match.awayTeam.shortName || '—' }}</span>
+          </span>
         </div>
       </header>
 
       <div class="dashboard-grid">
         <section class="lineup-panel dashboard-panel" aria-labelledby="lineup-title">
           <div class="panel-heading">
-            <h1 class="section-label" id="lineup-title">Quinteto en pista</h1>
+            <h1 class="section-label" id="lineup-title">
+              {{ match.status === 'finished' ? 'Último quinteto' : 'Quinteto en pista' }}
+            </h1>
             <div class="lineup-status">
               <span class="live-indicator" [class.live-indicator--paused]="!store.clockRunning()">
-                <i aria-hidden="true"></i>{{ store.clockRunning() ? 'En juego' : 'Detenido' }}
+                <i aria-hidden="true"></i
+                >{{
+                  match.status === 'finished'
+                    ? 'Solo consulta'
+                    : store.clockRunning()
+                      ? 'En juego'
+                      : 'Detenido'
+                }}
               </span>
               <div class="period-command-slot">
                 @switch (match.status) {
@@ -57,7 +70,7 @@
                         class="period-command"
                         type="button"
                         [disabled]="store.saving()"
-                        (click)="store.finishPeriod()"
+                        (click)="confirmFinish.set(true)"
                       >
                         Finalizar partido
                       </button>
@@ -122,7 +135,7 @@
                     class="court-player court-player--reduction"
                     type="button"
                     [attr.data-slot]="slot + 1"
-                    [disabled]="store.saving()"
+                    [disabled]="match.status === 'finished' || store.saving()"
                     aria-label="Reponer jugador tras expulsión"
                     (click)="openReplacement(reduction.eventId)"
                   >
@@ -147,6 +160,20 @@
                 >
               }
             }
+            @if (match.status === 'ready') {
+              <button
+                class="court-lineup-config"
+                [class.court-lineup-config--edit]="store.hasValidStartingLineup()"
+                type="button"
+                (click)="openInitialLineup()"
+              >
+                {{
+                  store.hasValidStartingLineup()
+                    ? 'Editar quinteto inicial'
+                    : 'Seleccionar quinteto inicial'
+                }}
+              </button>
+            }
           </div>
         </section>
 
@@ -161,6 +188,20 @@
             <strong class="match-clock" role="timer" aria-live="off">{{
               store.formattedClock()
             }}</strong>
+            @if (match.status === 'ready') {
+              <span class="kickoff-hint">
+                {{
+                  store.hasValidStartingLineup()
+                    ? 'Quinteto preparado · Inicia el partido'
+                    : 'Selecciona el quinteto inicial para comenzar'
+                }}
+              </span>
+            }
+            @if (match.status === 'finished') {
+              <span class="finished-duration"
+                >Duración registrada: {{ formatDuration(store.matchElapsedMs()) }}</span
+              >
+            }
           </header>
           <div class="scoreboard" aria-label="Marcador" aria-live="polite">
             <div class="scoreboard__team">
@@ -203,56 +244,90 @@
         </section>
 
         <section class="primary-actions dashboard-panel" aria-labelledby="primary-actions-title">
-          <h2 class="section-label" id="primary-actions-title">Acciones rápidas</h2>
-          <div class="goal-actions">
+          @if (match.status === 'finished') {
+            <h2 class="section-label" id="primary-actions-title">Partido finalizado</h2>
+            <p class="readonly-message">Modo consulta. Los datos y el cronómetro están cerrados.</p>
+            <div class="readonly-metadata">
+              <strong>{{ match.awayTeam.shortName || '—' }} · {{ match.awayTeam.name }}</strong>
+              <span>{{ formatMatchDate(match.date) }}</span>
+              <p>{{ match.description || 'Sin descripción' }}</p>
+            </div>
+            <div class="readonly-actions">
+              <button
+                class="btn btn--primary"
+                type="button"
+                (click)="activeOverlay.set('statistics')"
+              >
+                Estadísticas
+              </button>
+              <button
+                class="btn btn--secondary"
+                type="button"
+                (click)="activeOverlay.set('events')"
+              >
+                Eventos
+              </button>
+              <button
+                class="btn btn--secondary export-csv"
+                type="button"
+                [disabled]="csvExporter.isExporting()"
+                (click)="csvExporter.export(match.id)"
+              >
+                {{ csvExporter.isExporting() ? 'Exportando…' : 'Exportar CSV' }}
+              </button>
+            </div>
+          } @else {
+            <h2 class="section-label" id="primary-actions-title">Acciones rápidas</h2>
+            <div class="goal-actions">
+              <button
+                class="btn btn--primary btn--goal match-action match-action--goal"
+                type="button"
+                [disabled]="!store.canRegisterGoal() || store.saving()"
+                (click)="openGoalSelector($event)"
+              >
+                <span class="match-action__icon" aria-hidden="true">+1&nbsp;</span>
+                <span class="match-action__content"><strong>Gol</strong></span>
+              </button>
+              <button
+                class="btn btn--danger btn--goal match-action match-action--goal-away"
+                type="button"
+                [disabled]="!store.canRegisterGoal() || store.saving()"
+                (click)="registerGoalAgainst()"
+              >
+                <span class="match-action__icon" aria-hidden="true">+1&nbsp;</span>
+                <span class="match-action__content"><strong>Gol rival</strong></span>
+              </button>
+            </div>
+            <div class="foul-actions">
+              <button
+                class="btn btn--warning match-action match-action--foul"
+                type="button"
+                [disabled]="!store.canRegisterFoul() || store.saving()"
+                (click)="openFoul('home')"
+              >
+                <span class="match-action__icon" aria-hidden="true">!&nbsp;</span>
+                <span class="match-action__content"><strong>Falta</strong></span>
+              </button>
+              <button
+                class="btn btn--secondary match-action match-action--foul-away"
+                type="button"
+                [disabled]="!store.canRegisterFoul() || store.saving()"
+                (click)="openFoul('away')"
+              >
+                <span class="match-action__icon" aria-hidden="true">!&nbsp;</span>
+                <span class="match-action__content"><strong>Falta rival</strong></span>
+              </button>
+            </div>
             <button
-              class="btn btn--primary btn--goal match-action match-action--goal"
+              class="btn btn--secondary bench-discipline-action bench-action"
               type="button"
-              [disabled]="!store.canRegisterGoal() || store.saving()"
-              (click)="openGoalSelector($event)"
+              [disabled]="!store.canRegisterBenchDiscipline() || store.saving()"
+              (click)="openBenchDiscipline()"
             >
-              <span class="match-action__icon" aria-hidden="true">+1&nbsp;</span>
-              <span class="match-action__content"><strong>Gol</strong></span>
+              <span class="bench-action__icon" aria-hidden="true">▰&nbsp;</span>
+              <span><strong>Disciplina banquillo</strong></span>
             </button>
-            <button
-              class="btn btn--danger btn--goal match-action match-action--goal-away"
-              type="button"
-              [disabled]="!store.canRegisterGoal() || store.saving()"
-              (click)="registerGoalAgainst()"
-            >
-              <span class="match-action__icon" aria-hidden="true">+1&nbsp;</span>
-              <span class="match-action__content"><strong>Gol rival</strong></span>
-            </button>
-          </div>
-          <div class="foul-actions">
-            <button
-              class="btn btn--warning match-action match-action--foul"
-              type="button"
-              [disabled]="!store.canRegisterFoul() || store.saving()"
-              (click)="openFoul('home')"
-            >
-              <span class="match-action__icon" aria-hidden="true">!&nbsp;</span>
-              <span class="match-action__content"><strong>Falta</strong></span>
-            </button>
-            <button
-              class="btn btn--secondary match-action match-action--foul-away"
-              type="button"
-              [disabled]="!store.canRegisterFoul() || store.saving()"
-              (click)="openFoul('away')"
-            >
-              <span class="match-action__icon" aria-hidden="true">!&nbsp;</span>
-              <span class="match-action__content"><strong>Falta rival</strong></span>
-            </button>
-          </div>
-          <button
-            class="btn btn--secondary bench-discipline-action bench-action"
-            type="button"
-            [disabled]="!store.canRegisterBenchDiscipline() || store.saving()"
-            (click)="openBenchDiscipline()"
-          >
-            <span class="bench-action__icon" aria-hidden="true">▰&nbsp;</span>
-            <span><strong>Disciplina banquillo</strong></span>
-          </button>
+          }
         </section>
 
         <aside class="tablet-statistics dashboard-panel" aria-labelledby="tablet-stats-title">
@@ -260,32 +335,37 @@
             <h2 class="section-label" id="tablet-stats-title">Estadísticas</h2>
             <button type="button" (click)="activeOverlay.set('statistics')">Ver todas</button>
           </div>
-          <div class="compact-stats" tabindex="0" aria-label="Resumen de estadísticas de jugadores">
-            <table class="compact-stats-table">
+          <div class="compact-stats">
+            <table class="compact-stats-table" aria-label="Resumen de estadísticas de jugadores">
+              <colgroup>
+                <col class="compact-stats-table__player" />
+                <col class="compact-stats-table__time" />
+                <col class="compact-stats-table__time" />
+              </colgroup>
               <thead>
                 <tr>
                   <th scope="col">Jugador</th>
-                  <th scope="col">Min</th>
-                  <th scope="col">G</th>
-                  <th scope="col">+/-</th>
+                  <th scope="col">Total</th>
+                  <th scope="col">{{ compactStatsPeriodLabel() }}</th>
                 </tr>
               </thead>
               <tbody>
                 @for (player of store.players(); track player.id) {
                   @if (store.statistics().players[player.id]; as stats) {
-                    <tr>
+                    <tr class="player-stat-row" (click)="openPlayerDetail(player.id, $event)">
                       <th scope="row">
-                        <strong>#{{ player.number }}</strong
-                        ><span>{{ player.name }}</span>
+                        <button
+                          type="button"
+                          class="player-detail-trigger"
+                          aria-haspopup="dialog"
+                          [attr.aria-label]="'Ver detalle de #' + player.number + ' ' + player.name"
+                        >
+                          <strong>#{{ player.number }}</strong
+                          ><span>{{ player.name }}</span>
+                        </button>
                       </th>
                       <td>{{ formatDuration(stats.playedMs) }}</td>
-                      <td>{{ stats.goals }}</td>
-                      <td
-                        [class.is-positive]="stats.plusMinus > 0"
-                        [class.is-negative]="stats.plusMinus < 0"
-                      >
-                        {{ signed(stats.plusMinus) }}
-                      </td>
+                      <td>{{ formatDuration(compactStatsPeriodTime(stats)) }}</td>
                     </tr>
                   }
                 }
@@ -362,7 +442,7 @@
           </svg>
         }
         <span class="clock-fab__label" aria-hidden="true">{{
-          store.clockRunning() ? 'PAUSA' : 'START'
+          store.match()?.status === 'ready' ? 'INICIAR' : store.clockRunning() ? 'PAUSA' : 'START'
         }}</span>
       </button>
     }
@@ -431,7 +511,9 @@
                       <thead>
                         <tr>
                           <th scope="col">Jugador</th>
-                          <th scope="col">Min</th>
+                          <th scope="col">Min total</th>
+                          <th scope="col">1.ª mitad</th>
+                          <th scope="col">2.ª mitad</th>
                           <th scope="col">G</th>
                           <th scope="col">GF</th>
                           <th scope="col">GC</th>
@@ -446,9 +528,25 @@
                       <tbody>
                         @for (player of store.players(); track player.id) {
                           @if (store.statistics().players[player.id]; as stats) {
-                            <tr>
-                              <th scope="row">#{{ player.number }} {{ player.name }}</th>
+                            <tr
+                              class="player-stat-row"
+                              (click)="openPlayerDetail(player.id, $event)"
+                            >
+                              <th scope="row">
+                                <button
+                                  type="button"
+                                  class="player-detail-trigger"
+                                  aria-haspopup="dialog"
+                                  [attr.aria-label]="
+                                    'Ver detalle de #' + player.number + ' ' + player.name
+                                  "
+                                >
+                                  #{{ player.number }} {{ player.name }}
+                                </button>
+                              </th>
                               <td>{{ formatDuration(stats.playedMs) }}</td>
+                              <td>{{ formatDuration(stats.firstHalfMs) }}</td>
+                              <td>{{ formatDuration(stats.secondHalfMs) }}</td>
                               <td>{{ stats.goals }}</td>
                               <td>{{ stats.goalsForOnCourt }}</td>
                               <td>{{ stats.goalsAgainstOnCourt }}</td>
@@ -471,7 +569,7 @@
                   </div>
                 </section>
                 <section class="overlay-section lineup-statistics">
-                  <h3>Quintetos</h3>
+                  <h3>Quintetos utilizados</h3>
                   @if (store.lineupStatistics().length === 0) {
                     <p class="empty">Las estadísticas aparecerán al iniciar el partido.</p>
                   } @else {
@@ -480,7 +578,10 @@
                         <article class="lineup-stat">
                           <strong>{{ lineupPlayers(lineup.playerIds) }}</strong
                           ><span
-                            >{{ formatDuration(lineup.playedMs) }} · GF {{ lineup.goalsFor }} · GC
+                            >Total {{ formatDuration(lineup.playedMs) }} · 1.ª mitad
+                            {{ formatDuration(lineup.firstHalfMs) }} · 2.ª mitad
+                            {{ formatDuration(lineup.secondHalfMs) }} · Apariciones
+                            {{ lineup.stints }} · GF {{ lineup.goalsFor }} · GC
                             {{ lineup.goalsAgainst }} ·
                             <b
                               [class.is-positive]="lineup.plusMinus > 0"
@@ -501,7 +602,7 @@
                     <button
                       class="btn btn--secondary"
                       type="button"
-                      [disabled]="!store.canUndo()"
+                      [disabled]="match.status === 'finished' || !store.canUndo()"
                       (click)="undoLastAction()"
                     >
                       ↶ Deshacer última
@@ -648,7 +749,7 @@
                               <button
                                 class="btn btn--secondary"
                                 type="button"
-                                [disabled]="store.saving()"
+                                [disabled]="match.status === 'finished' || store.saving()"
                                 (click)="openReplacement(sanction.eventId); activeOverlay.set(null)"
                               >
                                 + Reponer
@@ -657,7 +758,7 @@
                               <button
                                 class="btn btn--secondary"
                                 type="button"
-                                [disabled]="store.saving()"
+                                [disabled]="match.status === 'finished' || store.saving()"
                                 (click)="store.replaceSentOffPlayer(sanction.eventId)"
                               >
                                 Rival repone
@@ -928,16 +1029,25 @@
                   >
                     {{ csvExporter.isExporting() ? 'Exportando…' : 'Exportar CSV' }}</button
                   ><a class="btn btn--secondary" routerLink="/matches">Volver a partidos</a>
-                  <div class="danger-zone">
-                    <span>Zona sensible</span
-                    ><button
-                      class="btn btn--danger"
-                      type="button"
-                      (click)="activeOverlay.set(null); confirmAbandon.set(true)"
-                    >
-                      Abandonar partido
-                    </button>
-                  </div>
+                  @if (match.status !== 'finished') {
+                    <div class="danger-zone">
+                      <span>Zona sensible</span>
+                      <button
+                        class="btn btn--danger finish-match"
+                        type="button"
+                        (click)="activeOverlay.set(null); confirmFinish.set(true)"
+                      >
+                        Finalizar partido
+                      </button>
+                      <button
+                        class="btn btn--secondary"
+                        type="button"
+                        (click)="activeOverlay.set(null); confirmAbandon.set(true)"
+                      >
+                        Abandonar partido
+                      </button>
+                    </div>
+                  }
                 </div>
               }
             }
@@ -952,6 +1062,61 @@
   }
   @if (csvExporter.error(); as message) {
     <p class="system-banner banner banner--warn" role="alert">{{ message }}</p>
+  }
+
+  @if (initialLineupOpen() && store.match()?.status === 'ready') {
+    <div class="substitution-backdrop" (click)="cancelInitialLineup()">
+      <dialog
+        class="substitution-sheet initial-lineup-sheet"
+        open
+        aria-labelledby="initial-lineup-title"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <h2 id="initial-lineup-title">Selecciona 5 jugadores</h2>
+        <p class="initial-lineup-count" aria-live="polite">
+          <strong>{{ initialLineupCount() }} / 5</strong> seleccionados
+        </p>
+        <div class="bench-options initial-lineup-options">
+          @for (player of store.players(); track player.id) {
+            <button
+              class="bench-option initial-lineup-option"
+              [class.is-selected]="initialLineupIds().has(player.id)"
+              type="button"
+              [disabled]="
+                store.saving() || (!initialLineupIds().has(player.id) && initialLineupCount() >= 5)
+              "
+              [attr.aria-pressed]="initialLineupIds().has(player.id)"
+              (click)="toggleInitialLineupPlayer(player.id)"
+            >
+              <strong>#{{ player.number }}</strong>
+              <span>{{ player.name }}</span>
+            </button>
+          }
+        </div>
+        @if (store.error(); as message) {
+          <p class="banner banner--warn" role="alert">{{ message }}</p>
+        }
+        <div class="initial-lineup-actions">
+          <button
+            class="btn btn--secondary"
+            type="button"
+            [disabled]="store.saving()"
+            (click)="cancelInitialLineup()"
+          >
+            Cancelar
+          </button>
+          <button
+            class="btn btn--primary confirm-initial-lineup"
+            type="button"
+            [disabled]="store.saving() || initialLineupCount() !== 5"
+            (click)="confirmInitialLineup()"
+          >
+            {{ store.saving() ? 'Guardando…' : 'Confirmar quinteto' }}
+          </button>
+        </div>
+      </dialog>
+    </div>
   }
 
   @if (goalSelectorOpen()) {
@@ -1528,6 +1693,40 @@
     </div>
   }
 
+  @if (confirmFinish() && store.match(); as match) {
+    <div class="dialog-backdrop">
+      <dialog class="confirm-dialog" open aria-labelledby="finish-title">
+        <h2 id="finish-title">¿Finalizar partido?</h2>
+        <p>{{ match.homeTeam.shortName }} vs {{ match.awayTeam.shortName }}</p>
+        <p>
+          El partido se marcará como finalizado y dejará de admitir nuevas acciones. Podrás volver a
+          abrirlo para consultar sus estadísticas.
+        </p>
+        @if (store.error(); as message) {
+          <p class="banner banner--warn" role="alert">{{ message }}</p>
+        }
+        <div class="dialog-actions">
+          <button
+            class="btn btn--secondary"
+            type="button"
+            [disabled]="store.saving()"
+            (click)="confirmFinish.set(false)"
+          >
+            Cancelar
+          </button>
+          <button
+            class="btn btn--danger confirm-finish"
+            type="button"
+            [disabled]="store.saving()"
+            (click)="finishMatch()"
+          >
+            {{ store.saving() ? 'Finalizando…' : 'Finalizar partido' }}
+          </button>
+        </div>
+      </dialog>
+    </div>
+  }
+
   @if (confirmAbandon() && store.match(); as match) {
     <div class="dialog-backdrop">
       <dialog class="confirm-dialog" open aria-labelledby="abandon-title">
@@ -1562,3 +1761,10 @@
     </div>
   }
 </section>
+@if (detailPlayerId(); as playerId) {
+  <app-player-match-detail
+    [playerId]="playerId"
+    [returnFocusTo]="playerDetailTrigger"
+    (closed)="detailPlayerId.set(null)"
+  />
+}

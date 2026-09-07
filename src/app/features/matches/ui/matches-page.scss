@@ -78,6 +78,23 @@
   margin-bottom: 1rem;
 }
 
+.opponent-abbreviation {
+  color: var(--color-accent);
+  font-size: var(--ds-font-sm);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.match-description {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--ds-font-sm);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .btn--wide,
 .new-match {
   width: 100%;
@@ -152,10 +169,45 @@
   margin: 0.25rem 0 0;
 }
 
+.history-opponent {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ds-space-2);
+}
+
+.history-opponent > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-score {
+  color: var(--color-text-muted);
+  font-size: var(--ds-font-sm);
+}
+
 .history-item strong {
   margin-inline: 0.4rem;
   color: var(--color-accent);
   font-variant-numeric: tabular-nums;
+}
+
+.finished-label {
+  color: var(--color-text-muted);
+  font-size: var(--ds-font-xs);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.history-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+}
+
+.history-actions > .btn {
+  white-space: nowrap;
 }
 
 .secondary-actions--compact {

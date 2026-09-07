@@ -39,7 +39,10 @@ function teamPlayers(teamId: string, count: number): Player[] {
 }
 
 describe('MatchSetupPage', () => {
-  afterEach(() => TestBed.resetTestingModule());
+  afterEach(() => {
+    vi.useRealTimers();
+    TestBed.resetTestingModule();
+  });
 
   async function createPage() {
     const firstTeamPlayers = [
@@ -77,7 +80,10 @@ describe('MatchSetupPage', () => {
     return { fixture, setup };
   }
 
-  async function chooseTeam(fixture: Awaited<ReturnType<typeof createPage>>['fixture'], id: string) {
+  async function chooseTeam(
+    fixture: Awaited<ReturnType<typeof createPage>>['fixture'],
+    id: string,
+  ) {
     const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
     select.value = id;
     select.dispatchEvent(new Event('change'));
@@ -86,7 +92,47 @@ describe('MatchSetupPage', () => {
     fixture.detectChanges();
   }
 
-  it('selects and deselects every eligible player without choosing starters', async () => {
+  it('defaults to the current local date and renders all required metadata fields', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 7, 12));
+    const { fixture } = await createPage();
+
+    expect(
+      (fixture.nativeElement.querySelector('[formControlName="matchDate"]') as HTMLInputElement)
+        .value,
+    ).toBe('2026-09-07');
+    const abbreviation = fixture.nativeElement.querySelector(
+      '[formControlName="awayTeamShortName"]',
+    ) as HTMLInputElement;
+    expect(abbreviation).toBeTruthy();
+    abbreviation.value = ' mng ';
+    abbreviation.dispatchEvent(new Event('input'));
+    abbreviation.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+    expect(abbreviation.value).toBe('MNG');
+    expect(fixture.nativeElement.querySelector('[formControlName="awayTeamName"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[formControlName="description"]')).toBeTruthy();
+    fixture.destroy();
+  });
+
+  it('blocks creation and shows field errors when required metadata is empty', async () => {
+    const { fixture, setup } = await createPage();
+    const date = fixture.nativeElement.querySelector(
+      '[formControlName="matchDate"]',
+    ) as HTMLInputElement;
+    date.value = '';
+    date.dispatchEvent(new Event('input'));
+    (fixture.nativeElement.querySelector('form') as HTMLFormElement).dispatchEvent(
+      new Event('submit'),
+    );
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('.field-error')).toHaveLength(4);
+    expect(setup.createMatch).not.toHaveBeenCalled();
+    fixture.destroy();
+  });
+
+  it('selects and deselects every eligible squad player', async () => {
     const { fixture } = await createPage();
     await chooseTeam(fixture, 'team-1');
 
@@ -98,14 +144,12 @@ describe('MatchSetupPage', () => {
     toggle.click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('.squad-panel input:checked')).toHaveLength(16);
-    expect(fixture.nativeElement.querySelectorAll('.lineup-setup-panel input:checked')).toHaveLength(0);
     expect(fixture.nativeElement.querySelector('.selection-count').textContent).toContain('16/16');
     expect(toggle.textContent).toContain('Deseleccionar todos');
 
     toggle.click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('.squad-panel input:checked')).toHaveLength(0);
-    expect(fixture.nativeElement.querySelectorAll('.lineup-setup-panel .player')).toHaveLength(0);
     fixture.destroy();
   });
 
@@ -128,22 +172,47 @@ describe('MatchSetupPage', () => {
     fixture.destroy();
   });
 
-  it('clears the previous squad and lineup when changing teams', async () => {
+  it('clears the previous squad when changing teams', async () => {
     const { fixture, setup } = await createPage();
     await chooseTeam(fixture, 'team-1');
     (fixture.nativeElement.querySelector('.select-all') as HTMLButtonElement).click();
     fixture.detectChanges();
-    const starters = fixture.nativeElement.querySelectorAll(
-      '.lineup-setup-panel input',
-    ) as NodeListOf<HTMLInputElement>;
-    [...starters].slice(0, 5).forEach((input) => input.click());
-    fixture.detectChanges();
-
     await chooseTeam(fixture, 'team-2');
     expect(setup.listPlayers).toHaveBeenLastCalledWith('team-2');
     expect(fixture.nativeElement.querySelector('.selection-count').textContent).toContain('0/6');
     expect(fixture.nativeElement.querySelectorAll('.squad-panel input:checked')).toHaveLength(0);
-    expect(fixture.nativeElement.querySelectorAll('.lineup-setup-panel .player')).toHaveLength(0);
+    fixture.destroy();
+  });
+
+  it('creates a ready match from metadata and a squad without choosing a lineup', async () => {
+    const { fixture, setup } = await createPage();
+    await chooseTeam(fixture, 'team-1');
+    const inputs = fixture.nativeElement.querySelectorAll(
+      '.squad-panel input',
+    ) as NodeListOf<HTMLInputElement>;
+    [...inputs].slice(0, 5).forEach((input) => input.click());
+
+    const setValue = (selector: string, value: string) => {
+      const input = fixture.nativeElement.querySelector(selector) as HTMLInputElement;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    };
+    setValue('[formControlName="awayTeamName"]', 'Rival');
+    setValue('[formControlName="awayTeamShortName"]', 'RIV');
+    setValue('[formControlName="description"]', 'Liga');
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('form') as HTMLFormElement).dispatchEvent(
+      new Event('submit'),
+    );
+    await fixture.whenStable();
+
+    expect(setup.createMatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        squadPlayerIds: ['team-1-p1', 'team-1-p2', 'team-1-p3', 'team-1-p4', 'team-1-p5'],
+      }),
+    );
+    expect(setup.createMatch.mock.calls[0]?.[0]).not.toHaveProperty('startingLineupPlayerIds');
     fixture.destroy();
   });
 });

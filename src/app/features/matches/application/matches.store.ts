@@ -4,7 +4,12 @@ import {
   MATCH_EVENT_REPOSITORY,
   MATCH_REPOSITORY,
 } from '../../../core/persistence/persistence.tokens';
-import { isMatchActive, isMatchFinished, Match } from '../../../shared/models/match';
+import {
+  isMatchActive,
+  isMatchFinished,
+  Match,
+  matchDateTimestamp,
+} from '../../../shared/models/match';
 import { ScoreSnapshot } from '../../../shared/models/match-event';
 import { deriveMatchState } from '../../live-match/domain/derived-match-state';
 import { DeleteMatchService } from './delete-match.service';
@@ -32,7 +37,9 @@ export class MatchesStore {
   readonly finishedMatches = computed(() =>
     this.matches()
       .filter(({ match }) => isMatchFinished(match))
-      .sort((left, right) => right.match.date - left.match.date),
+      .sort(
+        (left, right) => matchDateTimestamp(right.match.date) - matchDateTimestamp(left.match.date),
+      ),
   );
   readonly activeClock = computed(() => {
     const active = this.activeMatch()?.match;

@@ -8,6 +8,7 @@ const match: Match = {
   homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
   awayTeam: { name: 'Rival', shortName: 'RIV' },
   date: 1,
+  description: '',
   status: 'firstHalf',
   currentPeriod: 1,
   periodCount: 2,
@@ -77,6 +78,8 @@ describe('match statistics', () => {
     const statistics = deriveMatchStatistics(match, scenario(), 300_000);
     expect(statistics.players['a']).toEqual({
       playedMs: 300_000,
+      firstHalfMs: 300_000,
+      secondHalfMs: 0,
       entries: 1,
       percentage: (300_000 / 900_000) * 100,
       goals: 1,
@@ -91,6 +94,8 @@ describe('match statistics', () => {
     });
     expect(statistics.players['b']).toEqual({
       playedMs: 900_000,
+      firstHalfMs: 900_000,
+      secondHalfMs: 0,
       entries: 1,
       percentage: 100,
       goals: 0,
@@ -105,6 +110,8 @@ describe('match statistics', () => {
     });
     expect(statistics.players['f']).toEqual({
       playedMs: 600_000,
+      firstHalfMs: 600_000,
+      secondHalfMs: 0,
       entries: 1,
       percentage: (600_000 / 900_000) * 100,
       goals: 1,
@@ -125,7 +132,10 @@ describe('match statistics', () => {
       {
         id: 'b|c|d|e|f',
         playerIds: ['b', 'c', 'd', 'e', 'f'],
+        stints: 1,
         playedMs: 600_000,
+        firstHalfMs: 600_000,
+        secondHalfMs: 0,
         goalsFor: 1,
         goalsAgainst: 1,
         plusMinus: 0,
@@ -133,7 +143,10 @@ describe('match statistics', () => {
       {
         id: 'a|b|c|d|e',
         playerIds: ['a', 'b', 'c', 'd', 'e'],
+        stints: 1,
         playedMs: 300_000,
+        firstHalfMs: 300_000,
+        secondHalfMs: 0,
         goalsFor: 1,
         goalsAgainst: 0,
         plusMinus: 1,

@@ -1,3 +1,4 @@
+import { shouldAutoStopClock } from '../domain/event-clock-policy';
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import {
   DEFAULT_PERIOD_DURATION_MS,
@@ -27,6 +28,8 @@ import { registerFoul as createFoul } from '../domain/foul';
 import { GoalSide, registerGoal as createGoal } from '../domain/goal';
 import {
   finishPeriod,
+  finishMatch,
+  freezeFinishedClock,
   resetMatchClock,
   startMatchClock,
   startNextPeriod,
@@ -34,11 +37,12 @@ import {
   synchronizeExpiredClock,
 } from '../domain/match-lifecycle';
 import { createEventsForTransition, MatchClockCommand } from '../domain/match-transition-events';
-import { deriveMatchStatistics, MatchStatistics } from '../domain/match-statistics';
+import { createMatchStatisticsProjection, MatchStatistics } from '../domain/match-statistics';
 import { createMatchTimeline } from '../domain/match-timeline';
 import { PlayerPlayingTimes } from '../domain/player-playing-time';
 import { makeSubstitution as createSubstitution } from '../domain/substitution';
 import { findLastUndoableEvent, undoLastEvent as createUndoLastEvent } from '../domain/undo';
+import { configureStartingLineup, hasValidStartingLineup } from '../domain/starting-lineup';
 import { DeleteMatchService } from '../../matches/application/delete-match.service';
 import {
   BenchDisciplineSubject,
@@ -69,7 +73,9 @@ export class LiveMatchStore {
     const match = this.match();
     return match ? projectRemaining(match.clock, this.now()) : DEFAULT_PERIOD_DURATION_MS;
   });
-  readonly formattedClock = computed(() => formatGameClock(this.remainingMs()));
+  readonly formattedClock = computed(() =>
+    this.match()?.status === 'ready' ? '00:00' : formatGameClock(this.remainingMs()),
+  );
   readonly clockRunning = computed(() => this.match()?.clock.running ?? false);
   readonly periodLabel = computed(() => labelFor(this.match()));
   readonly derivedState = computed(() => {
@@ -101,7 +107,10 @@ export class LiveMatchStore {
     ),
   );
   readonly lastUndoableEvent = computed(() => findLastUndoableEvent(this.events()));
-  readonly canUndo = computed(() => this.lastUndoableEvent() !== null && !this.saving());
+  readonly canUndo = computed(
+    () =>
+      this.match()?.status !== 'finished' && this.lastUndoableEvent() !== null && !this.saving(),
+  );
   readonly lineupPlayerIds = computed(() => {
     const match = this.match();
     if (!match) {
@@ -142,12 +151,18 @@ export class LiveMatchStore {
   readonly knownOpponentPlayers = computed(() =>
     this.disciplinaryState().opponentPlayers.map((player) => player.jerseyNumber),
   );
-  readonly statistics = computed<MatchStatistics>(() => {
+  private readonly statisticsProjection = computed(() => {
     const match = this.match();
-    return match
-      ? deriveMatchStatistics(match, this.events(), this.remainingMs())
-      : { players: {}, lineups: [] };
+    return match ? createMatchStatisticsProjection(match, this.events()) : null;
   });
+  readonly statistics = computed<MatchStatistics>(
+    () =>
+      this.statisticsProjection()?.(this.remainingMs()) ?? {
+        players: {},
+        lineups: [],
+        playerStints: {},
+      },
+  );
   readonly playerPlayingTimes = computed<PlayerPlayingTimes>(() => this.statistics().players);
   readonly lineupStatistics = computed(() => this.statistics().lineups);
   readonly canSubstitute = computed(() => {
@@ -184,10 +199,18 @@ export class LiveMatchStore {
     return status === 'firstHalf' || status === 'secondHalf';
   });
   readonly canRegisterBenchDiscipline = this.canRegisterFoul;
-  readonly canStartClock = computed(
-    () =>
-      this.lineupPlayerIds().length >= 3 && this.disciplinaryState().onCourtPlayerCounts.away >= 3,
-  );
+  readonly hasValidStartingLineup = computed(() => {
+    const match = this.match();
+    return match ? hasValidStartingLineup(match) : false;
+  });
+  readonly canStartClock = computed(() => {
+    const match = this.match();
+    if (!match) return false;
+    if (match.status === 'ready') return this.hasValidStartingLineup();
+    return (
+      this.lineupPlayerIds().length >= 3 && this.disciplinaryState().onCourtPlayerCounts.away >= 3
+    );
+  });
   readonly matchElapsedMs = computed(() => {
     const state = this.derivedState();
     if (!state) {
@@ -254,10 +277,14 @@ export class LiveMatchStore {
       const players = await this.playerRepository.listByIds(match.squadPlayerIds);
 
       const now = Date.now();
-      const synchronized = synchronizeExpiredClock(match, now);
+      const frozen = freezeFinishedClock(match, now);
+      const synchronized = synchronizeExpiredClock(frozen, now);
       this.now.set(now);
       if (synchronized !== match) {
-        const newEvents = this.transitionEvents(match, synchronized, 'STOP_CLOCK', events, now);
+        const newEvents =
+          frozen === match
+            ? this.transitionEvents(match, synchronized, 'STOP_CLOCK', events, now)
+            : [];
         await this.eventStore.commit(synchronized, newEvents);
         events.push(...newEvents);
       }
@@ -273,7 +300,11 @@ export class LiveMatchStore {
 
   startClock(): Promise<void> {
     if (!this.canStartClock()) {
-      this.error.set('El partido no puede reanudarse con menos de 3 jugadores en un equipo.');
+      this.error.set(
+        this.match()?.status === 'ready'
+          ? 'Selecciona un quinteto inicial válido para comenzar el partido.'
+          : 'El partido no puede reanudarse con menos de 3 jugadores en un equipo.',
+      );
       return Promise.resolve();
     }
     return this.execute(startMatchClock, 'START_CLOCK');
@@ -291,8 +322,38 @@ export class LiveMatchStore {
     return this.execute(finishPeriod, 'FINISH_PERIOD');
   }
 
+  finishMatch(): Promise<void> {
+    return this.execute(finishMatch, 'FINISH_MATCH');
+  }
+
   startNextPeriod(): Promise<void> {
     return this.execute(startNextPeriod, 'START_NEXT_PERIOD');
+  }
+
+  async saveStartingLineup(playerIds: readonly string[]): Promise<boolean> {
+    const match = this.match();
+    if (!match || this.commandInProgress) return false;
+
+    const result = configureStartingLineup(match, playerIds, Date.now());
+    if (!result.ok) {
+      this.error.set(result.error);
+      return false;
+    }
+
+    this.commandInProgress = true;
+    this.saving.set(true);
+    this.error.set(null);
+    try {
+      await this.eventStore.commit(result.value, []);
+      this.match.set(result.value);
+      return true;
+    } catch {
+      this.error.set('No se ha podido guardar el quinteto inicial.');
+      return false;
+    } finally {
+      this.commandInProgress = false;
+      this.saving.set(false);
+    }
   }
 
   async makeSubstitution(outPlayerId: string, inPlayerId: string): Promise<boolean> {
@@ -412,7 +473,7 @@ export class LiveMatchStore {
 
   async replaceSentOffPlayer(reductionEventId: string, playerId?: string): Promise<boolean> {
     const match = this.match();
-    if (!match || this.commandInProgress) return false;
+    if (!match || match.status === 'finished' || this.commandInProgress) return false;
 
     this.commandInProgress = true;
     this.saving.set(true);
@@ -455,7 +516,7 @@ export class LiveMatchStore {
 
   async undoLastEvent(): Promise<boolean> {
     const match = this.match();
-    if (!match || this.commandInProgress) {
+    if (!match || match.status === 'finished' || this.commandInProgress) {
       return false;
     }
 
@@ -566,10 +627,29 @@ export class LiveMatchStore {
         return false;
       }
 
-      await this.eventStore.commit(result.value.match, [result.value.event]);
+      let updatedMatch = result.value.match;
+      const recordedEvents: MatchEvent[] = [result.value.event];
+      if (shouldAutoStopClock(result.value.event.type) && updatedMatch.clock.running) {
+        const stopped = stopMatchClock(updatedMatch, timestamp);
+        if (!stopped.ok) {
+          this.error.set(stopped.error);
+          return false;
+        }
+        recordedEvents.push(
+          ...this.transitionEvents(
+            updatedMatch,
+            stopped.value,
+            'STOP_CLOCK',
+            [...this.events(), ...recordedEvents],
+            timestamp,
+          ),
+        );
+        updatedMatch = stopped.value;
+      }
+      await this.eventStore.commit(updatedMatch, recordedEvents);
       this.now.set(timestamp);
-      this.match.set(result.value.match);
-      this.events.update((events) => [...events, result.value.event]);
+      this.match.set(updatedMatch);
+      this.events.update((events) => [...events, ...recordedEvents]);
       return true;
     } catch {
       this.error.set('No se ha podido guardar el gol.');
@@ -627,10 +707,29 @@ export class LiveMatchStore {
         return false;
       }
 
-      await this.eventStore.commit(result.value.match, [result.value.event]);
+      let updatedMatch = result.value.match;
+      const recordedEvents: MatchEvent[] = [result.value.event];
+      if (shouldAutoStopClock(result.value.event.type) && updatedMatch.clock.running) {
+        const stopped = stopMatchClock(updatedMatch, timestamp);
+        if (!stopped.ok) {
+          this.error.set(stopped.error);
+          return false;
+        }
+        recordedEvents.push(
+          ...this.transitionEvents(
+            updatedMatch,
+            stopped.value,
+            'STOP_CLOCK',
+            [...this.events(), ...recordedEvents],
+            timestamp,
+          ),
+        );
+        updatedMatch = stopped.value;
+      }
+      await this.eventStore.commit(updatedMatch, recordedEvents);
       this.now.set(timestamp);
-      this.match.set(result.value.match);
-      this.events.update((events) => [...events, result.value.event]);
+      this.match.set(updatedMatch);
+      this.events.update((events) => [...events, ...recordedEvents]);
       return true;
     } catch {
       this.error.set('No se ha podido guardar la falta.');

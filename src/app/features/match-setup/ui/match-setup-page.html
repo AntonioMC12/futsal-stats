@@ -1,6 +1,8 @@
 <section class="match-setup-page">
   <header class="setup-header">
-    <a class="setup-back" routerLink="/matches" aria-label="Volver a partidos">← <span>Partidos</span></a>
+    <a class="setup-back" routerLink="/matches" aria-label="Volver a partidos"
+      >← <span>Partidos</span></a
+    >
     <div>
       <h1>Crear partido</h1>
       <p class="lede">Prepara la convocatoria y el quinteto inicial.</p>
@@ -31,8 +33,47 @@
             </select>
           </label>
           <label class="field">
-            <span>Rival</span>
+            <span>Abreviación</span>
+            <input
+              class="abbreviation-input"
+              formControlName="awayTeamShortName"
+              minlength="2"
+              maxlength="6"
+              autocomplete="off"
+              placeholder="MNG"
+              (blur)="normalizeAbbreviation()"
+            />
+            @if (
+              form.controls.awayTeamShortName.touched && form.controls.awayTeamShortName.invalid
+            ) {
+              <small class="field-error">Introduce entre 2 y 6 caracteres.</small>
+            }
+          </label>
+          <label class="field">
+            <span>Nombre del rival</span>
             <input formControlName="awayTeamName" maxlength="60" placeholder="Nombre del rival" />
+            @if (form.controls.awayTeamName.touched && form.controls.awayTeamName.invalid) {
+              <small class="field-error">El nombre del rival es obligatorio.</small>
+            }
+          </label>
+          <label class="field">
+            <span>Fecha</span>
+            <input formControlName="matchDate" type="date" />
+            @if (form.controls.matchDate.touched && form.controls.matchDate.invalid) {
+              <small class="field-error">La fecha es obligatoria.</small>
+            }
+          </label>
+          <label class="field field--wide">
+            <span>Descripción</span>
+            <textarea
+              formControlName="description"
+              maxlength="500"
+              rows="3"
+              placeholder="Contexto o competición del partido"
+            ></textarea>
+            @if (form.controls.description.touched && form.controls.description.invalid) {
+              <small class="field-error">La descripción es obligatoria.</small>
+            }
           </label>
         </div>
       </fieldset>
@@ -46,7 +87,9 @@
             <p class="selection-count">
               <strong>Convocados</strong>
               <span>{{ selectedCount() }}/{{ availablePlayers().length }}</span>
-              @if (selectedCount() < 5) { <small>mínimo 5</small> }
+              @if (selectedCount() < 5) {
+                <small>mínimo 5</small>
+              }
             </p>
             <button class="select-all" type="button" (click)="toggleAllPlayers()">
               {{ allPlayersSelected() ? 'Deseleccionar todos' : 'Seleccionar todos' }}
@@ -68,38 +111,6 @@
                 <span class="number">#{{ player.number }}</span>
                 <span class="player-name">{{ player.name }}</span>
               </label>
-            }
-          </div>
-        </fieldset>
-
-        <fieldset class="panel lineup-setup-panel" [disabled]="selectedCount() < 5">
-          <legend><span class="step-number">3</span> Quinteto inicial</legend>
-          <div class="selection-toolbar selection-toolbar--lineup">
-            <p class="selection-count">
-              <strong>Titulares</strong><span>{{ lineupCount() }}/5</span>
-            </p>
-            <small>Elige exactamente cinco</small>
-          </div>
-          <div class="player-grid lineup-grid" aria-label="Jugadores convocados para el quinteto">
-            @for (player of availablePlayers(); track player.id) {
-              @if (isSelected(player.id)) {
-                <label
-                  class="player player--lineup"
-                  [class.player--starter]="isStarter(player.id)"
-                  [title]="player.name"
-                >
-                  <input
-                    type="checkbox"
-                    [checked]="isStarter(player.id)"
-                    [disabled]="!isStarter(player.id) && lineupCount() >= 5"
-                    [attr.aria-label]="'Marcar como titular a ' + player.number + ', ' + player.name"
-                    (change)="toggleLineup(player.id)"
-                  />
-                  <span class="number">#{{ player.number }}</span>
-                  <span class="player-name">{{ player.name }}</span>
-                  @if (isStarter(player.id)) { <span class="starter-mark" aria-hidden="true">Titular</span> }
-                </label>
-              }
             }
           </div>
         </fieldset>

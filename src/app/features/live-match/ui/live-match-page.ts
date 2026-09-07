@@ -1,3 +1,4 @@
+import { shouldAutoStopClock } from '../domain/event-clock-policy';
 import { Component, computed, effect, HostListener, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { formatGameClock } from '../../../core/clock/match-clock';
@@ -13,12 +14,15 @@ import { LiveMatchStore } from '../application/live-match.store';
 import { MatchCsvExportService } from '../../matches/application/match-csv-export.service';
 import { SystemNotificationService } from '../../../core/notifications/system-notification.service';
 import { BenchDisciplineSubject, createStaffIdentityKey } from '../domain/bench-discipline';
+import { PlayerMatchDetailComponent } from './player-match-detail';
+import type { PlayerMatchStatistics } from '../domain/match-statistics';
+import { MatchDate, matchDateTimestamp } from '../../../shared/models/match';
 
 type MatchOverlay = 'statistics' | 'events' | 'discipline' | 'more';
 
 @Component({
   selector: 'app-live-match-page',
-  imports: [RouterLink],
+  imports: [RouterLink, PlayerMatchDetailComponent],
   providers: [LiveMatchStore],
   templateUrl: './live-match-page.html',
 })
@@ -30,6 +34,7 @@ export class LiveMatchPage {
   protected readonly selectedOutPlayerId = signal<string | null>(null);
   protected readonly substituting = signal(false);
   protected readonly confirmAbandon = signal(false);
+  protected readonly confirmFinish = signal(false);
   protected readonly foulTeam = signal<FoulTeam | null>(null);
   protected readonly selectedFoulPlayerId = signal<string | null>(null);
   protected readonly disciplineSaving = signal(false);
@@ -40,6 +45,11 @@ export class LiveMatchPage {
   protected readonly goalSelectorOpen = signal(false);
   protected readonly goalSaving = signal(false);
   protected readonly activeOverlay = signal<MatchOverlay | null>(null);
+  protected readonly initialLineupOpen = signal(false);
+  protected readonly initialLineupIds = signal<Set<string>>(new Set());
+  protected readonly initialLineupCount = computed(() => this.initialLineupIds().size);
+  protected readonly detailPlayerId = signal<string | null>(null);
+  protected playerDetailTrigger: HTMLElement | null = null;
   protected readonly benchDisciplineOpen = signal(false);
   protected readonly benchDisciplineTeam = signal<FoulTeam>('home');
   protected readonly benchMemberKind = signal<'player' | 'staff'>('player');
@@ -153,7 +163,11 @@ export class LiveMatchPage {
     );
   });
   protected readonly clockFabLabel = computed(() =>
-    this.store.clockRunning() ? 'Pausar reloj' : 'Iniciar reloj',
+    this.store.match()?.status === 'ready'
+      ? 'Iniciar partido'
+      : this.store.clockRunning()
+        ? 'Pausar reloj'
+        : 'Iniciar reloj',
   );
   protected readonly clockFabPulsing = computed(
     () => !this.store.clockRunning() && this.store.canStartClock() && !this.store.saving(),
@@ -179,9 +193,50 @@ export class LiveMatchPage {
         return '';
     }
   });
+  protected readonly compactStatsPeriodLabel = computed(() => {
+    const period = this.store.match()?.currentPeriod ?? 1;
+    return period === 1 ? '1.ª parte' : period === 2 ? '2.ª parte' : `Periodo ${period}`;
+  });
 
   constructor() {
-    effect(() => void this.store.load(this.matchId()));
+    effect(() => {
+      this.detailPlayerId.set(null);
+      void this.store.load(this.matchId());
+    });
+  }
+
+  protected openPlayerDetail(playerId: string, event: Event): void {
+    const row = event.currentTarget as HTMLElement;
+    this.playerDetailTrigger = row.querySelector<HTMLButtonElement>('.player-detail-trigger');
+    this.detailPlayerId.set(playerId);
+  }
+
+  protected openInitialLineup(): void {
+    const match = this.store.match();
+    if (match?.status !== 'ready') return;
+    this.initialLineupIds.set(new Set(match.startingLineupPlayerIds));
+    this.initialLineupOpen.set(true);
+  }
+
+  protected toggleInitialLineupPlayer(playerId: string): void {
+    const selection = new Set(this.initialLineupIds());
+    if (selection.has(playerId)) {
+      selection.delete(playerId);
+    } else if (selection.size < 5) {
+      selection.add(playerId);
+    }
+    this.initialLineupIds.set(selection);
+  }
+
+  protected async confirmInitialLineup(): Promise<void> {
+    if (this.initialLineupCount() !== 5) return;
+    if (await this.store.saveStartingLineup([...this.initialLineupIds()])) {
+      this.initialLineupOpen.set(false);
+    }
+  }
+
+  protected cancelInitialLineup(): void {
+    if (!this.store.saving()) this.initialLineupOpen.set(false);
   }
 
   protected selectOutPlayer(playerId: string, event: Event): void {
@@ -231,7 +286,7 @@ export class LiveMatchPage {
   protected openGoalSelector(event: Event): void | Promise<void> {
     if (!this.store.canRegisterGoal() || this.store.saving()) return;
     const trigger = event.currentTarget as HTMLElement;
-    return this.runAfterClockStopped(() => {
+    return this.runAfterClockStopped('GOAL_FOR', () => {
       this.goalTrigger = trigger;
       this.goalSelectorOpen.set(true);
     });
@@ -264,7 +319,7 @@ export class LiveMatchPage {
 
   protected registerGoalAgainst(): void | Promise<void> {
     if (!this.store.canRegisterGoal() || this.store.saving()) return;
-    return this.runAfterClockStopped(async () => {
+    return this.runAfterClockStopped('GOAL_AGAINST', async () => {
       if (await this.store.registerGoalAgainst()) {
         this.showActionFeedback('Gol rival registrado');
       }
@@ -279,7 +334,7 @@ export class LiveMatchPage {
 
   protected openFoul(team: FoulTeam): void | Promise<void> {
     if (!this.store.canRegisterFoul() || this.store.saving()) return;
-    return this.runAfterClockStopped(() => {
+    return this.runAfterClockStopped('FOUL', () => {
       this.selectedFoulPlayerId.set(null);
       this.resetOpponentSelection();
       this.foulTeam.set(team);
@@ -288,7 +343,7 @@ export class LiveMatchPage {
 
   protected openBenchDiscipline(): void | Promise<void> {
     if (!this.store.canRegisterBenchDiscipline() || this.store.saving()) return;
-    return this.runAfterClockStopped(() => {
+    return this.runAfterClockStopped('BENCH_DISCIPLINE', () => {
       this.resetBenchDiscipline();
       this.benchDisciplineOpen.set(true);
     });
@@ -402,7 +457,9 @@ export class LiveMatchPage {
 
   protected openReplacement(reductionEventId: string): void | Promise<void> {
     if (this.store.saving()) return;
-    return this.runAfterClockStopped(() => this.replacingReductionId.set(reductionEventId));
+    return this.runAfterClockStopped('RED_CARD_REPLACEMENT', () =>
+      this.replacingReductionId.set(reductionEventId),
+    );
   }
 
   protected cancelReplacement(): void {
@@ -424,7 +481,11 @@ export class LiveMatchPage {
 
   @HostListener('document:keydown.escape')
   protected closeSubstitutionOnEscape(): void {
-    if (this.activeOverlay()) {
+    if (this.initialLineupOpen() && !this.store.saving()) {
+      this.cancelInitialLineup();
+    } else if (this.detailPlayerId()) {
+      this.detailPlayerId.set(null);
+    } else if (this.activeOverlay()) {
       this.activeOverlay.set(null);
     } else if (this.goalSelectorOpen() && !this.goalSaving()) {
       this.cancelGoalSelector();
@@ -447,8 +508,32 @@ export class LiveMatchPage {
     }
   }
 
+  protected async finishMatch(): Promise<void> {
+    await this.store.finishMatch();
+    if (this.store.match()?.status === 'finished') {
+      this.confirmFinish.set(false);
+      await this.router.navigate(['/matches']);
+    }
+  }
+
   protected formatDuration(durationMs: number): string {
     return formatGameClock(durationMs);
+  }
+
+  protected formatMatchDate(value: MatchDate): string {
+    const timestamp = matchDateTimestamp(value);
+    if (!timestamp) return '—';
+    return new Intl.DateTimeFormat('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).format(timestamp);
+  }
+
+  protected compactStatsPeriodTime(
+    stats: Pick<PlayerMatchStatistics, 'firstHalfMs' | 'secondHalfMs'>,
+  ): number {
+    return this.store.match()?.currentPeriod === 2 ? stats.secondHalfMs : stats.firstHalfMs;
   }
 
   protected signed(value: number): string {
@@ -516,8 +601,11 @@ export class LiveMatchPage {
     });
   }
 
-  private runAfterClockStopped(action: () => void | Promise<void>): void | Promise<void> {
-    if (!this.store.clockRunning()) return action();
+  private runAfterClockStopped(
+    type: MatchEventType,
+    action: () => void | Promise<void>,
+  ): void | Promise<void> {
+    if (!shouldAutoStopClock(type) || !this.store.clockRunning()) return action();
     return this.stopClockThen(action);
   }
 

@@ -19,13 +19,15 @@
         <h2 id="active-title">Partido en curso</h2>
         <article class="active-card">
           <p class="match-name">
-            {{ active.match.homeTeam.shortName }} vs {{ active.match.awayTeam.shortName }}
+            {{ active.match.homeTeam.shortName }} vs {{ active.match.awayTeam.name }}
           </p>
+          <p class="opponent-abbreviation">{{ active.match.awayTeam.shortName || '—' }}</p>
           <p class="score" aria-label="Marcador">
             {{ active.score.home }} <span>-</span> {{ active.score.away }}
           </p>
           <p class="match-state">{{ store.activePeriod() }} · {{ store.activeClock() }}</p>
           <p class="match-date">{{ formatDate(active.match.date) }}</p>
+          <p class="match-description">{{ active.match.description || 'Sin descripción' }}</p>
           <a class="btn btn--primary btn--wide" [routerLink]="['/live', active.match.id]">
             Continuar partido
           </a>
@@ -66,26 +68,41 @@
             <article class="history-item">
               <div>
                 <time>{{ formatDate(summary.match.date) }}</time>
-                <p>
+                <p class="history-opponent">
+                  <span class="opponent-abbreviation">{{
+                    summary.match.awayTeam.shortName || '—'
+                  }}</span>
+                  <span>{{ summary.match.awayTeam.name }}</span>
+                </p>
+                <p class="history-score">
                   {{ summary.match.homeTeam.shortName }}
                   <strong>{{ summary.score.home }} - {{ summary.score.away }}</strong>
-                  {{ summary.match.awayTeam.shortName }}
+                  {{ summary.match.awayTeam.shortName || summary.match.awayTeam.name }}
                 </p>
+                <p class="match-description">
+                  {{ summary.match.description || 'Sin descripción' }}
+                </p>
+                <span class="finished-label">Finalizado</span>
               </div>
-              <details class="secondary-actions secondary-actions--compact">
-                <summary aria-label="Opciones del partido">•••</summary>
-                <button
-                  class="text-action export-csv"
-                  type="button"
-                  [disabled]="csvExporter.isExporting()"
-                  (click)="csvExporter.export(summary.match.id)"
-                >
-                  {{ csvExporter.isExporting() ? 'Exportando…' : 'Exportar CSV' }}
-                </button>
-                <button class="text-danger" type="button" (click)="requestDelete(summary)">
-                  Eliminar
-                </button>
-              </details>
+              <div class="history-actions">
+                <a class="btn btn--secondary" [routerLink]="['/live', summary.match.id]">
+                  Ver partido
+                </a>
+                <details class="secondary-actions secondary-actions--compact">
+                  <summary aria-label="Opciones del partido">•••</summary>
+                  <button
+                    class="text-action export-csv"
+                    type="button"
+                    [disabled]="csvExporter.isExporting()"
+                    (click)="csvExporter.export(summary.match.id)"
+                  >
+                    {{ csvExporter.isExporting() ? 'Exportando…' : 'Exportar CSV' }}
+                  </button>
+                  <button class="text-danger" type="button" (click)="requestDelete(summary)">
+                    Eliminar
+                  </button>
+                </details>
+              </div>
             </article>
           }
         </div>

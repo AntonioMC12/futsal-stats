@@ -1,6 +1,6 @@
 import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { createMatchClock } from '../../../core/clock/match-clock';
 import {
   MATCH_EVENT_REPOSITORY as MatchEventRepository,
@@ -29,7 +29,8 @@ function activeMatch(): Match {
     id: 'match-1',
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: 'Rival', shortName: 'RIV' },
-    date: 1,
+    date: '2026-09-07',
+    description: 'Partido amistoso',
     status: 'firstHalf',
     currentPeriod: 1,
     periodCount: 2,
@@ -87,8 +88,8 @@ function foulEvent(
 describe('LiveMatchPage', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  async function createPage() {
-    const match = activeMatch();
+  async function createPage(match = activeMatch(), initialEvents = lineupEvents()) {
+    const committedEvents: MatchEvent[] = [];
     const csvExporter = {
       isExporting: signal(false),
       notice: signal<string | null>(null),
@@ -104,7 +105,10 @@ describe('LiveMatchPage', () => {
         { provide: PlayerRepository, useValue: { listByIds: async () => players } },
         {
           provide: MatchEventRepository,
-          useValue: { listByMatch: async () => lineupEvents(), commit: async () => undefined },
+          useValue: {
+            listByMatch: async () => initialEvents,
+            commit: async (_match: Match, events: MatchEvent[]) => committedEvents.push(...events),
+          },
         },
         { provide: DeleteMatchService, useValue: { execute: async () => undefined } },
         { provide: MatchCsvExportService, useValue: csvExporter },
@@ -118,8 +122,130 @@ describe('LiveMatchPage', () => {
     await vi.waitFor(() => expect(store.loading()).toBe(false));
     fixture.detectChanges();
     const notifications = TestBed.inject(SystemNotificationService);
-    return { csvExporter, fixture, notifications, store };
+    return { committedEvents, csvExporter, fixture, notifications, store };
   }
+
+  describe('player match detail', () => {
+    // jsdom has no native dialog top layer; focus trapping is also checked in Chromium.
+    beforeEach(() => {
+      Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+        configurable: true,
+        value: function (this: HTMLDialogElement) {
+          this.open = true;
+          this.querySelector<HTMLElement>('[autofocus]')?.focus();
+        },
+      });
+      Object.defineProperty(HTMLDialogElement.prototype, 'close', {
+        configurable: true,
+        value: function (this: HTMLDialogElement) {
+          this.open = false;
+        },
+      });
+    });
+    afterEach(() => {
+      TestBed.resetTestingModule();
+      Reflect.deleteProperty(HTMLDialogElement.prototype, 'showModal');
+      Reflect.deleteProperty(HTMLDialogElement.prototype, 'close');
+      vi.useRealTimers();
+    });
+
+    it.each([true, false])(
+      'opens the selected player and preserves the clock (%s), data, scroll and focus',
+      async (running) => {
+        vi.useFakeTimers();
+        vi.setSystemTime(10_000);
+        const { fixture, store } = await createPage();
+        if (running) await store.startClock();
+        (
+          fixture.nativeElement.querySelectorAll('.match-nav button')[0] as HTMLButtonElement
+        ).click();
+        fixture.detectChanges();
+        const content = fixture.nativeElement.querySelector('.overlay-content') as HTMLElement;
+        content.scrollTop = 120;
+        const trigger = fixture.nativeElement.querySelector(
+          '.statistics-table .player-detail-trigger',
+        ) as HTMLButtonElement;
+        const match = store.match();
+        const events = [...store.events()];
+        trigger.focus();
+        trigger.click();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        const dialog = fixture.nativeElement.querySelector('.player-detail') as HTMLDialogElement;
+        expect(dialog.open).toBe(true);
+        expect(dialog.querySelector('h2')?.textContent).toContain('#1');
+        expect(dialog.querySelector('h2')?.textContent).toContain('Jugador 1');
+        expect(dialog.textContent).toContain('EN PISTA');
+        expect(dialog.textContent).toContain('1.ª mitad');
+        expect(dialog.textContent).toContain('2.ª mitad');
+        await vi.advanceTimersByTimeAsync(2_200);
+        fixture.detectChanges();
+        expect(dialog.querySelector('.total-time dd')?.textContent).toBe(
+          running ? '00:02' : '00:00',
+        );
+        expect(store.clockRunning()).toBe(running);
+        expect(store.match()).toBe(match);
+        expect(store.events()).toEqual(events);
+        dialog.querySelector<HTMLButtonElement>('.close-detail')!.click();
+        fixture.detectChanges();
+        expect(fixture.nativeElement.querySelector('.player-detail')).toBeNull();
+        expect(fixture.nativeElement.querySelector('.overlay-content')).toBe(content);
+        expect(content.scrollTop).toBe(120);
+        expect(document.activeElement).toBe(trigger);
+        expect(store.clockRunning()).toBe(running);
+        expect(store.events()).toEqual(events);
+        fixture.destroy();
+      },
+    );
+
+    it('opens from a row cell, renders substitutions and changes player without residual data', async () => {
+      const { fixture, store } = await createPage();
+      await store.makeSubstitution('p1', 'p6');
+      (fixture.nativeElement.querySelectorAll('.match-nav button')[0] as HTMLButtonElement).click();
+      fixture.detectChanges();
+      const rows = fixture.nativeElement.querySelectorAll(
+        '.statistics-table tbody tr',
+      ) as NodeListOf<HTMLTableRowElement>;
+      rows[0]!.querySelector('td')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const dialog = fixture.nativeElement.querySelector('.player-detail') as HTMLDialogElement;
+      expect(dialog.textContent).toContain('BANQUILLO');
+      expect(dialog.textContent).toContain('Sale por #6 Banquillo');
+      expect(dialog.querySelectorAll('.movements li:not(.empty)')).toHaveLength(2);
+      dialog.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+      );
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.match-overlay')).not.toBeNull();
+      rows[5]!.querySelector<HTMLButtonElement>('button')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const next = fixture.nativeElement.querySelector('.player-detail') as HTMLDialogElement;
+      expect(next.querySelector('h2')?.textContent).toContain('#6');
+      expect(next.textContent).toContain('Entra por #1 Jugador 1');
+      expect(next.textContent).not.toContain('Sale por #6 Banquillo');
+      next.dispatchEvent(new Event('cancel', { cancelable: true }));
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.player-detail')).toBeNull();
+      fixture.destroy();
+    });
+
+    it('also opens unused players from the compact tablet statistics', async () => {
+      const { fixture } = await createPage();
+      const buttons = fixture.nativeElement.querySelectorAll(
+        '.compact-stats-table .player-detail-trigger',
+      ) as NodeListOf<HTMLButtonElement>;
+      buttons[5]!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const dialog = fixture.nativeElement.querySelector('.player-detail') as HTMLDialogElement;
+      expect(dialog.textContent).toContain('NO HA ENTRADO');
+      expect(dialog.textContent).toContain('Sin tramos en pista.');
+      expect(dialog.querySelector('.total-time dd')?.textContent).toBe('00:00');
+      fixture.destroy();
+    });
+  });
 
   it('renders five court players and substitutes directly with the only bench player', async () => {
     const { fixture, notifications, store } = await createPage();
@@ -168,6 +294,64 @@ describe('LiveMatchPage', () => {
     expect(fixture.nativeElement.querySelector('.substitution-sheet')).toBeNull();
     expect(notifications.notification()?.message).toBe('Cambio realizado');
     expect(notifications.notification()?.action?.label).toBe('Deshacer');
+    fixture.destroy();
+  });
+
+  it('selects, edits and confirms the initial five before explicitly starting the match', async () => {
+    const match = activeMatch();
+    match.status = 'ready';
+    match.startingLineupPlayerIds = [];
+    const { committedEvents, fixture, store } = await createPage(match, []);
+
+    const lineupButton = fixture.nativeElement.querySelector(
+      '.court-lineup-config',
+    ) as HTMLButtonElement;
+    const clockButton = fixture.nativeElement.querySelector('.clock-fab') as HTMLButtonElement;
+    expect(lineupButton.textContent).toContain('Seleccionar quinteto inicial');
+    expect(fixture.nativeElement.querySelector('.match-clock').textContent).toContain('00:00');
+    expect(clockButton.disabled).toBe(true);
+
+    lineupButton.click();
+    fixture.detectChanges();
+    const options = fixture.nativeElement.querySelectorAll(
+      '.initial-lineup-option',
+    ) as NodeListOf<HTMLButtonElement>;
+    expect(options).toHaveLength(6);
+    [...options].slice(0, 4).forEach((option) => option.click());
+    fixture.detectChanges();
+    expect(
+      (fixture.nativeElement.querySelector('.confirm-initial-lineup') as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+
+    options[4]?.click();
+    fixture.detectChanges();
+    expect(options[5]?.disabled).toBe(true);
+    const confirm = fixture.nativeElement.querySelector(
+      '.confirm-initial-lineup',
+    ) as HTMLButtonElement;
+    expect(confirm.disabled).toBe(false);
+    confirm.click();
+    await vi.waitFor(() => expect(store.hasValidStartingLineup()).toBe(true));
+    fixture.detectChanges();
+
+    expect(store.match()?.status).toBe('ready');
+    expect(store.clockRunning()).toBe(false);
+    expect(committedEvents).toEqual([]);
+    expect(fixture.nativeElement.querySelector('.court-lineup-config').textContent).toContain(
+      'Editar quinteto inicial',
+    );
+    const enabledClockButton = fixture.nativeElement.querySelector(
+      '.clock-fab',
+    ) as HTMLButtonElement;
+    expect(enabledClockButton.disabled).toBe(false);
+
+    enabledClockButton.click();
+    await vi.waitFor(() => expect(store.match()?.status).toBe('firstHalf'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.court-lineup-config')).toBeNull();
+    expect(committedEvents.filter((event) => event.type === 'PLAYER_ENTERED')).toHaveLength(5);
+    expect(committedEvents.some((event) => event.type === 'SUBSTITUTION')).toBe(false);
     fixture.destroy();
   });
 
@@ -447,6 +631,46 @@ describe('LiveMatchPage', () => {
     fixture.destroy();
   });
 
+  it('confirms an early finish and leaves the loaded match in read-only consultation mode', async () => {
+    const { fixture, store } = await createPage();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    (fixture.nativeElement.querySelectorAll('.match-nav button')[3] as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.finish-match') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const confirmation = fixture.nativeElement.querySelector('.confirm-dialog') as HTMLElement;
+    expect(confirmation.textContent).toContain('¿Finalizar partido?');
+    (confirmation.querySelector('.confirm-finish') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(store.match()?.status).toBe('finished');
+    expect(store.clockRunning()).toBe(false);
+    expect(navigate).toHaveBeenCalledWith(['/matches']);
+    expect(fixture.nativeElement.querySelector('.clock-fab')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.match-action')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.primary-actions')?.textContent).toContain(
+      'Modo consulta',
+    );
+    expect(fixture.nativeElement.querySelector('.finished-duration')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.readonly-metadata')?.textContent).toContain(
+      'Partido amistoso',
+    );
+    expect(fixture.nativeElement.querySelector('.readonly-metadata')?.textContent).toContain(
+      '07/09/2026',
+    );
+
+    const consultationButtons = fixture.nativeElement.querySelectorAll(
+      '.readonly-actions button',
+    ) as NodeListOf<HTMLButtonElement>;
+    consultationButtons[0]?.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.statistics-table')).not.toBeNull();
+    fixture.destroy();
+  });
+
   it('integrates the only visible clock and period into the scoreboard panel', async () => {
     const { fixture, store } = await createPage();
     const timers = fixture.nativeElement.querySelectorAll(
@@ -539,7 +763,8 @@ describe('LiveMatchPage', () => {
   });
 
   it('opens statistics as an overlay and exports with the shared loading state', async () => {
-    const { csvExporter, fixture } = await createPage();
+    const { csvExporter, fixture, store } = await createPage();
+    await store.startClock();
     expect(fixture.nativeElement.querySelector('.statistics-table')).toBeNull();
     (fixture.nativeElement.querySelectorAll('.match-nav button')[0] as HTMLButtonElement).click();
     fixture.detectChanges();
@@ -549,6 +774,15 @@ describe('LiveMatchPage', () => {
 
     expect(button).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.statistics-table')).not.toBeNull();
+    const table = fixture.nativeElement.querySelector('.statistics-table') as HTMLElement;
+    expect(table.textContent).toContain('Min total');
+    expect(table.textContent).toContain('1.ª mitad');
+    expect(table.textContent).toContain('2.ª mitad');
+    const lineups = fixture.nativeElement.querySelector('.lineup-stat-list') as HTMLElement;
+    expect(lineups.querySelectorAll('.lineup-stat')).toHaveLength(store.lineupStatistics().length);
+    expect(lineups.textContent).toContain('1.ª mitad');
+    expect(lineups.textContent).toContain('2.ª mitad');
+    expect(lineups.textContent).toContain('Apariciones');
     expect(button.textContent).toContain('Exportar CSV');
     button.click();
     expect(csvExporter.export).toHaveBeenCalledOnce();
@@ -561,18 +795,39 @@ describe('LiveMatchPage', () => {
     fixture.destroy();
   });
 
-  it('renders the tablet statistics summary and expands it in the existing overlay', async () => {
+  it('renders only total and first-half time in the compact statistics summary', async () => {
     const { fixture } = await createPage();
     const summary = fixture.nativeElement.querySelector('.tablet-statistics') as HTMLElement;
+    const headers = [...summary.querySelectorAll('thead th')].map((header) =>
+      header.textContent?.trim(),
+    );
 
     expect(summary.textContent).toContain('Estadísticas');
     expect(summary.querySelectorAll('tbody tr')).toHaveLength(players.length);
+    expect(headers).toEqual(['Jugador', 'Total', '1.ª parte']);
+    expect(summary.querySelectorAll('tbody tr:first-child > *')).toHaveLength(3);
     expect(summary.textContent).toContain('#1');
     expect(summary.textContent).toContain('Jugador 1');
 
     (summary.querySelector('.panel-heading button') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.match-overlay .statistics-table')).not.toBeNull();
+    fixture.destroy();
+  });
+
+  it('switches the compact statistics summary to second-half time', async () => {
+    const { fixture, store } = await createPage();
+    store.match.update((match) =>
+      match ? { ...match, status: 'secondHalf', currentPeriod: 2 } : match,
+    );
+    fixture.detectChanges();
+
+    const summary = fixture.nativeElement.querySelector('.tablet-statistics') as HTMLElement;
+    const headers = [...summary.querySelectorAll('thead th')].map((header) =>
+      header.textContent?.trim(),
+    );
+    expect(headers).toEqual(['Jugador', 'Total', '2.ª parte']);
+    expect(summary.textContent).not.toContain('1.ª parte');
     fixture.destroy();
   });
 
@@ -741,7 +996,7 @@ describe('LiveMatchPage', () => {
     fixture.destroy();
   });
 
-  it('stops the clock and registers a staff protest from the bench discipline sheet', async () => {
+  it('preserves the clock and registers a staff protest from the bench discipline sheet', async () => {
     const { fixture, notifications, store } = await createPage();
     await store.startClock();
     fixture.detectChanges();
@@ -753,8 +1008,8 @@ describe('LiveMatchPage', () => {
     fixture.detectChanges();
 
     const sheet = fixture.nativeElement.querySelector('.bench-discipline-sheet') as HTMLElement;
-    expect(stopClock).toHaveBeenCalledOnce();
-    expect(store.clockRunning()).toBe(false);
+    expect(stopClock).not.toHaveBeenCalled();
+    expect(store.clockRunning()).toBe(true);
     expect(sheet).not.toBeNull();
     const memberButtons = sheet
       .querySelectorAll('.bench-discipline-toggle')[1]

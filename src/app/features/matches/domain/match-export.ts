@@ -1,5 +1,11 @@
+import { eventLabel } from '../../live-match/domain/match-timeline';
 import { formatGameClock, projectRemaining } from '../../../core/clock/match-clock';
-import { Match } from '../../../shared/models/match';
+import {
+  Match,
+  MatchDate,
+  localDateString,
+  matchDateTimestamp,
+} from '../../../shared/models/match';
 import { MatchEvent } from '../../../shared/models/match-event';
 import { Player } from '../../../shared/models/player';
 import { deriveMatchState } from '../../live-match/domain/derived-match-state';
@@ -19,6 +25,10 @@ export interface PlayerMatchExportRow {
   goals: number;
   playingTime: string;
   playingSeconds: number;
+  firstHalfTime: string;
+  secondHalfTime: string;
+  firstHalfSeconds: number;
+  secondHalfSeconds: number;
   goalsForOnCourt: number;
   goalsAgainstOnCourt: number;
   plusMinus: number;
@@ -45,6 +55,8 @@ export interface MatchStatisticsExport {
   team: string;
   opponent: string;
   rows: PlayerMatchExportRow[];
+  events: Record<string, string | number | boolean>[];
+  lineups: Record<string, string | number | boolean>[];
 }
 
 export function buildMatchStatisticsExport(
@@ -78,6 +90,8 @@ export function buildMatchStatisticsExport(
       const player = playersById.get(playerId);
       const stats = statistics.players[playerId] ?? {
         playedMs: 0,
+        firstHalfMs: 0,
+        secondHalfMs: 0,
         entries: 0,
         percentage: 0,
         goals: 0,
@@ -103,6 +117,10 @@ export function buildMatchStatisticsExport(
         goals: stats.goals,
         playingTime: formatGameClock(stats.playedMs),
         playingSeconds: Math.floor(stats.playedMs / 1_000),
+        firstHalfTime: formatGameClock(stats.firstHalfMs),
+        secondHalfTime: formatGameClock(stats.secondHalfMs),
+        firstHalfSeconds: stats.firstHalfMs / 1_000,
+        secondHalfSeconds: stats.secondHalfMs / 1_000,
         goalsForOnCourt: stats.goalsForOnCourt,
         goalsAgainstOnCourt: stats.goalsAgainstOnCourt,
         plusMinus: stats.plusMinus,
@@ -131,6 +149,74 @@ export function buildMatchStatisticsExport(
     team: match.homeTeam.name,
     opponent: match.awayTeam.name,
     rows,
+    events: [...events]
+      .sort((a, b) => a.sequence - b.sequence || a.timestamp - b.timestamp)
+      .map((event) => {
+        const playerId =
+          event.type === 'SUBSTITUTION'
+            ? event.outPlayerId
+            : event.type === 'GOAL_FOR'
+              ? event.scorerPlayerId
+              : 'playerId' in event
+                ? event.playerId
+                : undefined;
+        const secondaryPlayerId = event.type === 'SUBSTITUTION' ? event.inPlayerId : undefined;
+        const player = playerId ? playersById.get(playerId) : undefined;
+        const secondary = secondaryPlayerId ? playersById.get(secondaryPlayerId) : undefined;
+        return {
+          eventId: event.id,
+          sequence: event.sequence,
+          period: event.period,
+          gameTime: formatGameClock(event.gameClockMs),
+          gameClockMs: event.gameClockMs,
+          eventType: event.type,
+          team:
+            'team' in event
+              ? event.team
+              : event.type === 'GOAL_AGAINST'
+                ? 'away'
+                : playerId || event.type === 'GOAL_FOR'
+                  ? 'home'
+                  : '',
+          playerId: playerId ?? '',
+          playerNumber:
+            player?.number ??
+            ('opponentPlayerNumber' in event ? (event.opponentPlayerNumber ?? '') : ''),
+          playerName: player?.name ?? '',
+          secondaryPlayerId: secondaryPlayerId ?? '',
+          secondaryPlayerNumber: secondary?.number ?? '',
+          secondaryPlayerName: secondary?.name ?? '',
+          description: eventLabel(
+            event,
+            Object.fromEntries(players.map((p) => [p.id, p.name])),
+            Object.fromEntries(players.map((p) => [p.id, p.number])),
+            discipline.goalReleaseEventIds.has(event.id),
+          ),
+          metadata: JSON.stringify(event),
+          createdAt: event.timestamp,
+          undone: event.undone || !state.activeEvents.some((active) => active.id === event.id),
+        };
+      }),
+    lineups: statistics.lineups.map((lineup, index) => ({
+      lineup: index + 1,
+      playerIds: lineup.playerIds.join('|'),
+      players: lineup.playerIds
+        .map((id) => {
+          const player = playersById.get(id);
+          return player ? '#' + player.number + ' ' + player.name : id;
+        })
+        .join(' | '),
+      totalTime: formatGameClock(lineup.playedMs),
+      firstHalfTime: formatGameClock(lineup.firstHalfMs),
+      secondHalfTime: formatGameClock(lineup.secondHalfMs),
+      totalSeconds: lineup.playedMs / 1000,
+      firstHalfSeconds: lineup.firstHalfMs / 1000,
+      secondHalfSeconds: lineup.secondHalfMs / 1000,
+      stints: lineup.stints,
+      goalsFor: lineup.goalsFor,
+      goalsAgainst: lineup.goalsAgainst,
+      plusMinus: lineup.plusMinus,
+    })),
   };
 }
 
@@ -140,7 +226,9 @@ function compareRows(left: PlayerMatchExportRow, right: PlayerMatchExportRow): n
   return leftNumber - rightNumber || left.playerName.localeCompare(right.playerName);
 }
 
-function formatDisplayDate(timestamp: number): string {
+function formatDisplayDate(value: MatchDate): string {
+  const timestamp = matchDateTimestamp(value);
+  if (!timestamp) return '';
   const date = new Date(timestamp);
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -148,12 +236,12 @@ function formatDisplayDate(timestamp: number): string {
   return `${day}/${month}/${year}`;
 }
 
-function formatFilenameDate(timestamp: number): string {
+function formatFilenameDate(value: MatchDate): string {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const timestamp = matchDateTimestamp(value);
+  if (!timestamp) return 'unknown-date';
   const date = new Date(timestamp);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return localDateString(date);
 }
 
 function formatMatchStatus(status: Match['status']): string {

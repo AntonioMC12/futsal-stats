@@ -48,13 +48,20 @@ describe('MatchSetupService', () => {
     const ids = players.map((player) => player.id);
     const result = await TestBed.inject(MatchSetupService).createMatch({
       teamId: team.id,
+      awayTeamShortName: 'RIV',
       awayTeamName: 'Rival',
+      matchDate: '2026-09-07',
+      description: 'Partido de liga',
       squadPlayerIds: ids,
-      startingLineupPlayerIds: ids,
     });
 
     expect(result.ok).toBe(true);
     expect(stored).toHaveLength(1);
+    expect(stored[0]).toMatchObject({
+      awayTeam: { name: 'Rival', shortName: 'RIV' },
+      date: '2026-09-07',
+      description: 'Partido de liga',
+    });
   });
 
   it('does not persist when another match is active', async () => {
@@ -76,9 +83,11 @@ describe('MatchSetupService', () => {
 
     const result = await TestBed.inject(MatchSetupService).createMatch({
       teamId: team.id,
+      awayTeamShortName: 'RIV',
       awayTeamName: 'Rival',
+      matchDate: '2026-09-07',
+      description: 'Partido de liga',
       squadPlayerIds: [],
-      startingLineupPlayerIds: [],
     });
 
     expect(result).toEqual({
@@ -104,9 +113,11 @@ describe('MatchSetupService', () => {
     const ids = players.map((player) => player.id);
     const result = await TestBed.inject(MatchSetupService).createMatch({
       teamId: team.id,
+      awayTeamShortName: 'RIV',
       awayTeamName: 'Rival',
+      matchDate: '2026-09-07',
+      description: 'Partido de liga',
       squadPlayerIds: ids,
-      startingLineupPlayerIds: ids,
     });
 
     expect(result).toEqual({
