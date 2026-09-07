@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { FutsalStatsDb } from '../persistence/local/futsal-stats.db';
+import { toLocalPlayerRecord, toLocalTeamRecord } from '../persistence/local/local-record-mappers';
 import { APAGA_SEED_KEY, createApagaPlayers, createApagaTeam } from './built-in-teams';
 
 @Injectable({ providedIn: 'root' })
@@ -13,8 +14,11 @@ export class BuiltInDataInitializer {
         return;
       }
 
-      await this.db.teams.put(createApagaTeam(Date.now()));
-      await this.db.players.bulkPut(createApagaPlayers());
+      const now = Date.now();
+      await this.db.teams.put(toLocalTeamRecord(createApagaTeam(now)));
+      await this.db.players.bulkPut(
+        createApagaPlayers().map((player) => toLocalPlayerRecord(player, now)),
+      );
     });
   }
 }

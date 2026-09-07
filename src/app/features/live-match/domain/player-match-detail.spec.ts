@@ -14,6 +14,7 @@ const players: Player[] = ['a', 'b', 'c', 'd', 'e', 'f'].map((id, index) => ({
 }));
 const match: Match = {
   id: 'match',
+  teamId: 'team',
   homeTeam: { id: 'team', name: 'Local', shortName: 'LOC' },
   awayTeam: { name: 'Rival', shortName: 'RIV' },
   date: 0,

@@ -53,6 +53,10 @@ Las fronteras transaccionales pertenecen a los contratos orientados al agregado:
 Regla arquitectónica: `features/*/{ui,application,domain}` no debe importar `dexie`,
 `local/futsal-stats.db` ni adapters `Dexie*Repository`.
 
+El modelo sincronizable, la migración Dexie v3 y su correspondencia PostgreSQL se documentan en
+[`architecture/cloud-data-model.md`](architecture/cloud-data-model.md). La decisión de normalizar
+IDs legacy está registrada en [`ADR-001`](adr/001-legacy-local-data-migration.md).
+
 ## Modelo persistido vs agregado
 
 - Tabla `matches`: metadatos + `status` + snapshot del reloj + convocatoria + quinteto inicial.

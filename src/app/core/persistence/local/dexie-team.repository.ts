@@ -2,20 +2,25 @@ import { inject, Injectable } from '@angular/core';
 import { Team } from '../../../shared/models/team';
 import { TeamRepository } from '../ports/team.repository';
 import { FutsalStatsDb } from './futsal-stats.db';
+import { fromLocalTeamRecord, toLocalTeamRecord } from './local-record-mappers';
 
 @Injectable()
 export class DexieTeamRepository implements TeamRepository {
   private readonly db = inject(FutsalStatsDb);
 
-  list(): Promise<Team[]> {
-    return this.db.teams.orderBy('name').toArray();
+  async list(): Promise<Team[]> {
+    return (await this.db.teams.orderBy('name').toArray()).map(fromLocalTeamRecord);
   }
 
-  get(id: string): Promise<Team | undefined> {
-    return this.db.teams.get(id);
+  async get(id: string): Promise<Team | undefined> {
+    const record = await this.db.teams.get(id);
+    return record ? fromLocalTeamRecord(record) : undefined;
   }
 
-  put(team: Team): Promise<string> {
-    return this.db.teams.put(team);
+  async put(team: Team): Promise<string> {
+    return this.db.transaction('rw', this.db.teams, async () => {
+      const previous = await this.db.teams.get(team.id);
+      return this.db.teams.put(toLocalTeamRecord(team, previous));
+    });
   }
 }

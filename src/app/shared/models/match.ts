@@ -15,6 +15,7 @@ export type MatchDate = string | number;
 
 export interface Match {
   id: string;
+  teamId: string;
   homeTeam: TeamRef;
   awayTeam: TeamRef;
   date: MatchDate;

@@ -5,6 +5,7 @@ import { configureStartingLineup, hasValidStartingLineup } from './starting-line
 function match(status: Match['status'] = 'ready'): Match {
   return {
     id: 'match-1',
+    teamId: 'team-1',
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: 'Rival', shortName: 'RIV' },
     date: '2026-09-07',
