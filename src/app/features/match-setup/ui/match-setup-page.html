@@ -114,42 +114,6 @@
             }
           </div>
         </fieldset>
-
-        <fieldset class="panel lineup-setup-panel" [disabled]="selectedCount() < 5">
-          <legend><span class="step-number">3</span> Quinteto inicial</legend>
-          <div class="selection-toolbar selection-toolbar--lineup">
-            <p class="selection-count">
-              <strong>Titulares</strong><span>{{ lineupCount() }}/5</span>
-            </p>
-            <small>Elige exactamente cinco</small>
-          </div>
-          <div class="player-grid lineup-grid" aria-label="Jugadores convocados para el quinteto">
-            @for (player of availablePlayers(); track player.id) {
-              @if (isSelected(player.id)) {
-                <label
-                  class="player player--lineup"
-                  [class.player--starter]="isStarter(player.id)"
-                  [title]="player.name"
-                >
-                  <input
-                    type="checkbox"
-                    [checked]="isStarter(player.id)"
-                    [disabled]="!isStarter(player.id) && lineupCount() >= 5"
-                    [attr.aria-label]="
-                      'Marcar como titular a ' + player.number + ', ' + player.name
-                    "
-                    (change)="toggleLineup(player.id)"
-                  />
-                  <span class="number">#{{ player.number }}</span>
-                  <span class="player-name">{{ player.name }}</span>
-                  @if (isStarter(player.id)) {
-                    <span class="starter-mark" aria-hidden="true">Titular</span>
-                  }
-                </label>
-              }
-            }
-          </div>
-        </fieldset>
       }
 
       @if (error(); as message) {

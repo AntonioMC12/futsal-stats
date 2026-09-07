@@ -51,7 +51,6 @@ describe('MatchSetupService', () => {
       matchDate: '2026-09-07',
       description: 'Partido de liga',
       squadPlayerIds: ids,
-      startingLineupPlayerIds: ids,
     });
 
     expect(result.ok).toBe(true);
@@ -87,7 +86,6 @@ describe('MatchSetupService', () => {
       matchDate: '2026-09-07',
       description: 'Partido de liga',
       squadPlayerIds: [],
-      startingLineupPlayerIds: [],
     });
 
     expect(result).toEqual({
@@ -118,7 +116,6 @@ describe('MatchSetupService', () => {
       matchDate: '2026-09-07',
       description: 'Partido de liga',
       squadPlayerIds: ids,
-      startingLineupPlayerIds: ids,
     });
 
     expect(result).toEqual({

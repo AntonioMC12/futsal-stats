@@ -151,6 +151,63 @@ describe('LiveMatchStore', () => {
     expect(store.timeline()).toHaveLength(8);
   });
 
+  it('persists and rehydrates the initial lineup without starting the ready match', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(10_000);
+    let persisted = readyMatch();
+    persisted.startingLineupPlayerIds = [];
+    const history: MatchEvent[] = [];
+    const commits: { match: Match; events: MatchEvent[] }[] = [];
+    TestBed.configureTestingModule({
+      providers: [
+        LiveMatchStore,
+        { provide: MatchRepository, useValue: { get: async () => structuredClone(persisted) } },
+        { provide: PlayerRepository, useValue: { listByIds: async () => [] } },
+        {
+          provide: MatchEventRepository,
+          useValue: {
+            listByMatch: async () => structuredClone(history),
+            commit: async (match: Match, events: MatchEvent[]) => {
+              persisted = structuredClone(match);
+              history.push(...structuredClone(events));
+              commits.push({ match: structuredClone(match), events: structuredClone(events) });
+            },
+          },
+        },
+      ],
+    });
+
+    const store = TestBed.inject(LiveMatchStore);
+    await store.load(persisted.id);
+    expect(store.formattedClock()).toBe('00:00');
+    expect(store.canStartClock()).toBe(false);
+    await store.startClock();
+    expect(store.match()?.status).toBe('ready');
+    expect(history).toEqual([]);
+
+    expect(await store.saveStartingLineup(['p1', 'p2', 'p3', 'p4', 'p5'])).toBe(true);
+    expect(store.match()).toMatchObject({
+      status: 'ready',
+      startingLineupPlayerIds: ['p1', 'p2', 'p3', 'p4', 'p5'],
+      clock: { running: false },
+    });
+    expect(store.formattedClock()).toBe('00:00');
+    expect(store.canStartClock()).toBe(true);
+    expect(commits.at(-1)?.events).toEqual([]);
+    expect(history).toEqual([]);
+
+    await store.load(persisted.id);
+    expect(store.match()?.startingLineupPlayerIds).toEqual(['p1', 'p2', 'p3', 'p4', 'p5']);
+    expect(store.formattedClock()).toBe('00:00');
+
+    vi.setSystemTime(20_000);
+    await store.startClock();
+    expect(store.match()?.status).toBe('firstHalf');
+    expect(store.clockRunning()).toBe(true);
+    expect(history.filter((event) => event.type === 'PLAYER_ENTERED')).toHaveLength(5);
+    expect(history.some((event) => event.type === 'SUBSTITUTION')).toBe(false);
+  });
+
   it('finishes a running match early, persists it and keeps statistics frozen after reload', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(10_000);
@@ -1255,7 +1312,7 @@ describe('LiveMatchStore', () => {
     expect(await store.deleteCurrentMatch()).toBe(false);
 
     expect(store.match()).toBe(original);
-    expect(store.formattedClock()).toBe('20:00');
+    expect(store.formattedClock()).toBe('00:00');
     expect(store.error()).toContain('siguen guardados');
   });
 });

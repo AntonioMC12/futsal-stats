@@ -160,6 +160,20 @@
                 >
               }
             }
+            @if (match.status === 'ready') {
+              <button
+                class="court-lineup-config"
+                [class.court-lineup-config--edit]="store.hasValidStartingLineup()"
+                type="button"
+                (click)="openInitialLineup()"
+              >
+                {{
+                  store.hasValidStartingLineup()
+                    ? 'Editar quinteto inicial'
+                    : 'Seleccionar quinteto inicial'
+                }}
+              </button>
+            }
           </div>
         </section>
 
@@ -174,6 +188,15 @@
             <strong class="match-clock" role="timer" aria-live="off">{{
               store.formattedClock()
             }}</strong>
+            @if (match.status === 'ready') {
+              <span class="kickoff-hint">
+                {{
+                  store.hasValidStartingLineup()
+                    ? 'Quinteto preparado · Inicia el partido'
+                    : 'Selecciona el quinteto inicial para comenzar'
+                }}
+              </span>
+            }
             @if (match.status === 'finished') {
               <span class="finished-duration"
                 >Duración registrada: {{ formatDuration(store.matchElapsedMs()) }}</span
@@ -419,7 +442,7 @@
           </svg>
         }
         <span class="clock-fab__label" aria-hidden="true">{{
-          store.clockRunning() ? 'PAUSA' : 'START'
+          store.match()?.status === 'ready' ? 'INICIAR' : store.clockRunning() ? 'PAUSA' : 'START'
         }}</span>
       </button>
     }
@@ -1039,6 +1062,61 @@
   }
   @if (csvExporter.error(); as message) {
     <p class="system-banner banner banner--warn" role="alert">{{ message }}</p>
+  }
+
+  @if (initialLineupOpen() && store.match()?.status === 'ready') {
+    <div class="substitution-backdrop" (click)="cancelInitialLineup()">
+      <dialog
+        class="substitution-sheet initial-lineup-sheet"
+        open
+        aria-labelledby="initial-lineup-title"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <h2 id="initial-lineup-title">Selecciona 5 jugadores</h2>
+        <p class="initial-lineup-count" aria-live="polite">
+          <strong>{{ initialLineupCount() }} / 5</strong> seleccionados
+        </p>
+        <div class="bench-options initial-lineup-options">
+          @for (player of store.players(); track player.id) {
+            <button
+              class="bench-option initial-lineup-option"
+              [class.is-selected]="initialLineupIds().has(player.id)"
+              type="button"
+              [disabled]="
+                store.saving() || (!initialLineupIds().has(player.id) && initialLineupCount() >= 5)
+              "
+              [attr.aria-pressed]="initialLineupIds().has(player.id)"
+              (click)="toggleInitialLineupPlayer(player.id)"
+            >
+              <strong>#{{ player.number }}</strong>
+              <span>{{ player.name }}</span>
+            </button>
+          }
+        </div>
+        @if (store.error(); as message) {
+          <p class="banner banner--warn" role="alert">{{ message }}</p>
+        }
+        <div class="initial-lineup-actions">
+          <button
+            class="btn btn--secondary"
+            type="button"
+            [disabled]="store.saving()"
+            (click)="cancelInitialLineup()"
+          >
+            Cancelar
+          </button>
+          <button
+            class="btn btn--primary confirm-initial-lineup"
+            type="button"
+            [disabled]="store.saving() || initialLineupCount() !== 5"
+            (click)="confirmInitialLineup()"
+          >
+            {{ store.saving() ? 'Guardando…' : 'Confirmar quinteto' }}
+          </button>
+        </div>
+      </dialog>
+    </div>
   }
 
   @if (goalSelectorOpen()) {

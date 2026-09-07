@@ -21,7 +21,6 @@ export interface SaveMatchSetupInput {
   matchDate: string;
   description: string;
   squadPlayerIds: readonly string[];
-  startingLineupPlayerIds: readonly string[];
 }
 
 @Injectable({ providedIn: 'root' })

@@ -45,6 +45,9 @@ export class LiveMatchPage {
   protected readonly goalSelectorOpen = signal(false);
   protected readonly goalSaving = signal(false);
   protected readonly activeOverlay = signal<MatchOverlay | null>(null);
+  protected readonly initialLineupOpen = signal(false);
+  protected readonly initialLineupIds = signal<Set<string>>(new Set());
+  protected readonly initialLineupCount = computed(() => this.initialLineupIds().size);
   protected readonly detailPlayerId = signal<string | null>(null);
   protected playerDetailTrigger: HTMLElement | null = null;
   protected readonly benchDisciplineOpen = signal(false);
@@ -160,7 +163,11 @@ export class LiveMatchPage {
     );
   });
   protected readonly clockFabLabel = computed(() =>
-    this.store.clockRunning() ? 'Pausar reloj' : 'Iniciar reloj',
+    this.store.match()?.status === 'ready'
+      ? 'Iniciar partido'
+      : this.store.clockRunning()
+        ? 'Pausar reloj'
+        : 'Iniciar reloj',
   );
   protected readonly clockFabPulsing = computed(
     () => !this.store.clockRunning() && this.store.canStartClock() && !this.store.saving(),
@@ -202,6 +209,34 @@ export class LiveMatchPage {
     const row = event.currentTarget as HTMLElement;
     this.playerDetailTrigger = row.querySelector<HTMLButtonElement>('.player-detail-trigger');
     this.detailPlayerId.set(playerId);
+  }
+
+  protected openInitialLineup(): void {
+    const match = this.store.match();
+    if (match?.status !== 'ready') return;
+    this.initialLineupIds.set(new Set(match.startingLineupPlayerIds));
+    this.initialLineupOpen.set(true);
+  }
+
+  protected toggleInitialLineupPlayer(playerId: string): void {
+    const selection = new Set(this.initialLineupIds());
+    if (selection.has(playerId)) {
+      selection.delete(playerId);
+    } else if (selection.size < 5) {
+      selection.add(playerId);
+    }
+    this.initialLineupIds.set(selection);
+  }
+
+  protected async confirmInitialLineup(): Promise<void> {
+    if (this.initialLineupCount() !== 5) return;
+    if (await this.store.saveStartingLineup([...this.initialLineupIds()])) {
+      this.initialLineupOpen.set(false);
+    }
+  }
+
+  protected cancelInitialLineup(): void {
+    if (!this.store.saving()) this.initialLineupOpen.set(false);
   }
 
   protected selectOutPlayer(playerId: string, event: Event): void {
@@ -446,7 +481,9 @@ export class LiveMatchPage {
 
   @HostListener('document:keydown.escape')
   protected closeSubstitutionOnEscape(): void {
-    if (this.detailPlayerId()) {
+    if (this.initialLineupOpen() && !this.store.saving()) {
+      this.cancelInitialLineup();
+    } else if (this.detailPlayerId()) {
       this.detailPlayerId.set(null);
     } else if (this.activeOverlay()) {
       this.activeOverlay.set(null);

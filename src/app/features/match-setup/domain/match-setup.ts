@@ -14,7 +14,6 @@ export interface CreateMatchInput {
   description: string;
   players: readonly Player[];
   squadPlayerIds: readonly string[];
-  startingLineupPlayerIds: readonly string[];
 }
 
 export function createMatchRecord(
@@ -39,7 +38,6 @@ export function createMatchRecord(
   }
 
   const squadPlayerIds = unique(input.squadPlayerIds);
-  const startingLineupPlayerIds = unique(input.startingLineupPlayerIds);
   const eligibleIds = new Set(
     input.players
       .filter((player) => player.active && player.teamId === input.homeTeam.id)
@@ -52,15 +50,6 @@ export function createMatchRecord(
   if (squadPlayerIds.some((playerId) => !eligibleIds.has(playerId))) {
     return fail('La convocatoria contiene jugadores que no están disponibles.');
   }
-  if (startingLineupPlayerIds.length !== STARTING_LINEUP_SIZE) {
-    return fail('Selecciona exactamente 5 jugadores para el quinteto inicial.');
-  }
-
-  const squadIds = new Set(squadPlayerIds);
-  if (startingLineupPlayerIds.some((playerId) => !squadIds.has(playerId))) {
-    return fail('El quinteto inicial debe formar parte de la convocatoria.');
-  }
-
   return ok({
     id,
     homeTeam: {
@@ -79,7 +68,7 @@ export function createMatchRecord(
     periodCount: 2,
     clock: createMatchClock(),
     squadPlayerIds,
-    startingLineupPlayerIds,
+    startingLineupPlayerIds: [],
     createdAt: now,
     updatedAt: now,
   });

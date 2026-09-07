@@ -48,6 +48,22 @@ describe('match clock lifecycle', () => {
     expect(result.value.updatedAt).toBe(1_000);
   });
 
+  it('does not start a ready match without exactly five valid starters', () => {
+    const withoutLineup = match();
+    withoutLineup.startingLineupPlayerIds = [];
+    expect(startMatchClock(withoutLineup, 1_000)).toEqual({
+      ok: false,
+      error: 'Selecciona un quinteto inicial válido para comenzar el partido.',
+    });
+
+    const outsider = match();
+    outsider.startingLineupPlayerIds = ['p1', 'p2', 'p3', 'p4', 'outside'];
+    expect(startMatchClock(outsider, 1_000)).toEqual({
+      ok: false,
+      error: 'Selecciona un quinteto inicial válido para comenzar el partido.',
+    });
+  });
+
   it('stops and resumes without losing elapsed time', () => {
     const started = startMatchClock(match(), 1_000);
     if (!started.ok) throw new Error('expected started match');

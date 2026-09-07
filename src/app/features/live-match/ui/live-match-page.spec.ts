@@ -86,8 +86,8 @@ function foulEvent(
 describe('LiveMatchPage', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  async function createPage() {
-    const match = activeMatch();
+  async function createPage(match = activeMatch(), initialEvents = lineupEvents()) {
+    const committedEvents: MatchEvent[] = [];
     const csvExporter = {
       isExporting: signal(false),
       notice: signal<string | null>(null),
@@ -103,7 +103,10 @@ describe('LiveMatchPage', () => {
         { provide: PlayerRepository, useValue: { listByIds: async () => players } },
         {
           provide: MatchEventRepository,
-          useValue: { listByMatch: async () => lineupEvents(), commit: async () => undefined },
+          useValue: {
+            listByMatch: async () => initialEvents,
+            commit: async (_match: Match, events: MatchEvent[]) => committedEvents.push(...events),
+          },
         },
         { provide: DeleteMatchService, useValue: { execute: async () => undefined } },
         { provide: MatchCsvExportService, useValue: csvExporter },
@@ -117,7 +120,7 @@ describe('LiveMatchPage', () => {
     await vi.waitFor(() => expect(store.loading()).toBe(false));
     fixture.detectChanges();
     const notifications = TestBed.inject(SystemNotificationService);
-    return { csvExporter, fixture, notifications, store };
+    return { committedEvents, csvExporter, fixture, notifications, store };
   }
 
   describe('player match detail', () => {
@@ -289,6 +292,64 @@ describe('LiveMatchPage', () => {
     expect(fixture.nativeElement.querySelector('.substitution-sheet')).toBeNull();
     expect(notifications.notification()?.message).toBe('Cambio realizado');
     expect(notifications.notification()?.action?.label).toBe('Deshacer');
+    fixture.destroy();
+  });
+
+  it('selects, edits and confirms the initial five before explicitly starting the match', async () => {
+    const match = activeMatch();
+    match.status = 'ready';
+    match.startingLineupPlayerIds = [];
+    const { committedEvents, fixture, store } = await createPage(match, []);
+
+    const lineupButton = fixture.nativeElement.querySelector(
+      '.court-lineup-config',
+    ) as HTMLButtonElement;
+    const clockButton = fixture.nativeElement.querySelector('.clock-fab') as HTMLButtonElement;
+    expect(lineupButton.textContent).toContain('Seleccionar quinteto inicial');
+    expect(fixture.nativeElement.querySelector('.match-clock').textContent).toContain('00:00');
+    expect(clockButton.disabled).toBe(true);
+
+    lineupButton.click();
+    fixture.detectChanges();
+    const options = fixture.nativeElement.querySelectorAll(
+      '.initial-lineup-option',
+    ) as NodeListOf<HTMLButtonElement>;
+    expect(options).toHaveLength(6);
+    [...options].slice(0, 4).forEach((option) => option.click());
+    fixture.detectChanges();
+    expect(
+      (fixture.nativeElement.querySelector('.confirm-initial-lineup') as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+
+    options[4]?.click();
+    fixture.detectChanges();
+    expect(options[5]?.disabled).toBe(true);
+    const confirm = fixture.nativeElement.querySelector(
+      '.confirm-initial-lineup',
+    ) as HTMLButtonElement;
+    expect(confirm.disabled).toBe(false);
+    confirm.click();
+    await vi.waitFor(() => expect(store.hasValidStartingLineup()).toBe(true));
+    fixture.detectChanges();
+
+    expect(store.match()?.status).toBe('ready');
+    expect(store.clockRunning()).toBe(false);
+    expect(committedEvents).toEqual([]);
+    expect(fixture.nativeElement.querySelector('.court-lineup-config').textContent).toContain(
+      'Editar quinteto inicial',
+    );
+    const enabledClockButton = fixture.nativeElement.querySelector(
+      '.clock-fab',
+    ) as HTMLButtonElement;
+    expect(enabledClockButton.disabled).toBe(false);
+
+    enabledClockButton.click();
+    await vi.waitFor(() => expect(store.match()?.status).toBe('firstHalf'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.court-lineup-config')).toBeNull();
+    expect(committedEvents.filter((event) => event.type === 'PLAYER_ENTERED')).toHaveLength(5);
+    expect(committedEvents.some((event) => event.type === 'SUBSTITUTION')).toBe(false);
     fixture.destroy();
   });
 

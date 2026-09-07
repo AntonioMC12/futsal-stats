@@ -40,6 +40,7 @@ import { createMatchTimeline } from '../domain/match-timeline';
 import { PlayerPlayingTimes } from '../domain/player-playing-time';
 import { makeSubstitution as createSubstitution } from '../domain/substitution';
 import { findLastUndoableEvent, undoLastEvent as createUndoLastEvent } from '../domain/undo';
+import { configureStartingLineup, hasValidStartingLineup } from '../domain/starting-lineup';
 import { DeleteMatchService } from '../../matches/application/delete-match.service';
 import {
   BenchDisciplineSubject,
@@ -70,7 +71,9 @@ export class LiveMatchStore {
     const match = this.match();
     return match ? projectRemaining(match.clock, this.now()) : DEFAULT_PERIOD_DURATION_MS;
   });
-  readonly formattedClock = computed(() => formatGameClock(this.remainingMs()));
+  readonly formattedClock = computed(() =>
+    this.match()?.status === 'ready' ? '00:00' : formatGameClock(this.remainingMs()),
+  );
   readonly clockRunning = computed(() => this.match()?.clock.running ?? false);
   readonly periodLabel = computed(() => labelFor(this.match()));
   readonly derivedState = computed(() => {
@@ -194,10 +197,18 @@ export class LiveMatchStore {
     return status === 'firstHalf' || status === 'secondHalf';
   });
   readonly canRegisterBenchDiscipline = this.canRegisterFoul;
-  readonly canStartClock = computed(
-    () =>
-      this.lineupPlayerIds().length >= 3 && this.disciplinaryState().onCourtPlayerCounts.away >= 3,
-  );
+  readonly hasValidStartingLineup = computed(() => {
+    const match = this.match();
+    return match ? hasValidStartingLineup(match) : false;
+  });
+  readonly canStartClock = computed(() => {
+    const match = this.match();
+    if (!match) return false;
+    if (match.status === 'ready') return this.hasValidStartingLineup();
+    return (
+      this.lineupPlayerIds().length >= 3 && this.disciplinaryState().onCourtPlayerCounts.away >= 3
+    );
+  });
   readonly matchElapsedMs = computed(() => {
     const state = this.derivedState();
     if (!state) {
@@ -287,7 +298,11 @@ export class LiveMatchStore {
 
   startClock(): Promise<void> {
     if (!this.canStartClock()) {
-      this.error.set('El partido no puede reanudarse con menos de 3 jugadores en un equipo.');
+      this.error.set(
+        this.match()?.status === 'ready'
+          ? 'Selecciona un quinteto inicial válido para comenzar el partido.'
+          : 'El partido no puede reanudarse con menos de 3 jugadores en un equipo.',
+      );
       return Promise.resolve();
     }
     return this.execute(startMatchClock, 'START_CLOCK');
@@ -311,6 +326,32 @@ export class LiveMatchStore {
 
   startNextPeriod(): Promise<void> {
     return this.execute(startNextPeriod, 'START_NEXT_PERIOD');
+  }
+
+  async saveStartingLineup(playerIds: readonly string[]): Promise<boolean> {
+    const match = this.match();
+    if (!match || this.commandInProgress) return false;
+
+    const result = configureStartingLineup(match, playerIds, Date.now());
+    if (!result.ok) {
+      this.error.set(result.error);
+      return false;
+    }
+
+    this.commandInProgress = true;
+    this.saving.set(true);
+    this.error.set(null);
+    try {
+      await this.eventStore.commit(result.value, []);
+      this.match.set(result.value);
+      return true;
+    } catch {
+      this.error.set('No se ha podido guardar el quinteto inicial.');
+      return false;
+    } finally {
+      this.commandInProgress = false;
+      this.saving.set(false);
+    }
   }
 
   async makeSubstitution(outPlayerId: string, inPlayerId: string): Promise<boolean> {

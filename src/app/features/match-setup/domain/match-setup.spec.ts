@@ -19,7 +19,7 @@ const players: Player[] = Array.from({ length: 7 }, (_, index) => ({
 }));
 
 describe('match setup domain', () => {
-  it('creates a ready match with its squad and starting lineup', () => {
+  it('creates a ready match with its squad and no starting lineup', () => {
     const result = createMatchRecord(
       {
         homeTeam: team,
@@ -29,7 +29,6 @@ describe('match setup domain', () => {
         description: ' Partido amistoso ',
         players,
         squadPlayerIds: players.map((player) => player.id),
-        startingLineupPlayerIds: players.slice(0, 5).map((player) => player.id),
       },
       'match-1',
       100,
@@ -44,7 +43,7 @@ describe('match setup domain', () => {
     expect(result.value.awayTeam).toEqual({ name: 'Fútbol Sala Alicante', shortName: 'MNG' });
     expect(result.value.date).toBe('2026-09-07');
     expect(result.value.description).toBe('Partido amistoso');
-    expect(result.value.startingLineupPlayerIds).toEqual(['p1', 'p2', 'p3', 'p4', 'p5']);
+    expect(result.value.startingLineupPlayerIds).toEqual([]);
     expect(result.value.clock.remainingMs).toBe(1_200_000);
   });
 
@@ -67,7 +66,6 @@ describe('match setup domain', () => {
         description: 'Partido de liga',
         players,
         squadPlayerIds: players.map((player) => player.id),
-        startingLineupPlayerIds: players.slice(0, 5).map((player) => player.id),
         ...override,
       },
       'match-1',
@@ -77,7 +75,7 @@ describe('match setup domain', () => {
     expect(result).toEqual({ ok: false, error });
   });
 
-  it('requires exactly five different starters', () => {
+  it('requires at least five different squad players', () => {
     const result = createMatchRecord(
       {
         homeTeam: team,
@@ -86,8 +84,7 @@ describe('match setup domain', () => {
         matchDate: '2026-09-07',
         description: 'Liga',
         players,
-        squadPlayerIds: players.map((player) => player.id),
-        startingLineupPlayerIds: ['p1', 'p2', 'p3', 'p4', 'p4'],
+        squadPlayerIds: ['p1', 'p2', 'p3', 'p4', 'p4'],
       },
       'match-1',
       100,
@@ -95,29 +92,7 @@ describe('match setup domain', () => {
 
     expect(result).toEqual({
       ok: false,
-      error: 'Selecciona exactamente 5 jugadores para el quinteto inicial.',
-    });
-  });
-
-  it('rejects starters outside the squad', () => {
-    const result = createMatchRecord(
-      {
-        homeTeam: team,
-        awayTeamShortName: 'RIV',
-        awayTeamName: 'Rival',
-        matchDate: '2026-09-07',
-        description: 'Liga',
-        players,
-        squadPlayerIds: ['p1', 'p2', 'p3', 'p4', 'p5'],
-        startingLineupPlayerIds: ['p1', 'p2', 'p3', 'p4', 'p6'],
-      },
-      'match-1',
-      100,
-    );
-
-    expect(result).toEqual({
-      ok: false,
-      error: 'El quinteto inicial debe formar parte de la convocatoria.',
+      error: 'Selecciona al menos 5 jugadores para el partido.',
     });
   });
 
@@ -134,7 +109,6 @@ describe('match setup domain', () => {
         description: 'Liga',
         players: unavailable,
         squadPlayerIds: ['p1', 'p2', 'p3', 'p4', 'p5'],
-        startingLineupPlayerIds: ['p1', 'p2', 'p3', 'p4', 'p5'],
       },
       'match-1',
       100,

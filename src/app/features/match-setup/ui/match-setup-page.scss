@@ -209,14 +209,13 @@
   accent-color: var(--ds-primary);
 }
 
-.player--selected,
-.player--starter {
+.player--selected {
   border-color: var(--ds-primary);
   background: var(--ds-primary-soft);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ds-primary) 22%, transparent);
 }
 
-.player--selected:not(.player--lineup)::after {
+.player--selected::after {
   position: absolute;
   top: var(--ds-space-1);
   right: var(--ds-space-1);
@@ -230,10 +229,6 @@
   place-items: center;
   font-size: 0.68rem;
   font-weight: 900;
-}
-
-.player--lineup:not(.player--starter) {
-  border-style: dashed;
 }
 
 .number {
@@ -251,17 +246,6 @@
   font-weight: 750;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.starter-mark {
-  position: absolute;
-  top: 0.12rem;
-  right: 0.25rem;
-  color: var(--ds-primary);
-  font-size: 0.55rem;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .create-match-cta {
@@ -297,9 +281,6 @@
   }
   .match-data-panel {
     padding-block: var(--ds-space-2);
-  }
-  .selection-toolbar--lineup > small {
-    display: none;
   }
 }
 

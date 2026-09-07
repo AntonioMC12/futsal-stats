@@ -105,6 +105,37 @@
   font-weight: 800;
 }
 
+.kickoff-hint {
+  max-width: 16rem;
+  color: var(--ds-text-muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.initial-lineup-sheet h2 {
+  margin-bottom: var(--ds-space-2);
+}
+
+.initial-lineup-count {
+  margin: 0 0 var(--ds-space-3);
+  color: var(--ds-text-muted);
+  font-size: var(--ds-font-sm);
+}
+
+.initial-lineup-count strong {
+  color: var(--ds-primary);
+  font-size: var(--ds-font-md);
+}
+
+.initial-lineup-actions {
+  margin-top: var(--ds-space-4);
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: var(--ds-space-2);
+}
+
 .dashboard-grid {
   height: 100%;
   min-height: 0;
@@ -314,6 +345,31 @@
 .court-player[data-slot='5'] {
   grid-column: 10 / 13;
   grid-row: 2 / 5;
+}
+
+.court-lineup-config {
+  z-index: 3;
+  min-width: 0;
+  min-height: var(--ds-touch-min);
+  padding: var(--ds-space-1) var(--ds-space-2);
+  border: 1px solid var(--ds-primary);
+  border-radius: var(--ds-radius-button);
+  background: var(--ds-primary);
+  color: var(--ds-on-primary);
+  grid-column: 6 / 10;
+  grid-row: 3;
+  align-self: center;
+  font: inherit;
+  font-size: clamp(0.62rem, 2vw, 0.8rem);
+  font-weight: 900;
+  line-height: 1.1;
+  cursor: pointer;
+  box-shadow: var(--ds-shadow-md);
+}
+
+.court-lineup-config--edit {
+  background: var(--ds-surface-raised);
+  color: var(--ds-primary);
 }
 
 .lineup-panel {

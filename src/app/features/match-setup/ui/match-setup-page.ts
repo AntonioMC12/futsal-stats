@@ -20,13 +20,11 @@ export class MatchSetupPage {
   protected readonly teams = signal<MatchSetupTeam[]>([]);
   protected readonly players = signal<Player[]>([]);
   protected readonly squadIds = signal<Set<string>>(new Set());
-  protected readonly lineupIds = signal<Set<string>>(new Set());
   protected readonly loadingPlayers = signal(false);
   protected readonly saving = signal(false);
   protected readonly loadFailed = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly selectedCount = computed(() => this.squadIds().size);
-  protected readonly lineupCount = computed(() => this.lineupIds().size);
 
   protected readonly form = this.formBuilder.nonNullable.group({
     teamId: ['', Validators.required],
@@ -56,7 +54,6 @@ export class MatchSetupPage {
     const teamId = this.form.controls.teamId.value;
     this.players.set([]);
     this.squadIds.set(new Set());
-    this.lineupIds.set(new Set());
     this.error.set(null);
     if (!teamId) {
       return;
@@ -74,50 +71,29 @@ export class MatchSetupPage {
 
   protected toggleSquad(playerId: string): void {
     const squad = new Set(this.squadIds());
-    const lineup = new Set(this.lineupIds());
     if (squad.has(playerId)) {
       squad.delete(playerId);
-      lineup.delete(playerId);
     } else {
       squad.add(playerId);
     }
     this.squadIds.set(squad);
-    this.lineupIds.set(lineup);
   }
 
   protected toggleAllPlayers(): void {
     if (this.allPlayersSelected()) {
       this.squadIds.set(new Set());
-      this.lineupIds.set(new Set());
       return;
     }
 
     this.squadIds.set(new Set(this.availablePlayers().map((player) => player.id)));
   }
 
-  protected toggleLineup(playerId: string): void {
-    if (!this.squadIds().has(playerId)) {
-      return;
-    }
-    const lineup = new Set(this.lineupIds());
-    if (lineup.has(playerId)) {
-      lineup.delete(playerId);
-    } else if (lineup.size < STARTING_LINEUP_SIZE) {
-      lineup.add(playerId);
-    }
-    this.lineupIds.set(lineup);
-  }
-
   protected isSelected(playerId: string): boolean {
     return this.squadIds().has(playerId);
   }
 
-  protected isStarter(playerId: string): boolean {
-    return this.lineupIds().has(playerId);
-  }
-
   protected canSave(): boolean {
-    return this.form.valid && this.selectedCount() >= 5 && this.lineupCount() === 5;
+    return this.form.valid && this.selectedCount() >= STARTING_LINEUP_SIZE;
   }
 
   protected normalizeAbbreviation(): void {
@@ -132,7 +108,7 @@ export class MatchSetupPage {
     this.normalizeAbbreviation();
     this.form.markAllAsTouched();
     if (!this.canSave()) {
-      this.error.set('Completa los datos, convoca al menos 5 jugadores y elige 5 titulares.');
+      this.error.set('Completa los datos y selecciona al menos 5 jugadores convocados.');
       return;
     }
 
@@ -142,7 +118,6 @@ export class MatchSetupPage {
       const result = await this.setup.createMatch({
         ...this.form.getRawValue(),
         squadPlayerIds: [...this.squadIds()],
-        startingLineupPlayerIds: [...this.lineupIds()],
       });
       if (!result.ok) {
         this.error.set(result.error);

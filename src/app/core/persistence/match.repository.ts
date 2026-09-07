@@ -52,5 +52,7 @@ export function normalizeMatch(match: Match): Match {
     },
     date: legacy.date ?? '',
     description: legacy.description ?? '',
+    squadPlayerIds: match.squadPlayerIds ?? [],
+    startingLineupPlayerIds: match.startingLineupPlayerIds ?? [],
   };
 }

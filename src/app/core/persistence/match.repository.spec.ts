@@ -13,7 +13,6 @@ describe('match persistence compatibility', () => {
       periodCount: 2,
       clock: createMatchClock(),
       squadPlayerIds: [],
-      startingLineupPlayerIds: [],
       createdAt: 1,
       updatedAt: 1,
     } as unknown as Match;
@@ -22,6 +21,7 @@ describe('match persistence compatibility', () => {
       date: '',
       description: '',
       awayTeam: { name: 'Rival histórico', shortName: '' },
+      startingLineupPlayerIds: [],
     });
   });
 });

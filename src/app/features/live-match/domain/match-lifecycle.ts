@@ -6,9 +6,13 @@ import {
 } from '../../../core/clock/match-clock';
 import { DomainResult, fail, ok } from '../../../core/utils/result';
 import { Match } from '../../../shared/models/match';
+import { hasValidStartingLineup } from './starting-lineup';
 
 export function startMatchClock(match: Match, now: number): DomainResult<Match> {
   if (match.status === 'ready') {
+    if (!hasValidStartingLineup(match)) {
+      return fail('Selecciona un quinteto inicial válido para comenzar el partido.');
+    }
     return ok(
       update(match, now, {
         status: 'firstHalf',
