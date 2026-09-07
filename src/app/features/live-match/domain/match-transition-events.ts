@@ -2,7 +2,12 @@ import { Match } from '../../../shared/models/match';
 import { MatchEvent, MatchEventType } from '../../../shared/models/match-event';
 
 export type MatchClockCommand =
-  'START_CLOCK' | 'STOP_CLOCK' | 'RESET_CLOCK' | 'FINISH_PERIOD' | 'START_NEXT_PERIOD';
+  | 'START_CLOCK'
+  | 'STOP_CLOCK'
+  | 'RESET_CLOCK'
+  | 'FINISH_PERIOD'
+  | 'FINISH_MATCH'
+  | 'START_NEXT_PERIOD';
 
 export interface MatchTransitionEventInput {
   before: Match;
@@ -64,6 +69,8 @@ function eventSpecifications(input: MatchTransitionEventInput): EventSpecificati
       }
       return events;
     }
+    case 'FINISH_MATCH':
+      return [specification('MATCH_FINISHED', before.currentPeriod, gameClockMs)];
     case 'START_NEXT_PERIOD':
       return [
         specification('PERIOD_STARTED', period, gameClockMs),

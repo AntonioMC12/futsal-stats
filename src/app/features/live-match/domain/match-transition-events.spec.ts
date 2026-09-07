@@ -99,6 +99,28 @@ describe('match transition events', () => {
     expect(events.map((event) => event.sequence)).toEqual([30, 31]);
   });
 
+  it('records an early finish without inventing a period end', () => {
+    const before = { ...match(), status: 'firstHalf' as const };
+    before.clock = { ...before.clock, remainingMs: 763_000 };
+    const after = {
+      ...before,
+      status: 'finished' as const,
+      clock: { ...before.clock, running: false },
+    };
+    const events = createEventsForTransition({
+      before,
+      after,
+      command: 'FINISH_MATCH',
+      nextSequence: 30,
+      timestamp: 30_000,
+      createId: () => 'finished-early',
+    });
+
+    expect(events).toMatchObject([
+      { type: 'MATCH_FINISHED', period: 1, gameClockMs: 763_000, sequence: 30 },
+    ]);
+  });
+
   it('records clock reset explicitly', () => {
     const before = { ...match(), status: 'firstHalf' as const };
     const events = createEventsForTransition({

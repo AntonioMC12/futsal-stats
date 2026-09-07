@@ -26,6 +26,8 @@ import { registerFoul as createFoul } from '../domain/foul';
 import { GoalSide, registerGoal as createGoal } from '../domain/goal';
 import {
   finishPeriod,
+  finishMatch,
+  freezeFinishedClock,
   resetMatchClock,
   startMatchClock,
   startNextPeriod,
@@ -100,7 +102,10 @@ export class LiveMatchStore {
     ),
   );
   readonly lastUndoableEvent = computed(() => findLastUndoableEvent(this.events()));
-  readonly canUndo = computed(() => this.lastUndoableEvent() !== null && !this.saving());
+  readonly canUndo = computed(
+    () =>
+      this.match()?.status !== 'finished' && this.lastUndoableEvent() !== null && !this.saving(),
+  );
   readonly lineupPlayerIds = computed(() => {
     const match = this.match();
     if (!match) {
@@ -259,10 +264,14 @@ export class LiveMatchStore {
       const players = await this.playerRepository.listByIds(match.squadPlayerIds);
 
       const now = Date.now();
-      const synchronized = synchronizeExpiredClock(match, now);
+      const frozen = freezeFinishedClock(match, now);
+      const synchronized = synchronizeExpiredClock(frozen, now);
       this.now.set(now);
       if (synchronized !== match) {
-        const newEvents = this.transitionEvents(match, synchronized, 'STOP_CLOCK', events, now);
+        const newEvents =
+          frozen === match
+            ? this.transitionEvents(match, synchronized, 'STOP_CLOCK', events, now)
+            : [];
         await this.eventStore.commit(synchronized, newEvents);
         events.push(...newEvents);
       }
@@ -294,6 +303,10 @@ export class LiveMatchStore {
 
   finishPeriod(): Promise<void> {
     return this.execute(finishPeriod, 'FINISH_PERIOD');
+  }
+
+  finishMatch(): Promise<void> {
+    return this.execute(finishMatch, 'FINISH_MATCH');
   }
 
   startNextPeriod(): Promise<void> {
@@ -417,7 +430,7 @@ export class LiveMatchStore {
 
   async replaceSentOffPlayer(reductionEventId: string, playerId?: string): Promise<boolean> {
     const match = this.match();
-    if (!match || this.commandInProgress) return false;
+    if (!match || match.status === 'finished' || this.commandInProgress) return false;
 
     this.commandInProgress = true;
     this.saving.set(true);
@@ -460,7 +473,7 @@ export class LiveMatchStore {
 
   async undoLastEvent(): Promise<boolean> {
     const match = this.match();
-    if (!match || this.commandInProgress) {
+    if (!match || match.status === 'finished' || this.commandInProgress) {
       return false;
     }
 

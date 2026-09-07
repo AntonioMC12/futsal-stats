@@ -33,6 +33,7 @@ export class LiveMatchPage {
   protected readonly selectedOutPlayerId = signal<string | null>(null);
   protected readonly substituting = signal(false);
   protected readonly confirmAbandon = signal(false);
+  protected readonly confirmFinish = signal(false);
   protected readonly foulTeam = signal<FoulTeam | null>(null);
   protected readonly selectedFoulPlayerId = signal<string | null>(null);
   protected readonly disciplineSaving = signal(false);
@@ -465,6 +466,14 @@ export class LiveMatchPage {
     if (await this.store.deleteCurrentMatch()) {
       this.cancelSubstitution();
       this.confirmAbandon.set(false);
+      await this.router.navigate(['/matches']);
+    }
+  }
+
+  protected async finishMatch(): Promise<void> {
+    await this.store.finishMatch();
+    if (this.store.match()?.status === 'finished') {
+      this.confirmFinish.set(false);
       await this.router.navigate(['/matches']);
     }
   }

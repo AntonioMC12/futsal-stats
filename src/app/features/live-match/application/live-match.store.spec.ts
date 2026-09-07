@@ -150,6 +150,87 @@ describe('LiveMatchStore', () => {
     expect(store.timeline()).toHaveLength(8);
   });
 
+  it('finishes a running match early, persists it and keeps statistics frozen after reload', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(10_000);
+    let persisted = readyMatch();
+    const history: MatchEvent[] = [];
+    TestBed.configureTestingModule({
+      providers: [
+        LiveMatchStore,
+        { provide: MatchRepository, useValue: { get: async () => structuredClone(persisted) } },
+        { provide: PlayerRepository, useValue: { listByIds: async () => [] } },
+        {
+          provide: MatchEventRepository,
+          useValue: {
+            listByMatch: async () => structuredClone(history),
+            commit: async (match: Match, events: MatchEvent[]) => {
+              persisted = structuredClone(match);
+              history.push(...structuredClone(events));
+            },
+          },
+        },
+      ],
+    });
+
+    const store = TestBed.inject(LiveMatchStore);
+    await store.load(persisted.id);
+    await store.startClock();
+    vi.setSystemTime(15_250);
+    await store.finishMatch();
+
+    expect(persisted.status).toBe('finished');
+    expect(persisted.clock).toEqual({
+      ...createMatchClock(),
+      remainingMs: DEFAULT_PERIOD_DURATION_MS - 5_250,
+    });
+    expect(history.at(-1)?.type).toBe('MATCH_FINISHED');
+    expect(history.some((event) => event.type === 'PERIOD_ENDED')).toBe(false);
+    const statistics = structuredClone(store.statistics());
+
+    vi.setSystemTime(45_250);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(store.statistics()).toEqual(statistics);
+    await store.load(persisted.id);
+    expect(store.match()?.status).toBe('finished');
+    expect(store.clockRunning()).toBe(false);
+    expect(store.statistics()).toEqual(statistics);
+  });
+
+  it('repairs a legacy finished running clock without advancing its stored time', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(50_000);
+    const original = readyMatch();
+    original.status = 'finished';
+    original.clock = {
+      ...original.clock,
+      remainingMs: 763_000,
+      running: true,
+      startedAtEpochMs: 10_000,
+    };
+    const stored: Match[] = [];
+    TestBed.configureTestingModule({
+      providers: [
+        LiveMatchStore,
+        { provide: MatchRepository, useValue: { get: async () => original } },
+        { provide: PlayerRepository, useValue: { listByIds: async () => [] } },
+        {
+          provide: MatchEventRepository,
+          useValue: {
+            listByMatch: async () => [],
+            commit: async (match: Match) => stored.push(match),
+          },
+        },
+      ],
+    });
+
+    const store = TestBed.inject(LiveMatchStore);
+    await store.load(original.id);
+    expect(store.clockRunning()).toBe(false);
+    expect(store.remainingMs()).toBe(763_000);
+    expect(stored[0]?.clock.remainingMs).toBe(763_000);
+  });
+
   it('recovers an expired clock at 00:00 and persists the stopped snapshot', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(DEFAULT_PERIOD_DURATION_MS + 5_000);

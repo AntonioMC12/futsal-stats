@@ -58,6 +58,9 @@ describe('MatchesPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Partido en curso');
     expect(fixture.nativeElement.textContent).toContain('Continuar partido');
     expect(fixture.nativeElement.textContent).toContain('Finalizados');
+    const finishedLink = fixture.nativeElement.querySelector('.history-actions > a');
+    expect(finishedLink.textContent).toContain('Ver partido');
+    expect(finishedLink.getAttribute('href')).toBe('/live/finished');
 
     const exportButtons = fixture.nativeElement.querySelectorAll(
       'details.secondary-actions .export-csv',

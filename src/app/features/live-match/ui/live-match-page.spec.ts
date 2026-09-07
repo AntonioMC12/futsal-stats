@@ -1,6 +1,6 @@
 import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { createMatchClock } from '../../../core/clock/match-clock';
 import { MatchEventRepository } from '../../../core/persistence/match-event.repository';
 import { MatchRepository } from '../../../core/persistence/match.repository';
@@ -564,6 +564,40 @@ describe('LiveMatchPage', () => {
     expect(shellIsPaused()).toBe(false);
     setState('firstHalf', false, 0);
     expect(shellIsPaused()).toBe(false);
+    fixture.destroy();
+  });
+
+  it('confirms an early finish and leaves the loaded match in read-only consultation mode', async () => {
+    const { fixture, store } = await createPage();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    (fixture.nativeElement.querySelectorAll('.match-nav button')[3] as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.finish-match') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const confirmation = fixture.nativeElement.querySelector('.confirm-dialog') as HTMLElement;
+    expect(confirmation.textContent).toContain('¿Finalizar partido?');
+    (confirmation.querySelector('.confirm-finish') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(store.match()?.status).toBe('finished');
+    expect(store.clockRunning()).toBe(false);
+    expect(navigate).toHaveBeenCalledWith(['/matches']);
+    expect(fixture.nativeElement.querySelector('.clock-fab')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.match-action')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.primary-actions')?.textContent).toContain(
+      'Modo consulta',
+    );
+    expect(fixture.nativeElement.querySelector('.finished-duration')).not.toBeNull();
+
+    const consultationButtons = fixture.nativeElement.querySelectorAll(
+      '.readonly-actions button',
+    ) as NodeListOf<HTMLButtonElement>;
+    consultationButtons[0]?.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.statistics-table')).not.toBeNull();
     fixture.destroy();
   });
 
