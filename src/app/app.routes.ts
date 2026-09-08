@@ -25,11 +25,22 @@ export const routes: Routes = [
       import('./features/teams/ui/team-detail-page').then((m) => m.TeamDetailPage),
   },
   {
+    path: 'settings/devices',
+    canActivate: [teamWorkspaceGuard],
+    loadComponent: () =>
+      import('./features/device-enrollment/ui/devices-page').then((m) => m.DevicesPage),
+  },
+  {
     path: 'settings',
     canActivate: [teamWorkspaceGuard],
     data: { workspaceMode: true },
     loadComponent: () =>
       import('./features/teams/ui/team-editor-page').then((m) => m.TeamEditorPage),
+  },
+  {
+    path: 'join',
+    loadComponent: () =>
+      import('./features/device-enrollment/ui/join-team-page').then((m) => m.JoinTeamPage),
   },
   {
     path: 'teams',

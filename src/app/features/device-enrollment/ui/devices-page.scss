@@ -1,0 +1,109 @@
+:host {
+  display: block;
+}
+.devices-page {
+  width: min(100%, 58rem);
+}
+.back {
+  color: var(--ds-text-muted);
+  font-weight: 700;
+  text-decoration: none;
+}
+.panel {
+  padding: var(--ds-space-5);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface);
+}
+.panel h2 {
+  margin-bottom: var(--ds-space-1);
+}
+.invite-form,
+.device-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ds-space-3);
+  align-items: end;
+}
+.invite-form .btn {
+  grid-column: 1 / -1;
+}
+.invitation {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--ds-space-5);
+  align-items: center;
+  padding: var(--ds-space-4);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-primary-soft);
+}
+.invitation img {
+  width: min(17.5rem, 100%);
+  height: auto;
+  border-radius: var(--ds-radius-sm);
+  background: white;
+}
+.invitation__details {
+  min-width: 0;
+  display: grid;
+  gap: var(--ds-space-3);
+}
+.invitation code {
+  overflow-wrap: anywhere;
+  color: var(--ds-text);
+  font-size: clamp(1rem, 3vw, 1.35rem);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+.invitation p,
+.device-card p {
+  margin: 0;
+  color: var(--ds-text-muted);
+}
+.device-list {
+  display: grid;
+  gap: var(--ds-space-3);
+}
+.device-card {
+  display: grid;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-4);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-surface-secondary);
+}
+.device-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+}
+.device-card__head > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-2);
+  align-items: center;
+}
+.current,
+.role-badge {
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-primary-soft);
+  color: var(--ds-primary);
+  font-size: var(--ds-font-xs);
+  font-weight: 900;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-2);
+}
+@media (max-width: 640px) {
+  .invite-form,
+  .device-fields,
+  .invitation {
+    grid-template-columns: 1fr;
+  }
+  .actions .btn {
+    flex: 1;
+  }
+}

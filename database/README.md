@@ -5,6 +5,8 @@ Angular todavía no las ejecuta ni se conecta a un backend.
 
 - `0001_initial_cloud_model.sql`: modelo relacional inicial de equipos, jugadores, partidos,
   convocatorias y eventos.
+- `0002_cloud_foundation.sql`: identidad anónima, memberships, RLS y repositorios cloud.
+- `0003_device_enrollment.sql`: invitaciones de un uso, roles de dispositivo, auditoría y revocación.
 
 La migración está envuelta en una transacción. Ante un fallo, PostgreSQL revierte el bloque
 completo. Como todavía no existe información cloud productiva, el rollback operativo consiste en

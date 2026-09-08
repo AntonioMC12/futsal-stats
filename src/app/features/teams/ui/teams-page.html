@@ -1,9 +1,12 @@
 <section class="stack">
   <div class="page-head">
     <h1>Equipos</h1>
-    <a class="btn btn--primary" routerLink="/teams/new"
-      ><span class="btn__icon" aria-hidden="true">+</span><span>Nuevo equipo</span></a
-    >
+    <div class="page-actions">
+      <a class="btn btn--secondary" routerLink="/join">Unirme con código</a>
+      <a class="btn btn--primary" routerLink="/teams/new"
+        ><span class="btn__icon" aria-hidden="true">+</span><span>Nuevo equipo</span></a
+      >
+    </div>
   </div>
 
   @if (loadFailed()) {

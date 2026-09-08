@@ -1,0 +1,22 @@
+:host {
+  display: block;
+}
+.join-page {
+  width: min(100%, 38rem);
+  margin-inline: auto;
+}
+.join-page form {
+  padding: var(--ds-space-5);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface);
+}
+.back {
+  color: var(--ds-text-muted);
+  font-weight: 700;
+  text-decoration: none;
+}
+.optional {
+  color: var(--ds-text-muted);
+  font-weight: 400;
+}

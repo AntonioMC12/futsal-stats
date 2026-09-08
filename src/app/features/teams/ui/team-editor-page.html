@@ -38,7 +38,11 @@
       <button class="btn btn--primary" type="submit" [disabled]="saving()">
         {{ isEdit() ? 'Guardar' : 'Crear equipo' }}
       </button>
+      @if (!isEdit()) {
+        <a class="btn btn--secondary" routerLink="/join">Tengo un código de invitación</a>
+      }
       @if (workspaceMode()) {
+        <a class="btn btn--secondary" routerLink="/settings/devices">Gestionar dispositivos</a>
         <a class="btn btn--secondary" routerLink="/teams">Gestionar y cambiar equipos</a>
       }
     </form>

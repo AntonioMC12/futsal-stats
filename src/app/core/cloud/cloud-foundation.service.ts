@@ -37,6 +37,8 @@ export class CloudFoundationService {
     try {
       const { error } = await client.from('teams').select('id').limit(1);
       if (error) throw error;
+      const { error: touchError } = await client.rpc('touch_device_memberships');
+      if (touchError) throw touchError;
       this.status.set('connected');
       this.lastCheckedAt.set(Date.now());
     } catch (error) {

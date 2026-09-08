@@ -11,4 +11,14 @@ describe('application routes', () => {
     const loadedComponent = await (strategiesRoute?.loadComponent?.() as Promise<Type<unknown>>);
     expect(loadedComponent.name).toMatch(/StrategiesPage$/);
   });
+
+  it('exposes device administration and public invitation consumption routes', () => {
+    const devicesRoute = routes.find(({ path }) => path === 'settings/devices');
+    const joinRoute = routes.find(({ path }) => path === 'join');
+
+    expect(devicesRoute?.canActivate).toHaveLength(1);
+    expect(devicesRoute?.loadComponent).toBeTypeOf('function');
+    expect(joinRoute?.canActivate).toBeUndefined();
+    expect(joinRoute?.loadComponent).toBeTypeOf('function');
+  });
 });
