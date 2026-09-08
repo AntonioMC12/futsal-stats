@@ -4,7 +4,9 @@
 
 Futsal Stats es una aplicación web progresiva para registrar, seguir y consultar estadísticas de partidos de fútbol sala en tiempo real. Está orientada a entrenadores, analistas y miembros del cuerpo técnico que necesitan operar con rapidez desde móvil, tablet u ordenador durante un partido.
 
-La aplicación funciona de forma **local-first y sin backend**: equipos, jugadores, partidos y eventos se almacenan en **IndexedDB** dentro del dispositivo.
+La aplicación funciona por defecto de forma **local-first** sobre IndexedDB. La base cloud de la
+iteración 4 puede activarse por despliegue con Supabase, autenticación anónima y RLS; consulta
+[`docs/architecture/cloud-foundation.md`](docs/architecture/cloud-foundation.md).
 
 > **Estado Alpha**  
 > `alpha_0.1` es la primera versión funcional de referencia. La aplicación ya cubre el flujo principal de un partido, pero continúa en evolución y puede recibir cambios de interfaz, modelo de datos y experiencia de uso entre versiones alpha.

@@ -20,8 +20,20 @@
       </label>
     }
     <span class="offline-status" role="status" [hidden]="connectivity.online()">
-      Sin conexión · guardado local
+      Sin conexión · {{ cloudConfig.mode === 'cloud' ? 'cloud no disponible' : 'guardado local' }}
     </span>
+    @if (cloudConfig.mode === 'cloud' && cloud.status() !== 'connected') {
+      <button
+        class="cloud-status"
+        type="button"
+        (click)="retryCloud()"
+        [disabled]="cloud.status() === 'connecting'"
+      >
+        {{
+          cloud.status() === 'connecting' ? 'Conectando cloud…' : 'Cloud no disponible · Reintentar'
+        }}
+      </button>
+    }
     <nav class="shell__nav" aria-label="Principal">
       <a routerLink="/dashboard" routerLinkActive="is-active" ariaCurrentWhenActive="page">
         <svg viewBox="0 0 24 24" aria-hidden="true">

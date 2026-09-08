@@ -72,6 +72,17 @@
   font-size: 0.75rem;
   font-weight: 800;
 }
+.cloud-status {
+  min-height: var(--ds-touch-min);
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--ds-warning);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-warning-soft);
+  color: var(--ds-warning);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
 .workspace-switcher {
   display: grid;
   gap: 0.25rem;
