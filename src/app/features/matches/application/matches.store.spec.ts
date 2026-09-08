@@ -166,4 +166,42 @@ describe('MatchesStore', () => {
     expect(listByTeam).toHaveBeenCalledWith('team-1');
     expect(store.matches().map(({ match }) => match.id)).toEqual(['team-match']);
   });
+
+  it('filters persisted matches by season, competition and status', async () => {
+    vi.useFakeTimers();
+    const league = {
+      ...match('league', 'finished', '2026-09-07'),
+      season: '2026/27',
+      competition: 'Liga',
+    };
+    const cup = {
+      ...match('cup', 'finished', '2025-05-02'),
+      season: '2024/25',
+      competition: 'Copa',
+    };
+    const active = {
+      ...match('active', 'firstHalf', '2026-09-08'),
+      season: '2026/27',
+      competition: 'Liga',
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        MatchesStore,
+        { provide: MatchRepository, useValue: { list: async () => [league, cup, active] } },
+        { provide: MatchEventRepository, useValue: { listByMatch: async () => [] } },
+        { provide: DeleteMatchService, useValue: { execute: async () => undefined } },
+      ],
+    });
+
+    const store = TestBed.inject(MatchesStore);
+    await store.load();
+    expect(store.filteredMatches().map(({ match }) => match.id)).toEqual(['league', 'cup']);
+
+    store.seasonFilter.set('2026/27');
+    store.competitionFilter.set('Liga');
+    expect(store.filteredMatches().map(({ match }) => match.id)).toEqual(['league']);
+
+    store.statusFilter.set('all');
+    expect(store.filteredMatches().map(({ match }) => match.id)).toEqual(['active', 'league']);
+  });
 });

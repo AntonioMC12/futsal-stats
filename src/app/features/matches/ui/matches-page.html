@@ -59,15 +59,61 @@
     </button>
 
     <section class="history" aria-labelledby="history-title">
-      <h2 id="history-title">Finalizados</h2>
-      @if (store.finishedMatches().length === 0) {
-        <p class="empty">Todavía no hay partidos finalizados.</p>
+      <div class="history-heading">
+        <div>
+          <h2 id="history-title">Historial</h2>
+          <p>Partidos persistidos del equipo</p>
+        </div>
+        <span class="history-count">{{ store.filteredMatches().length }}</span>
+      </div>
+      <div class="history-filters" aria-label="Filtros del historial">
+        <label>
+          <span>Temporada</span>
+          <select
+            [value]="store.seasonFilter()"
+            (change)="store.seasonFilter.set($any($event.target).value)"
+          >
+            <option value="all">Todas</option>
+            @for (season of store.seasons(); track season) {
+              <option [value]="season">{{ season }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          <span>Competición</span>
+          <select
+            [value]="store.competitionFilter()"
+            (change)="store.competitionFilter.set($any($event.target).value)"
+          >
+            <option value="all">Todas</option>
+            @for (competition of store.competitions(); track competition) {
+              <option [value]="competition">{{ competition }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          <span>Estado</span>
+          <select
+            [value]="store.statusFilter()"
+            (change)="store.statusFilter.set($any($event.target).value)"
+          >
+            <option value="finished">Finalizados</option>
+            <option value="active">En curso</option>
+            <option value="all">Todos</option>
+          </select>
+        </label>
+      </div>
+      @if (store.filteredMatches().length === 0) {
+        <p class="empty">No hay partidos que coincidan con los filtros.</p>
       } @else {
         <div class="history-list">
-          @for (summary of store.finishedMatches(); track summary.match.id) {
+          @for (summary of store.filteredMatches(); track summary.match.id) {
             <article class="history-item">
               <div>
                 <time>{{ formatDate(summary.match.date) }}</time>
+                <p class="history-metadata">
+                  {{ matchSeason(summary.match) }} · {{ matchCompetition(summary.match) }}
+                </p>
                 <p class="history-opponent">
                   <span class="opponent-abbreviation">{{
                     summary.match.awayTeam.shortName || '—'
@@ -82,11 +128,20 @@
                 <p class="match-description">
                   {{ summary.match.description || 'Sin descripción' }}
                 </p>
-                <span class="finished-label">Finalizado</span>
+                <span class="finished-label">{{
+                  summary.match.status === 'finished' ? 'Finalizado' : 'En curso'
+                }}</span>
               </div>
               <div class="history-actions">
-                <a class="btn btn--secondary" [routerLink]="['/live', summary.match.id]">
-                  Ver partido
+                <a
+                  class="btn btn--secondary"
+                  [routerLink]="
+                    summary.match.status === 'finished'
+                      ? ['/matches', summary.match.id]
+                      : ['/live', summary.match.id]
+                  "
+                >
+                  {{ summary.match.status === 'finished' ? 'Ver detalle' : 'Continuar' }}
                 </a>
                 <details class="secondary-actions secondary-actions--compact">
                   <summary aria-label="Opciones del partido">•••</summary>

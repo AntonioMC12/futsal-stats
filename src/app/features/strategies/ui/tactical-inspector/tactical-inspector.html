@@ -13,16 +13,9 @@
             : 'Jugador rival'
       }}
     </h2>
-    <dl>
-      <div>
-        <dt>Identidad</dt>
-        <dd>{{ selected.playerId ?? selected.pieceId }}</dd>
-      </div>
-      <div>
-        <dt>Posición</dt>
-        <dd>{{ selected.position.x.toFixed(2) }}, {{ selected.position.y.toFixed(2) }}</dd>
-      </div>
-    </dl>
+    <p class="selection-help">
+      Arrastra la ficha sobre la pista para ajustar su ubicación en esta secuencia.
+    </p>
   } @else if (arrow(); as selected) {
     <div class="selection-icon selection-icon--action">→</div>
     <h2>Acción táctica</h2>

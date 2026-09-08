@@ -26,6 +26,8 @@ describe('match setup domain', () => {
         awayTeamShortName: ' mng ',
         awayTeamName: '  Fútbol Sala Alicante ',
         matchDate: '2026-09-07',
+        season: ' 2026/27 ',
+        competition: ' Liga Autonómica ',
         description: ' Partido amistoso ',
         players,
         squadPlayerIds: players.map((player) => player.id),
@@ -42,6 +44,8 @@ describe('match setup domain', () => {
     expect(result.value.homeTeam.id).toBe(team.id);
     expect(result.value.awayTeam).toEqual({ name: 'Fútbol Sala Alicante', shortName: 'MNG' });
     expect(result.value.date).toBe('2026-09-07');
+    expect(result.value.season).toBe('2026/27');
+    expect(result.value.competition).toBe('Liga Autonómica');
     expect(result.value.description).toBe('Partido amistoso');
     expect(result.value.startingLineupPlayerIds).toEqual([]);
     expect(result.value.clock.remainingMs).toBe(1_200_000);

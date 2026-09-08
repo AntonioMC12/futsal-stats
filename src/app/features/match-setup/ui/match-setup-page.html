@@ -58,9 +58,27 @@
           </label>
           <label class="field">
             <span>Fecha</span>
-            <input formControlName="matchDate" type="date" />
+            <input formControlName="matchDate" type="date" (change)="updateSuggestedSeason()" />
             @if (form.controls.matchDate.touched && form.controls.matchDate.invalid) {
               <small class="field-error">La fecha es obligatoria.</small>
+            }
+          </label>
+          <label class="field">
+            <span>Temporada</span>
+            <input formControlName="season" maxlength="20" placeholder="2026/27" />
+            @if (form.controls.season.touched && form.controls.season.invalid) {
+              <small class="field-error">La temporada es obligatoria.</small>
+            }
+          </label>
+          <label class="field">
+            <span>Competición</span>
+            <input
+              formControlName="competition"
+              maxlength="80"
+              placeholder="Liga, Copa, Amistoso…"
+            />
+            @if (form.controls.competition.touched && form.controls.competition.invalid) {
+              <small class="field-error">La competición es obligatoria.</small>
             }
           </label>
           <label class="field field--wide">

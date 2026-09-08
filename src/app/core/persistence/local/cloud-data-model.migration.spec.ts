@@ -197,7 +197,7 @@ describe('Dexie cloud data model migration', () => {
     const migratedTeam = (await db.teams.toArray())[0]!;
     const migratedStrategy = (await db.strategies.toArray())[0]!;
 
-    expect(db.verno).toBe(4);
+    expect(db.verno).toBe(5);
     expect(migratedStrategy).toEqual({ ...strategy, teamId: migratedTeam.id });
     db.close();
   });

@@ -2,7 +2,12 @@ import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { MatchSummary, MatchesStore } from '../application/matches.store';
 import { MatchCsvExportService } from '../application/match-csv-export.service';
-import { MatchDate, matchDateTimestamp } from '../../../shared/models/match';
+import {
+  MatchDate,
+  matchCompetition,
+  matchDateTimestamp,
+  matchSeason,
+} from '../../../shared/models/match';
 
 @Component({
   selector: 'app-matches-page',
@@ -80,4 +85,7 @@ export class MatchesPage {
       year: 'numeric',
     }).format(timestamp);
   }
+
+  protected readonly matchSeason = matchSeason;
+  protected readonly matchCompetition = matchCompetition;
 }

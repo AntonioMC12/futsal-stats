@@ -61,7 +61,7 @@
     font-size: 0.78rem;
   }
 }
-@media (max-width: 900px) {
+@media (max-width: 1535px) {
   .toolbar--vertical {
     height: auto;
     padding: 0.5rem;
@@ -78,5 +78,12 @@
   .toolbar--vertical .toolbar__delete {
     margin-top: 0;
     margin-left: auto;
+  }
+}
+
+@media (pointer: coarse) {
+  .toolbar button {
+    min-height: 3rem;
+    padding-inline: 1rem;
   }
 }

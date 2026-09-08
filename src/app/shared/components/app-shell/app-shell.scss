@@ -159,6 +159,10 @@
   overflow: hidden;
 }
 
+.shell--strategies .workspace-switcher {
+  display: none;
+}
+
 @media (min-width: 1100px) {
   .shell:not(.shell--live-match) {
     display: grid;
@@ -259,7 +263,7 @@
   }
 }
 
-@media (min-width: 1100px) and (max-width: 1279px) {
+@media (min-width: 1100px) and (max-width: 1535px) {
   .shell--strategies:not(.shell--live-match) {
     display: flex;
     height: 100dvh;

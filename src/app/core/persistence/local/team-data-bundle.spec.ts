@@ -54,6 +54,8 @@ describe('Team data bundle', () => {
       homeTeam: { id: 'team-a', name: 'Alpha', shortName: 'ALP' },
       awayTeam: { name: 'Rival', shortName: 'RIV' },
       date: 300,
+      season: '2026/27',
+      competition: 'Liga',
       description: '',
       status: 'firstHalf',
       currentPeriod: 1,

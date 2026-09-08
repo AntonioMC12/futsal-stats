@@ -47,5 +47,13 @@ export class FutsalStatsDb extends Dexie {
         strategies: 'id, teamId, updatedAt',
       })
       .upgrade(migrateToCloudDataModel);
+    this.version(5).stores({
+      teams: 'id, name, updatedAt, &seedKey, syncStatus',
+      players: 'id, teamId, number, active, updatedAt, syncStatus',
+      matches:
+        'id, teamId, status, date, season, competition, updatedAt, syncStatus, [teamId+updatedAt]',
+      events: 'id, matchId, sequence, type, timestamp, updatedAt, syncStatus, [matchId+sequence]',
+      strategies: 'id, teamId, updatedAt',
+    });
   }
 }

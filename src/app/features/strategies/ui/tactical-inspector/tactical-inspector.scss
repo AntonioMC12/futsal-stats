@@ -28,6 +28,12 @@
   color: var(--ds-text-secondary);
   font-size: 0.85rem;
 }
+.selection-help {
+  margin: 0 0 var(--ds-space-4);
+  color: var(--ds-text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
 .category {
   display: inline-flex;
   padding: 0.25rem 0.5rem;
@@ -116,4 +122,11 @@ dd {
   color: var(--ds-danger-strong);
   font: inherit;
   font-weight: 800;
+}
+
+@media (pointer: coarse) {
+  .sequence-properties input,
+  .danger-action {
+    min-height: 3rem;
+  }
 }

@@ -11,6 +11,8 @@ describe('cloud record mappers', () => {
       homeTeam: { id: 'team-1', name: 'Local', shortName: 'LOC' },
       awayTeam: { name: 'Rival', shortName: 'RIV' },
       date: '2026-09-07',
+      season: '2026/27',
+      competition: 'Liga Autonómica',
       description: 'Liga',
       status: 'ready',
       currentPeriod: 1,
@@ -27,6 +29,8 @@ describe('cloud record mappers', () => {
       updatedAt: 1_700_000_001_000,
     };
     const row = matchToCloud(match);
+    expect(row['season']).toBe('2026/27');
+    expect(row['competition']).toBe('Liga Autonómica');
     row['match_players'] = [
       { player_id: 'p1', in_squad: true, is_starter: true },
       { player_id: 'p2', in_squad: true, is_starter: false },

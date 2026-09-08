@@ -8,7 +8,9 @@ import {
   isMatchActive,
   isMatchFinished,
   Match,
+  matchCompetition,
   matchDateTimestamp,
+  matchSeason,
 } from '../../../shared/models/match';
 import { ScoreSnapshot } from '../../../shared/models/match-event';
 import { deriveMatchState } from '../../live-match/domain/derived-match-state';
@@ -19,6 +21,8 @@ export interface MatchSummary {
   match: Match;
   score: ScoreSnapshot;
 }
+
+export type MatchHistoryStatusFilter = 'all' | 'active' | 'finished';
 
 @Injectable()
 export class MatchesStore {
@@ -33,6 +37,9 @@ export class MatchesStore {
   readonly loading = signal(true);
   readonly deletingId = signal<string | null>(null);
   readonly error = signal<string | null>(null);
+  readonly seasonFilter = signal('all');
+  readonly competitionFilter = signal('all');
+  readonly statusFilter = signal<MatchHistoryStatusFilter>('finished');
   readonly activeMatch = computed(
     () => this.matches().find(({ match }) => isMatchActive(match)) ?? null,
   );
@@ -43,6 +50,32 @@ export class MatchesStore {
         (left, right) => matchDateTimestamp(right.match.date) - matchDateTimestamp(left.match.date),
       ),
   );
+  readonly seasons = computed(() =>
+    [...new Set(this.matches().map(({ match }) => matchSeason(match)))].sort((a, b) =>
+      b.localeCompare(a, 'es'),
+    ),
+  );
+  readonly competitions = computed(() =>
+    [...new Set(this.matches().map(({ match }) => matchCompetition(match)))].sort((a, b) =>
+      a.localeCompare(b, 'es'),
+    ),
+  );
+  readonly filteredMatches = computed(() => {
+    const season = this.seasonFilter();
+    const competition = this.competitionFilter();
+    const status = this.statusFilter();
+    return this.matches()
+      .filter(({ match }) => season === 'all' || matchSeason(match) === season)
+      .filter(({ match }) => competition === 'all' || matchCompetition(match) === competition)
+      .filter(({ match }) => {
+        if (status === 'active') return isMatchActive(match);
+        if (status === 'finished') return isMatchFinished(match);
+        return true;
+      })
+      .sort(
+        (left, right) => matchDateTimestamp(right.match.date) - matchDateTimestamp(left.match.date),
+      );
+  });
   readonly activeClock = computed(() => {
     const active = this.activeMatch()?.match;
     return formatGameClock(active ? projectRemaining(active.clock, this.now()) : 0);

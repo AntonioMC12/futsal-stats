@@ -229,6 +229,8 @@ function match(id: string, status: Match['status'], updatedAt: number): Match {
     homeTeam: { id: 'team-a', name: 'Alpha', shortName: 'ALP' },
     awayTeam: { name: 'Rival', shortName: 'RIV' },
     date: updatedAt,
+    season: '2026/27',
+    competition: 'Liga',
     description: '',
     status,
     currentPeriod: status === 'secondHalf' || status === 'finished' ? 2 : 1,

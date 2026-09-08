@@ -1,6 +1,6 @@
 import { createMatchClock } from '../../../core/clock/match-clock';
 import { DomainResult, fail, ok } from '../../../core/utils/result';
-import { Match } from '../../../shared/models/match';
+import { Match, seasonForDate } from '../../../shared/models/match';
 import { Player } from '../../../shared/models/player';
 import { Team } from '../../../shared/models/team';
 
@@ -11,6 +11,8 @@ export interface CreateMatchInput {
   awayTeamShortName: string;
   awayTeamName: string;
   matchDate: string;
+  season?: string;
+  competition?: string;
   description: string;
   players: readonly Player[];
   squadPlayerIds: readonly string[];
@@ -32,6 +34,8 @@ export function createMatchRecord(
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.matchDate)) {
     return fail('La fecha del partido es obligatoria.');
   }
+  const season = input.season?.trim() || seasonForDate(input.matchDate);
+  const competition = input.competition?.trim() || 'Sin competición';
   const description = input.description.trim();
   if (!description) {
     return fail('La descripción es obligatoria.');
@@ -63,6 +67,8 @@ export function createMatchRecord(
       shortName: awayTeamShortName,
     },
     date: input.matchDate,
+    season,
+    competition,
     description,
     status: 'ready',
     currentPeriod: 1,

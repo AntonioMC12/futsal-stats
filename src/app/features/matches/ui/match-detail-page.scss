@@ -1,0 +1,209 @@
+.match-detail-page {
+  width: min(100%, 78rem);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-5);
+}
+
+.detail-back {
+  width: fit-content;
+  font-weight: 800;
+  text-decoration: none;
+}
+.detail-error {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-4);
+  align-items: flex-start;
+}
+.detail-hero,
+.detail-panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--color-surface);
+}
+.detail-hero {
+  padding: clamp(1.25rem, 4vw, 2.25rem);
+  text-align: center;
+}
+.detail-meta {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.9rem;
+  color: var(--color-text-muted);
+  font-size: var(--ds-font-sm);
+}
+.status-pill {
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--ds-primary-soft);
+  color: var(--color-accent);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.scoreboard {
+  margin: var(--ds-space-6) auto var(--ds-space-4);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(0.75rem, 4vw, 2.5rem);
+}
+.scoreboard > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.scoreboard > div:first-child {
+  text-align: right;
+}
+.scoreboard > div:last-child {
+  text-align: left;
+}
+.scoreboard > div strong {
+  color: var(--color-accent);
+  font-size: clamp(1.25rem, 4vw, 2rem);
+}
+.scoreboard > div span {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scoreboard p {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: clamp(2.75rem, 10vw, 5rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.scoreboard i {
+  color: var(--color-text-muted);
+  font-style: normal;
+}
+.description {
+  max-width: 42rem;
+  margin: 0 auto var(--ds-space-4);
+  color: var(--color-text-muted);
+}
+.hero-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--ds-space-3);
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(18rem, 0.85fr);
+  gap: var(--ds-space-5);
+  align-items: start;
+}
+.detail-panel {
+  min-width: 0;
+  padding: clamp(1rem, 3vw, 1.5rem);
+}
+.panel-title {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: var(--ds-space-5);
+}
+.panel-title h1,
+.panel-title h2,
+.panel-title p {
+  margin-bottom: 0;
+}
+.panel-title > span {
+  color: var(--color-text-muted);
+  font-size: var(--ds-font-sm);
+  white-space: nowrap;
+}
+.foul-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--ds-space-3);
+  margin-bottom: var(--ds-space-5);
+}
+.foul-summary div {
+  padding: 0.8rem;
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-surface-secondary);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+}
+.foul-summary span,
+.foul-summary small {
+  color: var(--color-text-muted);
+}
+.foul-summary small {
+  grid-column: 1 / -1;
+}
+.statistics-table-wrap {
+  overflow-x: auto;
+}
+.statistics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--ds-font-sm);
+}
+.statistics-table th,
+.statistics-table td {
+  padding: 0.7rem 0.6rem;
+  border-bottom: 1px solid var(--ds-border-subtle);
+  text-align: right;
+  white-space: nowrap;
+}
+.statistics-table th:first-child {
+  text-align: left;
+}
+.statistics-table tbody th span {
+  color: var(--color-accent);
+}
+.positive {
+  color: var(--ds-success);
+  font-weight: 900;
+}
+.negative {
+  color: var(--color-danger);
+  font-weight: 900;
+}
+.timeline-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.timeline-list li {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: var(--ds-space-3);
+  padding: 0.8rem 0;
+  border-top: 1px solid var(--ds-border-subtle);
+}
+.timeline-list li:first-child {
+  border-top: 0;
+}
+.timeline-list div {
+  display: flex;
+  flex-direction: column;
+}
+.timeline-list span {
+  color: var(--color-text-muted);
+  font-size: var(--ds-font-xs);
+}
+.timeline-list p {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .scoreboard > div span {
+    display: none;
+  }
+}

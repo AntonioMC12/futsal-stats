@@ -115,7 +115,7 @@ button:disabled,
 input:disabled {
   opacity: 0.42;
 }
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   :host {
     grid-template-columns: 1fr;
   }
@@ -146,5 +146,15 @@ input:disabled {
   }
   .control-button--play {
     flex: 1;
+  }
+}
+
+@media (pointer: coarse) {
+  .timeline button,
+  .sequence-actions button,
+  .control-button,
+  .speed-control select {
+    min-width: 3rem;
+    min-height: 3rem;
   }
 }

@@ -22,6 +22,8 @@ export interface SaveMatchSetupInput {
   awayTeamShortName: string;
   awayTeamName: string;
   matchDate: string;
+  season?: string;
+  competition?: string;
   description: string;
   squadPlayerIds: readonly string[];
 }

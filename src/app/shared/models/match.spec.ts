@@ -1,5 +1,13 @@
 import { Match } from './match';
-import { isMatchActive, isMatchFinished, localDateString, matchDateTimestamp } from './match';
+import {
+  isMatchActive,
+  isMatchFinished,
+  localDateString,
+  matchCompetition,
+  matchDateTimestamp,
+  matchSeason,
+  seasonForDate,
+} from './match';
 
 describe('match status rules', () => {
   it.each<Match['status']>(['ready', 'firstHalf', 'halftime', 'secondHalf'])(
@@ -25,5 +33,14 @@ describe('match dates', () => {
   it('parses new calendar dates and keeps legacy timestamps compatible', () => {
     expect(new Date(matchDateTimestamp('2026-09-07')).getDate()).toBe(7);
     expect(matchDateTimestamp(123)).toBe(123);
+  });
+
+  it('derives a sports season for legacy records and preserves explicit history metadata', () => {
+    expect(seasonForDate('2026-09-07')).toBe('2026/27');
+    expect(seasonForDate('2026-05-07')).toBe('2025/26');
+    expect(matchSeason({ date: '2026-09-07' })).toBe('2026/27');
+    expect(matchSeason({ date: '2026-09-07', season: 'Campaña 26' })).toBe('Campaña 26');
+    expect(matchCompetition({})).toBe('Sin competición');
+    expect(matchCompetition({ competition: 'Copa' })).toBe('Copa');
   });
 });

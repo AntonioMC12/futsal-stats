@@ -73,6 +73,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/matches/ui/matches-page').then((m) => m.MatchesPage),
   },
   {
+    path: 'matches/:matchId',
+    canActivate: [matchTeamWorkspaceGuard],
+    loadComponent: () =>
+      import('./features/matches/ui/match-detail-page').then((m) => m.MatchDetailPage),
+  },
+  {
     path: 'strategies',
     canActivate: [teamWorkspaceGuard],
     loadComponent: () =>

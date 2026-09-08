@@ -19,6 +19,9 @@ export interface Match {
   homeTeam: TeamRef;
   awayTeam: TeamRef;
   date: MatchDate;
+  /** Season and competition are optional only for records created before match history existed. */
+  season?: string;
+  competition?: string;
   description: string;
   status: MatchStatus;
   currentPeriod: number;
@@ -57,4 +60,21 @@ export function matchDateTimestamp(value: MatchDate): number {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return 0;
   return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])).getTime();
+}
+
+export function seasonForDate(value: MatchDate): string {
+  const timestamp = matchDateTimestamp(value);
+  if (!timestamp) return 'Sin temporada';
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const startingYear = date.getMonth() >= 6 ? year : year - 1;
+  return `${startingYear}/${String(startingYear + 1).slice(-2)}`;
+}
+
+export function matchSeason(match: Pick<Match, 'date' | 'season'>): string {
+  return match.season?.trim() || seasonForDate(match.date);
+}
+
+export function matchCompetition(match: Pick<Match, 'competition'>): string {
+  return match.competition?.trim() || 'Sin competición';
 }

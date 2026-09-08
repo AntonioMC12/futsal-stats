@@ -1,0 +1,141 @@
+<section class="match-detail-page">
+  <a class="detail-back" routerLink="/matches">← Volver al historial</a>
+
+  @if (store.loading()) {
+    <p class="empty" role="status">Cargando partido…</p>
+  } @else if (store.error(); as message) {
+    <div class="detail-error">
+      <p class="banner banner--warn" role="alert">{{ message }}</p>
+      <a class="btn btn--secondary" routerLink="/matches">Ir a partidos</a>
+    </div>
+  } @else if (store.match(); as match) {
+    <header class="detail-hero">
+      <div class="detail-meta">
+        <span class="status-pill">{{
+          match.status === 'finished' ? 'Finalizado' : 'En curso'
+        }}</span>
+        <span>{{ formatDate(match.date) }}</span>
+        <span>{{ matchSeason(match) }}</span>
+        <span>{{ matchCompetition(match) }}</span>
+      </div>
+      <div class="scoreboard" aria-label="Resultado del partido">
+        <div>
+          <strong>{{ match.homeTeam.shortName }}</strong
+          ><span>{{ match.homeTeam.name }}</span>
+        </div>
+        <p>
+          <strong>{{ store.score().home }}</strong
+          ><i>–</i><strong>{{ store.score().away }}</strong>
+        </p>
+        <div>
+          <strong>{{ match.awayTeam.shortName || '—' }}</strong
+          ><span>{{ match.awayTeam.name }}</span>
+        </div>
+      </div>
+      @if (match.description) {
+        <p class="description">{{ match.description }}</p>
+      }
+      <div class="hero-actions">
+        @if (match.status !== 'finished') {
+          <a class="btn btn--primary" [routerLink]="['/live', match.id]">Continuar partido</a>
+        }
+        <button
+          class="btn btn--secondary"
+          type="button"
+          [disabled]="csvExporter.isExporting()"
+          (click)="csvExporter.export(match.id)"
+        >
+          {{ csvExporter.isExporting() ? 'Exportando…' : 'Exportar CSV' }}
+        </button>
+      </div>
+      @if (csvExporter.error(); as message) {
+        <p class="banner banner--warn" role="alert">{{ message }}</p>
+      }
+    </header>
+
+    <div class="detail-grid">
+      <section class="detail-panel" aria-labelledby="statistics-title">
+        <div class="panel-title">
+          <div>
+            <p class="eyebrow">Rendimiento</p>
+            <h1 id="statistics-title">Estadísticas</h1>
+          </div>
+          <span>{{ store.playerRows().length }} jugadores</span>
+        </div>
+
+        <div class="foul-summary" aria-label="Faltas por periodo">
+          @for (period of store.foulsByPeriod(); track period.period) {
+            <div>
+              <span>{{ period.period }}.ª parte</span
+              ><strong>{{ period.home }} – {{ period.away }}</strong
+              ><small>faltas</small>
+            </div>
+          }
+        </div>
+
+        @if (store.playerRows().length === 0) {
+          <p class="empty">No hay estadísticas de jugadores para este partido.</p>
+        } @else {
+          <div class="statistics-table-wrap">
+            <table class="statistics-table">
+              <thead>
+                <tr>
+                  <th>Jugador</th>
+                  <th>Tiempo</th>
+                  <th>Goles</th>
+                  <th>+/−</th>
+                  <th>Faltas</th>
+                  <th>Tarjetas</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of store.playerRows(); track row.player.id) {
+                  <tr>
+                    <th>
+                      <span>#{{ row.player.number }}</span> {{ row.player.name }}
+                    </th>
+                    <td>{{ formatDuration(row.statistics!.playedMs) }}</td>
+                    <td>{{ row.statistics!.goals }}</td>
+                    <td
+                      [class.positive]="row.statistics!.plusMinus > 0"
+                      [class.negative]="row.statistics!.plusMinus < 0"
+                    >
+                      {{ row.statistics!.plusMinus > 0 ? '+' : '' }}{{ row.statistics!.plusMinus }}
+                    </td>
+                    <td>{{ row.statistics!.fouls }}</td>
+                    <td>{{ row.statistics!.yellowCards }}A · {{ row.statistics!.sendOffs }}R</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+
+      <section class="detail-panel timeline-panel" aria-labelledby="timeline-title">
+        <div class="panel-title">
+          <div>
+            <p class="eyebrow">Fuente de verdad</p>
+            <h2 id="timeline-title">Cronología</h2>
+          </div>
+          <span>{{ store.timeline().length }} eventos</span>
+        </div>
+        @if (store.timeline().length === 0) {
+          <p class="empty">No hay eventos registrados.</p>
+        } @else {
+          <ol class="timeline-list">
+            @for (item of store.timeline(); track item.eventId) {
+              <li>
+                <div>
+                  <strong>{{ item.gameClock }}</strong
+                  ><span>{{ item.period }}.ª parte</span>
+                </div>
+                <p>{{ item.label }}</p>
+              </li>
+            }
+          </ol>
+        }
+      </section>
+    </div>
+  }
+</section>

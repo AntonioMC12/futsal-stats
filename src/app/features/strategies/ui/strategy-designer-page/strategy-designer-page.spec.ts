@@ -39,5 +39,7 @@ describe('StrategyDesignerPage', () => {
     store.selectPiece(store.currentPhase()!.pieces[0]!.pieceId);
     fixture.detectChanges();
     expect(page.querySelector('.inspector')?.textContent).toContain('Jugador local');
+    expect(page.querySelector('.inspector')?.textContent).not.toContain('Identidad');
+    expect(page.querySelector('.inspector')?.textContent).not.toContain('Posición');
   });
 });

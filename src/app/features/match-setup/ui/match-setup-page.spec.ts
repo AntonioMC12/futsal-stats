@@ -111,6 +111,10 @@ describe('MatchSetupPage', () => {
     fixture.detectChanges();
     expect(abbreviation.value).toBe('MNG');
     expect(fixture.nativeElement.querySelector('[formControlName="awayTeamName"]')).toBeTruthy();
+    expect(
+      (fixture.nativeElement.querySelector('[formControlName="season"]') as HTMLInputElement).value,
+    ).toBe('2026/27');
+    expect(fixture.nativeElement.querySelector('[formControlName="competition"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[formControlName="description"]')).toBeTruthy();
     fixture.destroy();
   });
@@ -127,7 +131,7 @@ describe('MatchSetupPage', () => {
     );
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelectorAll('.field-error')).toHaveLength(4);
+    expect(fixture.nativeElement.querySelectorAll('.field-error')).toHaveLength(5);
     expect(setup.createMatch).not.toHaveBeenCalled();
     fixture.destroy();
   });
@@ -199,6 +203,7 @@ describe('MatchSetupPage', () => {
     };
     setValue('[formControlName="awayTeamName"]', 'Rival');
     setValue('[formControlName="awayTeamShortName"]', 'RIV');
+    setValue('[formControlName="competition"]', 'Liga');
     setValue('[formControlName="description"]', 'Liga');
     fixture.detectChanges();
 
@@ -209,6 +214,8 @@ describe('MatchSetupPage', () => {
 
     expect(setup.createMatch).toHaveBeenCalledWith(
       expect.objectContaining({
+        season: expect.any(String),
+        competition: 'Liga',
         squadPlayerIds: ['team-1-p1', 'team-1-p2', 'team-1-p3', 'team-1-p4', 'team-1-p5'],
       }),
     );

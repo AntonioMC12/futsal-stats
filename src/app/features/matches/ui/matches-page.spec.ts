@@ -61,10 +61,10 @@ describe('MatchesPage', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Partido en curso');
     expect(fixture.nativeElement.textContent).toContain('Continuar partido');
-    expect(fixture.nativeElement.textContent).toContain('Finalizados');
+    expect(fixture.nativeElement.textContent).toContain('Historial');
     const finishedLink = fixture.nativeElement.querySelector('.history-actions > a');
-    expect(finishedLink.textContent).toContain('Ver partido');
-    expect(finishedLink.getAttribute('href')).toBe('/live/finished');
+    expect(finishedLink.textContent).toContain('Ver detalle');
+    expect(finishedLink.getAttribute('href')).toBe('/matches/finished');
     expect(fixture.nativeElement.querySelector('.history-item')?.textContent).toContain(
       'Partido amistoso finished',
     );
