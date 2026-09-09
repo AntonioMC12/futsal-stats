@@ -55,6 +55,27 @@ h2 {
   font: inherit;
 }
 
+.roster-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: var(--ds-space-2);
+}
+
+.profile-link {
+  min-height: 3.25rem;
+  padding-inline: var(--ds-space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--ds-radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ds-primary);
+  font-size: var(--ds-font-sm);
+  font-weight: 800;
+  text-decoration: none;
+}
+
 .roster__item.is-selected {
   border-color: var(--color-accent);
   background: var(--ds-primary-soft);
@@ -99,6 +120,16 @@ h2 {
   .roster__item:hover {
     border-color: var(--ds-border-strong);
     background: var(--ds-surface-secondary);
+  }
+  .profile-link:hover {
+    border-color: var(--ds-primary);
+    background: var(--ds-primary-soft);
+  }
+}
+
+@media (max-width: 520px) {
+  .roster-row {
+    grid-template-columns: 1fr;
   }
 }
 

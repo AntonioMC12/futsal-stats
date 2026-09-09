@@ -13,6 +13,7 @@ import { MatchEvent } from '../../../shared/models/match-event';
 import { Player } from '../../../shared/models/player';
 import { DeleteMatchService } from '../../matches/application/delete-match.service';
 import { MatchCsvExportService } from '../../matches/application/match-csv-export.service';
+import { OfflineSyncService } from '../../../core/sync/offline-sync.service';
 import { LiveMatchStore } from '../application/live-match.store';
 import { LiveMatchPage } from './live-match-page';
 
@@ -89,7 +90,11 @@ function foulEvent(
 describe('LiveMatchPage', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  async function createPage(match = activeMatch(), initialEvents = lineupEvents()) {
+  async function createPage(
+    match = activeMatch(),
+    initialEvents = lineupEvents(),
+    sync?: Partial<OfflineSyncService>,
+  ) {
     const committedEvents: MatchEvent[] = [];
     const csvExporter = {
       isExporting: signal(false),
@@ -113,6 +118,7 @@ describe('LiveMatchPage', () => {
         },
         { provide: DeleteMatchService, useValue: { execute: async () => undefined } },
         { provide: MatchCsvExportService, useValue: csvExporter },
+        ...(sync ? [{ provide: OfflineSyncService, useValue: sync }] : []),
       ],
     }).compileComponents();
 
@@ -125,6 +131,29 @@ describe('LiveMatchPage', () => {
     const notifications = TestBed.inject(SystemNotificationService);
     return { committedEvents, csvExporter, fixture, notifications, store };
   }
+
+  it('shows failed sync work and lets the operator retry it', async () => {
+    const retryFailed = vi.fn().mockResolvedValue(undefined);
+    const { fixture } = await createPage(activeMatch(), lineupEvents(), {
+      state: signal('error'),
+      online: signal(true),
+      failedCount: signal(1),
+      failures: signal([
+        { id: 'q1', label: '1 acción de partido', message: 'Acceso revocado', attempts: 1 },
+      ]),
+      statusLabel: signal('1 error de sincronización'),
+      retryFailed,
+      syncNow: vi.fn().mockResolvedValue(undefined),
+    } as unknown as OfflineSyncService);
+
+    const indicator = fixture.nativeElement.querySelector(
+      '.sync-state',
+    ) as HTMLButtonElement | null;
+    expect(indicator?.textContent).toContain('Reintentar');
+    expect(indicator?.title).toContain('Acceso revocado');
+    indicator?.click();
+    expect(retryFailed).toHaveBeenCalledOnce();
+  });
 
   describe('player match detail', () => {
     // jsdom has no native dialog top layer; focus trapping is also checked in Chromium.

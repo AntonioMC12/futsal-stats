@@ -25,7 +25,7 @@
     } @else {
       <ul class="roster">
         @for (player of roster(); track player.id) {
-          <li>
+          <li class="roster-row">
             <button
               type="button"
               class="roster__item"
@@ -40,6 +40,7 @@
                 }
               </span>
             </button>
+            <a class="profile-link" [routerLink]="['/players', player.id]">Ver perfil</a>
           </li>
         }
       </ul>

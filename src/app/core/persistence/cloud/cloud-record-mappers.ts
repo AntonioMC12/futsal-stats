@@ -1,6 +1,7 @@
 import { Match, MatchDate } from '../../../shared/models/match';
 import { MatchEvent } from '../../../shared/models/match-event';
 import { Player } from '../../../shared/models/player';
+import { PlayerProfile, PreferredFoot } from '../../../shared/models/player-profile';
 import { Team } from '../../../shared/models/team';
 
 type JsonRecord = Record<string, unknown>;
@@ -48,6 +49,32 @@ export function playerToCloud(player: Player): JsonRecord {
     name: player.name,
     position: player.position ?? null,
     active: player.active,
+  };
+}
+
+export function playerProfileFromCloud(row: JsonRecord): PlayerProfile {
+  return {
+    playerId: string(row['player_id']),
+    teamId: string(row['team_id']),
+    photoUrl: optionalString(row['photo_url']),
+    preferredFoot: (optionalString(row['preferred_foot']) ?? 'unknown') as PreferredFoot,
+    notes: optionalString(row['notes']) ?? '',
+    metadata: (row['metadata'] as Record<string, string> | null) ?? {},
+    createdAt: timestamp(row['created_at']),
+    updatedAt: timestamp(row['updated_at']),
+  };
+}
+
+export function playerProfileToCloud(profile: PlayerProfile): JsonRecord {
+  return {
+    player_id: profile.playerId,
+    team_id: profile.teamId,
+    photo_url: profile.photoUrl ?? null,
+    preferred_foot: profile.preferredFoot,
+    notes: profile.notes,
+    metadata: profile.metadata,
+    created_at: iso(profile.createdAt),
+    updated_at: iso(profile.updatedAt),
   };
 }
 

@@ -8,6 +8,7 @@ import {
   MATCH_EVENT_REPOSITORY,
   MATCH_REPOSITORY,
   PLAYER_REPOSITORY,
+  PLAYER_PROFILE_REPOSITORY,
   TEAM_REPOSITORY,
 } from '../persistence.tokens';
 import { provideLocalPersistence } from '../provide-local-persistence';
@@ -48,6 +49,15 @@ describe('Team data bundle', () => {
       name: 'Player',
       active: true,
     });
+    await TestBed.inject(PLAYER_PROFILE_REPOSITORY).put({
+      playerId: 'player-a',
+      teamId: 'team-a',
+      preferredFoot: 'right',
+      notes: 'Cierre defensivo',
+      metadata: {},
+      createdAt: 250,
+      updatedAt: 250,
+    });
     const match: Match = {
       id: 'match-a',
       teamId: 'team-a',
@@ -84,6 +94,11 @@ describe('Team data bundle', () => {
       createdAt: expect.any(Number),
       updatedAt: expect.any(Number),
       syncStatus: 'pending',
+    });
+    expect(restored.profiles[0]).toMatchObject({
+      playerId: 'player-a',
+      preferredFoot: 'right',
+      notes: 'Cierre defensivo',
     });
     expect(serializeTeamDataBundle({ ...restored, events: [...restored.events].reverse() })).toBe(
       serialized,

@@ -17,8 +17,19 @@ import { BenchDisciplineSubject, createStaffIdentityKey } from '../domain/bench-
 import { PlayerMatchDetailComponent } from './player-match-detail';
 import type { PlayerMatchStatistics } from '../domain/match-statistics';
 import { MatchDate, matchDateTimestamp } from '../../../shared/models/match';
+import { OfflineSyncService } from '../../../core/sync/offline-sync.service';
 
 type MatchOverlay = 'statistics' | 'events' | 'discipline' | 'more';
+
+const DISABLED_SYNC = {
+  state: signal<'disabled'>('disabled').asReadonly(),
+  online: signal(true).asReadonly(),
+  failedCount: signal(0).asReadonly(),
+  failures: signal<readonly { label: string; message: string }[]>([]).asReadonly(),
+  statusLabel: signal('Solo en este dispositivo').asReadonly(),
+  retryFailed: async () => undefined,
+  syncNow: async () => undefined,
+};
 
 @Component({
   selector: 'app-live-match-page',
@@ -29,6 +40,7 @@ type MatchOverlay = 'statistics' | 'events' | 'discipline' | 'more';
 export class LiveMatchPage {
   protected readonly store = inject(LiveMatchStore);
   protected readonly csvExporter = inject(MatchCsvExportService);
+  protected readonly sync = inject(OfflineSyncService, { optional: true }) ?? DISABLED_SYNC;
   private readonly router = inject(Router);
   private readonly notifications = inject(SystemNotificationService);
   protected readonly selectedOutPlayerId = signal<string | null>(null);
@@ -197,6 +209,12 @@ export class LiveMatchPage {
     const period = this.store.match()?.currentPeriod ?? 1;
     return period === 1 ? '1.ª parte' : period === 2 ? '2.ª parte' : `Periodo ${period}`;
   });
+  protected readonly syncFailureDetails = computed(() =>
+    this.sync
+      .failures()
+      .map((failure) => `${failure.label}: ${failure.message}`)
+      .join('\n'),
+  );
 
   constructor() {
     effect(() => {
@@ -514,6 +532,11 @@ export class LiveMatchPage {
       this.confirmFinish.set(false);
       await this.router.navigate(['/matches']);
     }
+  }
+
+  protected retrySync(): void {
+    if (this.sync.failedCount() > 0) void this.sync.retryFailed();
+    else void this.sync.syncNow();
   }
 
   protected formatDuration(durationMs: number): string {

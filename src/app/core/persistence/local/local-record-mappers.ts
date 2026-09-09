@@ -1,11 +1,13 @@
 import { Match } from '../../../shared/models/match';
 import { MatchEvent } from '../../../shared/models/match-event';
 import { Player } from '../../../shared/models/player';
+import { PlayerProfile } from '../../../shared/models/player-profile';
 import { Team } from '../../../shared/models/team';
 import {
   LocalMatchEventRecord,
   LocalMatchRecord,
   LocalPlayerRecord,
+  LocalPlayerProfileRecord,
   LocalTeamRecord,
 } from './local-records';
 import { INITIAL_REVISION, LOCAL_ONLY_SYNC_STATUS } from './sync-metadata';
@@ -49,6 +51,24 @@ export function fromLocalPlayerRecord(record: LocalPlayerRecord): Player {
     ...player
   } = record;
   return player;
+}
+
+export function toLocalPlayerProfileRecord(
+  profile: PlayerProfile,
+  previous?: LocalPlayerProfileRecord,
+): LocalPlayerProfileRecord {
+  return {
+    ...profile,
+    createdAt: previous?.createdAt ?? profile.createdAt,
+    deletedAt: previous?.deletedAt ?? null,
+    revision: nextRevision(previous),
+    syncStatus: LOCAL_ONLY_SYNC_STATUS,
+  };
+}
+
+export function fromLocalPlayerProfileRecord(record: LocalPlayerProfileRecord): PlayerProfile {
+  const { deletedAt: _, revision: __, syncStatus: ___, ...profile } = record;
+  return profile;
 }
 
 export function toLocalMatchRecord(match: Match, previous?: LocalMatchRecord): LocalMatchRecord {

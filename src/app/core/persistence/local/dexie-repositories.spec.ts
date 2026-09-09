@@ -10,6 +10,7 @@ import {
   MATCH_EVENT_REPOSITORY,
   MATCH_REPOSITORY,
   PLAYER_REPOSITORY,
+  PLAYER_PROFILE_REPOSITORY,
   TEAM_REPOSITORY,
 } from '../persistence.tokens';
 import { provideLocalPersistence } from '../provide-local-persistence';
@@ -105,6 +106,28 @@ describe('local Dexie repository adapters', () => {
         ['team-b', 1],
         ['team-c', 0],
       ]),
+    );
+  });
+
+  it('persists player profiles behind the player and team boundary', async () => {
+    await TestBed.inject(TEAM_REPOSITORY).put(team('team-a', 'Alpha'));
+    await TestBed.inject(PLAYER_REPOSITORY).put(player('player-a', 'team-a', 1, true));
+    const repository = TestBed.inject(PLAYER_PROFILE_REPOSITORY);
+    const profile = {
+      playerId: 'player-a',
+      teamId: 'team-a',
+      preferredFoot: 'right' as const,
+      notes: 'Cierre',
+      metadata: {},
+      createdAt: 10,
+      updatedAt: 10,
+    };
+
+    await repository.put(profile);
+    expect(await repository.get('player-a')).toEqual(profile);
+    expect(await repository.listByTeam('team-a')).toEqual([profile]);
+    await expect(repository.put({ ...profile, playerId: 'missing' })).rejects.toThrow(
+      'missing or foreign Player',
     );
   });
 

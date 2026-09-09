@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { noActiveMatchGuard } from './features/match-setup/application/no-active-match.guard';
 import {
   matchTeamWorkspaceGuard,
+  playerTeamWorkspaceGuard,
   teamWorkspaceGuard,
 } from './core/team-workspace/team-workspace.guard';
 
@@ -23,6 +24,12 @@ export const routes: Routes = [
     data: { workspaceMode: true },
     loadComponent: () =>
       import('./features/teams/ui/team-detail-page').then((m) => m.TeamDetailPage),
+  },
+  {
+    path: 'players/:playerId',
+    canActivate: [playerTeamWorkspaceGuard],
+    loadComponent: () =>
+      import('./features/player-profiles/ui/player-profile-page').then((m) => m.PlayerProfilePage),
   },
   {
     path: 'settings/devices',

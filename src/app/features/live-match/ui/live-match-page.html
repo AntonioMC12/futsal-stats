@@ -12,6 +12,28 @@
             <span class="opponent-name-short">{{ match.awayTeam.shortName || '—' }}</span>
           </span>
         </div>
+        @if (sync.state() !== 'disabled') {
+          <button
+            class="sync-state"
+            type="button"
+            [class.sync-state--offline]="!sync.online() || sync.state() === 'offline'"
+            [class.sync-state--failed]="sync.failedCount() > 0"
+            [class.sync-state--syncing]="sync.state() === 'syncing'"
+            [title]="syncFailureDetails() || sync.statusLabel()"
+            [attr.aria-label]="
+              sync.failedCount() > 0
+                ? sync.statusLabel() + '. Pulsar para reintentar.'
+                : sync.statusLabel()
+            "
+            (click)="retrySync()"
+          >
+            <i aria-hidden="true"></i>
+            <span>{{ sync.statusLabel() }}</span>
+            @if (sync.failedCount() > 0) {
+              <strong>Reintentar</strong>
+            }
+          </button>
+        }
       </header>
 
       <div class="dashboard-grid">

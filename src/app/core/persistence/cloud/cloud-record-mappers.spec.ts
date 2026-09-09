@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { Match } from '../../../shared/models/match';
 import { GoalForEvent } from '../../../shared/models/match-event';
-import { eventFromCloud, eventToCloud, matchFromCloud, matchToCloud } from './cloud-record-mappers';
+import {
+  eventFromCloud,
+  eventToCloud,
+  matchFromCloud,
+  matchToCloud,
+  playerProfileFromCloud,
+  playerProfileToCloud,
+} from './cloud-record-mappers';
 
 describe('cloud record mappers', () => {
   it('round-trips a match and its player snapshots', () => {
@@ -59,5 +66,19 @@ describe('cloud record mappers', () => {
       { player_id: 'p1', position: 0 },
     ];
     expect(eventFromCloud(row)).toEqual(event);
+  });
+
+  it('round-trips an extended player profile', () => {
+    const profile = {
+      playerId: 'player-1',
+      teamId: 'team-1',
+      photoUrl: 'https://example.com/player.jpg',
+      preferredFoot: 'both' as const,
+      notes: 'Capitán',
+      metadata: { objective: 'pressing' },
+      createdAt: 1_700_000_000_000,
+      updatedAt: 1_700_000_001_000,
+    };
+    expect(playerProfileFromCloud(playerProfileToCloud(profile))).toEqual(profile);
   });
 });

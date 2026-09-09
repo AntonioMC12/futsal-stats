@@ -36,12 +36,14 @@ tokens `TEAM_REPOSITORY`, `PLAYER_REPOSITORY`, `MATCH_REPOSITORY` y
 `MATCH_EVENT_REPOSITORY`. Ningún consumidor de UI, aplicación o dominio conoce Dexie ni
 `FutsalStatsDb`.
 
-`provideLocalPersistence()` selecciona actualmente los adapters `Dexie*Repository`. Solo esos
-adapters y el inicializador local integrado acceden a `FutsalStatsDb`; una estrategia cloud o
-híbrida podrá sustituir los providers sin cambiar las features.
+`provideLocalPersistence()` selecciona los adapters `Dexie*Repository` para pruebas y modo local.
+En modo cloud, `providePersistence()` selecciona adaptadores `Offline*Repository`: IndexedDB sigue
+siendo la fuente operativa y una cola durable envía cambios posteriormente sin cambiar las
+features. Los detalles, estados y recuperación se documentan en
+[`offline-sync.md`](offline-sync.md).
 
 ```text
-UI → Application/Stores → Repository ports → Angular DI → Dexie adapters → IndexedDB
+UI → Application/Stores → Repository ports → Offline adapters → IndexedDB + Sync Queue
 ```
 
 Las fronteras transaccionales pertenecen a los contratos orientados al agregado:

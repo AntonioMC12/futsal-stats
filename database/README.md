@@ -9,6 +9,8 @@ Angular todavía no las ejecuta ni se conecta a un backend.
 - `0003_device_enrollment.sql`: invitaciones de un uso, roles de dispositivo, auditoría y revocación.
 - `0004_match_history.sql`: temporada/competición de los partidos, backfill histórico, índices y
   actualización del snapshot cloud.
+- `0005_player_profiles.sql`: perfiles deportivos persistentes por jugador, RLS e inserción o
+  actualización autorizada mediante RPC.
 
 La migración está envuelta en una transacción. Ante un fallo, PostgreSQL revierte el bloque
 completo. Como todavía no existe información cloud productiva, el rollback operativo consiste en

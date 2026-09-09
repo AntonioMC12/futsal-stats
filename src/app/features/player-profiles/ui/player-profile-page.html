@@ -1,0 +1,204 @@
+<section class="player-profile-page">
+  <a class="profile-back" routerLink="/players">← Volver a la plantilla</a>
+
+  @if (store.loading()) {
+    <p class="empty" role="status">Cargando perfil…</p>
+  } @else if (store.error() && !store.player()) {
+    <div class="profile-error">
+      <p class="banner banner--warn" role="alert">{{ store.error() }}</p>
+      <a class="btn btn--secondary" routerLink="/players">Ir a la plantilla</a>
+    </div>
+  } @else if (store.player(); as player) {
+    <header class="profile-hero">
+      <div class="avatar" [class.has-photo]="store.profile()?.photoUrl">
+        @if (store.profile()?.photoUrl; as photoUrl) {
+          <img [src]="photoUrl" [alt]="'Foto de ' + player.name" />
+        } @else {
+          <span>{{ initials(player.name) }}</span>
+        }
+      </div>
+      <div class="profile-identity">
+        <p class="eyebrow">Dorsal {{ player.number }}</p>
+        <h1>{{ player.name }}</h1>
+        <div class="identity-meta">
+          <span>{{ player.position || 'Posición sin especificar' }}</span>
+          <span
+            >Pie {{ footLabel(store.profile()?.preferredFoot ?? 'unknown').toLowerCase() }}</span
+          >
+          @if (!player.active) {
+            <span class="inactive">Inactivo</span>
+          }
+        </div>
+      </div>
+      <div class="career-summary" aria-label="Resumen de carrera">
+        <span>Carrera</span>
+        <strong>{{ store.careerStatistics().appearances }}</strong>
+        <small>partidos · {{ store.careerStatistics().goals }} goles</small>
+      </div>
+    </header>
+
+    <div class="profile-layout">
+      <main class="performance-column">
+        <section class="season-toolbar" aria-labelledby="performance-title">
+          <div>
+            <p class="eyebrow">Seguimiento individual</p>
+            <h2 id="performance-title">
+              {{ store.season() === 'all' ? 'Toda la carrera' : 'Temporada ' + store.season() }}
+            </h2>
+          </div>
+          <label>
+            <span>Temporada</span>
+            <select [value]="store.season()" (change)="store.season.set($any($event.target).value)">
+              <option value="all">Toda la carrera</option>
+              @for (season of store.seasons(); track season) {
+                <option [value]="season">{{ season }}</option>
+              }
+            </select>
+          </label>
+        </section>
+
+        <section class="metrics-grid" aria-label="Métricas del jugador">
+          <article>
+            <span>Partidos</span><strong>{{ store.statistics().appearances }}</strong
+            ><small>{{ store.statistics().starts }} titular</small>
+          </article>
+          <article>
+            <span>Tiempo</span><strong>{{ duration(store.statistics().playedMs) }}</strong
+            ><small>{{ decimal(store.statistics().minutesPerAppearance) }} min/partido</small>
+          </article>
+          <article>
+            <span>Goles</span><strong>{{ store.statistics().goals }}</strong
+            ><small>{{ decimal(store.statistics().goalsPerAppearance) }} por partido</small>
+          </article>
+          <article>
+            <span>Goles / 40'</span
+            ><strong>{{ decimal(store.statistics().goalsPer40Minutes) }}</strong
+            ><small>ratio por tiempo jugado</small>
+          </article>
+          <article>
+            <span>Balance +/−</span
+            ><strong
+              [class.positive]="store.statistics().plusMinus > 0"
+              [class.negative]="store.statistics().plusMinus < 0"
+              >{{ store.statistics().plusMinus > 0 ? '+' : ''
+              }}{{ store.statistics().plusMinus }}</strong
+            ><small
+              >{{ store.statistics().goalsForOnCourt }} GF ·
+              {{ store.statistics().goalsAgainstOnCourt }} GC</small
+            >
+          </article>
+          <article>
+            <span>Disciplina</span><strong>{{ store.statistics().fouls }}</strong
+            ><small
+              >{{ store.statistics().yellowCards }} amarillas ·
+              {{ store.statistics().sendOffs }} expulsiones</small
+            >
+          </article>
+          <article>
+            <span>Resultados</span><strong>{{ percentage(store.statistics().winRate) }}</strong
+            ><small
+              >{{ store.statistics().wins }}V · {{ store.statistics().draws }}E ·
+              {{ store.statistics().losses }}D</small
+            >
+          </article>
+          <article>
+            <span>Convocatorias</span><strong>{{ store.statistics().squadSelections }}</strong
+            ><small>{{ store.statistics().entries }} entradas en pista</small>
+          </article>
+        </section>
+
+        <section class="history-panel" aria-labelledby="player-history-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Partidos terminados</p>
+              <h2 id="player-history-title">Histórico</h2>
+            </div>
+            <span>{{ store.filteredHistory().length }}</span>
+          </div>
+          @if (store.filteredHistory().length === 0) {
+            <p class="empty">No hay partidos finalizados para esta selección.</p>
+          } @else {
+            <div class="player-match-list">
+              @for (item of store.filteredHistory(); track item.match.id) {
+                <a [routerLink]="['/matches', item.match.id]" class="player-match-card">
+                  <div class="match-date">
+                    <time>{{ formatDate(item.match.date) }}</time
+                    ><span>{{ matchCompetition(item.match) }} · {{ matchSeason(item.match) }}</span>
+                  </div>
+                  <div class="match-result">
+                    <span>{{ item.match.awayTeam.name }}</span
+                    ><strong>{{ item.score.home }} – {{ item.score.away }}</strong>
+                  </div>
+                  <span class="outcome" [class]="'outcome outcome--' + item.outcome">{{
+                    outcomeLabel(item.outcome)
+                  }}</span>
+                  <div class="match-player-stats">
+                    <span>{{ duration(item.statistics.playedMs) }}</span
+                    ><span>{{ item.statistics.goals }} goles</span
+                    ><span
+                      >{{ item.statistics.plusMinus > 0 ? '+' : ''
+                      }}{{ item.statistics.plusMinus }} +/−</span
+                    >
+                  </div>
+                </a>
+              }
+            </div>
+          }
+        </section>
+      </main>
+
+      <aside class="profile-editor">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Ficha persistente</p>
+            <h2>Perfil deportivo</h2>
+          </div>
+        </div>
+        <form [formGroup]="form" (ngSubmit)="save()">
+          <label class="field">
+            <span>URL de la foto</span>
+            <input
+              formControlName="photoUrl"
+              type="url"
+              maxlength="1000"
+              placeholder="https://…"
+              autocomplete="url"
+            />
+          </label>
+          <label class="field">
+            <span>Pie preferente</span>
+            <select formControlName="preferredFoot">
+              <option value="unknown">Sin especificar</option>
+              <option value="right">Derecho</option>
+              <option value="left">Izquierdo</option>
+              <option value="both">Ambidiestro</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Notas técnicas</span>
+            <textarea
+              formControlName="notes"
+              maxlength="2000"
+              rows="8"
+              placeholder="Observaciones, objetivos, evolución…"
+            ></textarea>
+            <small>{{ form.controls.notes.value.length }}/2000</small>
+          </label>
+          @if (store.error(); as message) {
+            <p class="banner banner--warn" role="alert">{{ message }}</p>
+          }
+          @if (store.notice(); as message) {
+            <p class="banner banner--ok" role="status">{{ message }}</p>
+          }
+          <button
+            class="btn btn--primary"
+            type="submit"
+            [disabled]="store.saving() || form.invalid || !form.dirty"
+          >
+            {{ store.saving() ? 'Guardando…' : 'Guardar perfil' }}
+          </button>
+        </form>
+      </aside>
+    </div>
+  }
+</section>

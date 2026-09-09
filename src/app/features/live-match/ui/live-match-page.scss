@@ -48,9 +48,63 @@
   padding: 0 var(--ds-space-2);
   border-bottom: 1px solid var(--ds-border);
   display: grid;
-  grid-template-columns: var(--ds-touch-min) minmax(0, 1fr);
+  grid-template-columns: var(--ds-touch-min) minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--ds-space-2);
+}
+
+.sync-state {
+  min-height: 2rem;
+  max-width: min(42vw, 18rem);
+  padding: 0 var(--ds-space-2);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-surface-raised);
+  color: var(--ds-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  font: inherit;
+  font-size: var(--ds-font-xs);
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.sync-state i {
+  width: 0.55rem;
+  height: 0.55rem;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ds-success);
+}
+
+.sync-state span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sync-state strong {
+  color: var(--ds-danger);
+  font-size: inherit;
+}
+
+.sync-state--offline i {
+  background: var(--ds-warning);
+}
+
+.sync-state--failed {
+  border-color: color-mix(in srgb, var(--ds-danger) 55%, var(--ds-border));
+  background: var(--ds-danger-soft);
+}
+
+.sync-state--failed i {
+  background: var(--ds-danger);
+}
+
+.sync-state--syncing i {
+  background: var(--ds-primary);
+  animation: sync-pulse 1s ease-in-out infinite;
 }
 
 .back {
@@ -1588,6 +1642,21 @@
 }
 
 @media (max-width: 639px) {
+  .sync-state {
+    width: 2rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .sync-state span,
+  .sync-state strong {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
   .opponent-name-full {
     display: none;
   }
@@ -1956,5 +2025,11 @@
   from {
     opacity: 0;
     transform: translateX(1rem);
+  }
+}
+
+@keyframes sync-pulse {
+  50% {
+    opacity: 0.35;
   }
 }

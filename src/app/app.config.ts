@@ -16,6 +16,7 @@ import { TeamWorkspaceContext } from './core/team-workspace/team-workspace.conte
 import { providePersistence } from './core/persistence/provide-persistence';
 import { CLOUD_CONFIG } from './core/cloud/cloud.config';
 import { CloudFoundationService } from './core/cloud/cloud-foundation.service';
+import { OfflineSyncService } from './core/sync/offline-sync.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -29,9 +30,16 @@ export const appConfig: ApplicationConfig = {
       const workspace = inject(TeamWorkspaceContext);
       const config = inject(CLOUD_CONFIG);
       const cloud = inject(CloudFoundationService);
-      const foundation =
-        config.mode === 'cloud' ? cloud.initialize() : builtInData.ensureBuiltInTeams();
-      return foundation.then(() => workspace.initialize());
+      const sync = inject(OfflineSyncService);
+      return (async () => {
+        if (config.mode === 'cloud') {
+          await cloud.initialize();
+          await sync.initialize();
+        } else {
+          await builtInData.ensureBuiltInTeams();
+        }
+        await workspace.initialize();
+      })();
     }),
     provideHttpClient(),
     provideRouter(routes, withComponentInputBinding()),

@@ -2,6 +2,7 @@ import {
   LocalMatchEventRecord,
   LocalMatchRecord,
   LocalPlayerRecord,
+  LocalPlayerProfileRecord,
   LocalTeamRecord,
 } from './local-records';
 import { FutsalStatsDb } from './futsal-stats.db';
@@ -9,6 +10,7 @@ import { FutsalStatsDb } from './futsal-stats.db';
 export interface TeamDataBundle {
   team: LocalTeamRecord;
   players: LocalPlayerRecord[];
+  profiles: LocalPlayerProfileRecord[];
   matches: LocalMatchRecord[];
   events: LocalMatchEventRecord[];
 }
@@ -19,14 +21,15 @@ export async function loadTeamDataBundle(
 ): Promise<TeamDataBundle | null> {
   const team = await db.teams.get(teamId);
   if (!team) return null;
-  const [players, matches] = await Promise.all([
+  const [players, profiles, matches] = await Promise.all([
     db.players.where('teamId').equals(teamId).toArray(),
+    db.playerProfiles.where('teamId').equals(teamId).toArray(),
     db.matches.where('teamId').equals(teamId).toArray(),
   ]);
   const matchIds = matches.map(({ id }) => id);
   const events =
     matchIds.length === 0 ? [] : await db.events.where('matchId').anyOf(matchIds).toArray();
-  return normalizeBundle({ team, players, matches, events });
+  return normalizeBundle({ team, players, profiles, matches, events });
 }
 
 export function serializeTeamDataBundle(bundle: TeamDataBundle): string {
@@ -39,13 +42,19 @@ export function deserializeTeamDataBundle(serialized: string): TeamDataBundle {
     throw new Error('Invalid Team data bundle');
   }
   const players = value['players'];
+  const profiles = value['profiles'] ?? [];
   const matches = value['matches'];
   const events = value['events'];
-  if (!Array.isArray(players) || !Array.isArray(matches) || !Array.isArray(events)) {
+  if (
+    !Array.isArray(players) ||
+    !Array.isArray(profiles) ||
+    !Array.isArray(matches) ||
+    !Array.isArray(events)
+  ) {
     throw new Error('Invalid Team data bundle collections');
   }
 
-  const bundle = value as unknown as TeamDataBundle;
+  const bundle = { ...value, profiles } as unknown as TeamDataBundle;
   validateBundleRelationships(bundle);
   return normalizeBundle(bundle);
 }
@@ -54,6 +63,9 @@ function normalizeBundle(bundle: TeamDataBundle): TeamDataBundle {
   return {
     team: bundle.team,
     players: [...bundle.players].sort(compareById),
+    profiles: [...bundle.profiles].sort((left, right) =>
+      left.playerId.localeCompare(right.playerId),
+    ),
     matches: [...bundle.matches].sort(compareById),
     events: [...bundle.events].sort(
       (left, right) =>
@@ -71,6 +83,13 @@ function validateBundleRelationships(bundle: TeamDataBundle): void {
   const matchIds = new Set(bundle.matches.map(({ id }) => id));
   if (bundle.players.some(({ teamId }) => teamId !== bundle.team.id)) {
     throw new Error('Team data bundle contains a foreign Player');
+  }
+  if (
+    bundle.profiles.some(
+      ({ teamId, playerId }) => teamId !== bundle.team.id || !playerIds.has(playerId),
+    )
+  ) {
+    throw new Error('Team data bundle contains an invalid PlayerProfile');
   }
   for (const match of bundle.matches) {
     if (
