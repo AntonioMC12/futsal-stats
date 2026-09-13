@@ -277,4 +277,27 @@ export class OfflineMatchEventRepository implements MatchEventRepository {
     );
     this.sync.requestSync();
   }
+
+  async importMatch(match: Match, events: readonly MatchEvent[], newPlayers: readonly Player[]): Promise<void> {
+    await this.db.transaction(
+      'rw', this.db.teams, this.db.players, this.db.matches, this.db.events, this.db.syncQueue,
+      async () => {
+        if (!(await this.db.teams.get(match.teamId))) throw new Error('Import references missing team');
+        for (const player of newPlayers) {
+          await this.db.players.add(toLocalPlayerRecord(player, Date.now()));
+          await enqueueSyncOperation(this.db.syncQueue, {
+            kind: 'player-upsert', teamId: player.teamId, entityId: player.id, player,
+          });
+        }
+        await assertMatchReferences(this.db, match);
+        await assertEventReferences(this.db, match, events);
+        if (events.length > 0) await this.db.events.bulkAdd(events.map(toLocalMatchEventRecord));
+        await this.db.matches.add(toLocalMatchRecord(match));
+        await enqueueSyncOperation(this.db.syncQueue, {
+          kind: 'match-events-commit', teamId: match.teamId, entityId: match.id, match, events,
+        });
+      },
+    );
+    this.sync.requestSync();
+  }
 }

@@ -80,6 +80,8 @@ export function playerProfileToCloud(profile: PlayerProfile): JsonRecord {
 
 export function matchFromCloud(row: JsonRecord): Match {
   const memberships = (row['match_players'] as JsonRecord[] | null) ?? [];
+  const source = optionalString(row['source']);
+  const importMetadata = row['import_metadata'] as Match['importMetadata'] | null;
   return {
     id: string(row['id']),
     teamId: string(row['team_id']),
@@ -105,6 +107,8 @@ export function matchFromCloud(row: JsonRecord): Match {
       .map((item) => string(item['player_id'])),
     createdAt: timestamp(row['created_at']),
     updatedAt: timestamp(row['updated_at']),
+    ...(source === 'csv-import' ? { source } : {}),
+    ...(importMetadata ? { importMetadata } : {}),
   };
 }
 
@@ -128,6 +132,8 @@ export function matchToCloud(match: Match): JsonRecord {
     starting_lineup_player_ids: match.startingLineupPlayerIds,
     created_at: iso(match.createdAt),
     updated_at: iso(match.updatedAt),
+    source: match.source ?? 'native',
+    import_metadata: match.importMetadata ?? null,
   };
 }
 

@@ -1,15 +1,19 @@
 # Futsal Stats
 
-**Versión actual: `alpha_0.1`**
+**Estado actual: desarrollo post-alpha · baseline estable: `alpha_0.1`**
 
 Futsal Stats es una aplicación web progresiva para registrar, seguir y consultar estadísticas de partidos de fútbol sala en tiempo real. Está orientada a entrenadores, analistas y miembros del cuerpo técnico que necesitan operar con rapidez desde móvil, tablet u ordenador durante un partido.
 
-La aplicación funciona por defecto de forma **local-first** sobre IndexedDB. La base cloud de la
-iteración 4 puede activarse por despliegue con Supabase, autenticación anónima y RLS; consulta
-[`docs/architecture/cloud-foundation.md`](docs/architecture/cloud-foundation.md).
+La aplicación funciona por defecto de forma **local-first** sobre IndexedDB. El modo cloud puede
+activarse por despliegue con Supabase, autenticación anónima, RLS y repositorios offline-first. Las
+acciones de partido se confirman localmente y se sincronizan mediante una cola durable cuando hay
+conectividad. Consulta [`cloud-foundation.md`](docs/architecture/cloud-foundation.md) y
+[`offline-sync.md`](docs/offline-sync.md).
 
 > **Estado Alpha**  
-> `alpha_0.1` es la primera versión funcional de referencia. La aplicación ya cubre el flujo principal de un partido, pero continúa en evolución y puede recibir cambios de interfaz, modelo de datos y experiencia de uso entre versiones alpha.
+> `alpha_0.1` permanece como referencia histórica. El árbol de desarrollo incorpora posteriormente
+> workspaces de equipo, acceso por dispositivo, histórico, perfiles individuales y sincronización
+> offline resiliente.
 
 ---
 
@@ -24,7 +28,10 @@ Futsal Stats concentra en una única interfaz las operaciones principales de un 
 - registro de eventos en directo;
 - estadísticas derivadas por jugador y quinteto;
 - exportación CSV;
-- persistencia offline mediante IndexedDB.
+- histórico navegable con filtros por temporada y competición;
+- perfiles de jugador con métricas de temporada y carrera;
+- diseñador y biblioteca de estrategias;
+- persistencia offline mediante IndexedDB y cola de sincronización durable.
 
 La experiencia visual está diseñada alrededor de un **tema oscuro azulado**, alto contraste y controles grandes pensados para uso táctil durante el partido.
 
@@ -58,7 +65,7 @@ Flujo contextual para seleccionar al jugador que comete la falta y, cuando corre
 
 ---
 
-# Funcionalidades disponibles en `alpha_0.1`
+# Funcionalidades disponibles
 
 ## Equipos y jugadores
 
@@ -66,12 +73,16 @@ Flujo contextual para seleccionar al jugador que comete la falta y, cuando corre
 - Equipo **Apaga** preconfigurado con 16 jugadores, disponible automáticamente en cada instalación.
 - Gestión de dorsales, nombres, posiciones y estado de los jugadores.
 - Selección de convocatoria y elección del quinteto inicial desde la pista antes de iniciar.
+- Perfil deportivo persistente con foto, pierna dominante y notas.
+- Histórico individual y métricas separadas por temporada.
 
 ## Gestión de partidos
 
 - Un único partido activo simultáneamente.
 - Continuación de un partido en curso después de cerrar o recargar la aplicación.
 - Histórico de partidos finalizados con fecha y resultado.
+- Filtros por temporada, competición y estado.
+- Detalle de partido en modo consulta con cronología y estadísticas reproducibles desde eventos.
 - Eliminación transaccional de partidos y sus eventos asociados.
 - Flujo para abandonar un partido y comenzar otro sin conservar estado residual.
 
@@ -98,10 +109,12 @@ Flujo contextual para seleccionar al jugador que comete la falta y, cuando corre
 - Tiempo, goles y plus/minus por quinteto.
 - Snapshot del quinteto presente en cada gol.
 - Exportación CSV de estadísticas legibles, sin identificadores internos, en cualquier estado del partido.
+- Métricas de temporada y carrera calculadas desde partidos y eventos, sin agregados duplicados.
 
 ## Funcionalidad de reglamento
 
-La funcionalidad de consulta/asistencia relacionada con el reglamento se encuentra **oculta en `alpha_0.1`** y no forma parte del flujo disponible para el usuario en esta versión.
+La funcionalidad de consulta/asistencia relacionada con el reglamento permanece fuera de la
+navegación principal y no forma parte del flujo crítico de partido.
 
 Su reintroducción queda pospuesta hasta que la experiencia, el contenido y su compatibilidad en dispositivos móviles estén suficientemente validados.
 
@@ -121,6 +134,13 @@ Desde aquí puedes:
 4. definir dorsal, nombre, posición y estado de cada jugador.
 
 Los equipos y jugadores se guardan automáticamente en el dispositivo mediante IndexedDB.
+
+### Consultar el perfil de un jugador
+
+Desde **Plantilla**, pulsa **Ver perfil** en un jugador. El perfil permite guardar foto, pierna
+dominante y notas deportivas, consultar sus partidos terminados y cambiar entre la vista de carrera
+y cada temporada. Las métricas se recalculan desde los eventos de partido y no se almacenan como
+totales duplicados.
 
 ---
 
@@ -318,17 +338,45 @@ Si se elimina un partido, la aplicación elimina el partido y sus eventos dentro
 
 Futsal Stats incluye manifiesto y Service Worker de Angular. En una compilación de producción, los recursos necesarios se precargan para poder utilizar la aplicación sin conexión después de la primera carga correcta.
 
-Los datos permanecen en el dispositivo mediante IndexedDB. No se envían a ningún servidor ni se sincronizan entre dispositivos.
+IndexedDB es siempre el almacenamiento operativo del live match. En modo local, los datos
+permanecen únicamente en el dispositivo. En modo cloud, cada escritura local genera una operación
+durable con estado `pending`, `synced` o `failed`; la conexión remota nunca bloquea el registro de
+una acción.
 
-> **Importante:** borrar los datos del sitio desde el navegador elimina equipos, jugadores, partidos y eventos almacenados localmente. El equipo incorporado Apaga vuelve a crearse en el siguiente arranque.
+La cola sobrevive a recargas y cierres, reintenta fallos transitorios con backoff exponencial y se
+reanuda al recuperar conectividad. Los UUID estables y las RPC idempotentes evitan duplicar eventos
+si un envío se repite. Los errores irrecuperables aparecen en el partido y pueden reintentarse de
+forma explícita.
+
+> **Importante:** borrar los datos del sitio elimina la caché local, perfiles, partidos, eventos y
+> operaciones todavía pendientes. No deben borrarse los datos del navegador para resolver un error
+> de sincronización.
 
 Para un entorno de partido se recomienda abrir la aplicación y comprobar que carga correctamente **antes de perder conectividad**.
 
 ---
 
-# Roadmap de iteraciones
+# Estado de las iteraciones técnicas
 
-Las siguientes etapas describen la dirección prevista después de `alpha_0.1`. Son objetivos de evolución del proyecto y **no representan funcionalidades incluidas actualmente** salvo que se indique expresamente.
+| Iteración | Área                                       | Estado actual                           |
+| --------- | ------------------------------------------ | --------------------------------------- |
+| 1         | Dominio y contratos de persistencia        | Integrada                               |
+| 2         | Modelo de datos sincronizable              | Integrada                               |
+| 3         | Team Workspace                             | Integrada                               |
+| 4         | Cloud Foundation                           | Integrada y activable por configuración |
+| 5         | Incorporación y revocación de dispositivos | Integrada                               |
+| 6         | Histórico de partidos                      | Integrada                               |
+| 7         | Perfiles de jugador                        | Integrada                               |
+| 8         | Realtime para viewers y controlador único  | Pendiente                               |
+| 9         | Offline sync y recuperación                | Integrada                               |
+
+La sincronización offline no habilita edición concurrente del live match. La política continúa
+siendo un único dispositivo controlador; el realtime de observadores pertenece a la Iteración 8.
+
+# Roadmap UX histórico
+
+Las siguientes etapas documentan el plan histórico de consolidación de interfaz posterior a
+`alpha_0.1`. Sus mejoras principales ya forman parte del estado actual.
 
 ## Iteración 1 — Consolidación UI/UX y design system
 
@@ -451,6 +499,8 @@ La aplicación principal no debe depender de esta funcionalidad para registrar u
 - Angular Signals para estado reactivo.
 - Angular Router y Reactive Forms.
 - Dexie sobre IndexedDB para persistencia.
+- Supabase/PostgreSQL opcional, con autenticación anónima y RLS por equipo.
+- Outbox durable y sincronización offline-first con reintentos.
 - Angular Service Worker para capacidades PWA.
 - SCSS responsive orientado a móvil y tablet.
 - Vitest y Angular Testing Utilities.
@@ -493,7 +543,9 @@ http://localhost:4200
 npm test
 ```
 
-Los tests cubren reloj, ciclo de vida, eventos, sustituciones, goles, faltas, estadísticas, undo, recuperación, eliminación de partidos y flujos principales de UI.
+Los tests cubren reloj, ciclo de vida, eventos, sustituciones, goles, faltas, estadísticas, perfiles,
+histórico, undo, recuperación, repositorios, cola offline, reconexión, deduplicación, errores de
+sincronización y flujos principales de UI.
 
 ---
 
@@ -527,19 +579,23 @@ npm run ng -- <comando>
 
 # Rutas principales
 
-| Ruta                  | Descripción                              |
-| --------------------- | ---------------------------------------- |
-| `/dashboard`          | Resumen del espacio de equipo activo     |
-| `/players`            | Plantilla del equipo activo              |
-| `/matches`            | Gestor de partidos activos y finalizados |
-| `/matches/new`        | Datos y convocatoria del nuevo partido   |
-| `/settings`           | Ajustes y cambio del equipo activo       |
-| `/strategies`         | Diseñador y biblioteca táctica           |
-| `/live/:matchId`      | Registro del partido en directo          |
-| `/teams`              | Listado de equipos                       |
-| `/teams/new`          | Creación de un equipo                    |
-| `/teams/:teamId`      | Plantilla de un equipo                   |
-| `/teams/:teamId/edit` | Edición de un equipo                     |
+| Ruta                  | Descripción                               |
+| --------------------- | ----------------------------------------- |
+| `/dashboard`          | Resumen del espacio de equipo activo      |
+| `/players`            | Plantilla del equipo activo               |
+| `/players/:playerId`  | Perfil, temporadas e histórico individual |
+| `/matches`            | Gestor de partidos activos y finalizados  |
+| `/matches/new`        | Datos y convocatoria del nuevo partido    |
+| `/matches/:matchId`   | Detalle de un partido terminado           |
+| `/settings`           | Ajustes y cambio del equipo activo        |
+| `/settings/devices`   | Invitaciones, dispositivos y revocación   |
+| `/join`               | Incorporación mediante invitación         |
+| `/strategies`         | Diseñador y biblioteca táctica            |
+| `/live/:matchId`      | Registro del partido en directo           |
+| `/teams`              | Listado de equipos                        |
+| `/teams/new`          | Creación de un equipo                     |
+| `/teams/:teamId`      | Plantilla de un equipo                    |
+| `/teams/:teamId/edit` | Edición de un equipo                      |
 
 El acceso directo a `/matches/new` se protege cuando ya existe un partido activo.
 
@@ -553,10 +609,14 @@ El código se organiza por features y separa la lógica de dominio, aplicación 
 src/app/
 ├── core/
 │   ├── clock/          # Motor de reloj puro
-│   ├── connectivity/   # Estado online/offline
-│   ├── persistence/    # Dexie y repositorios
+│   ├── cloud/          # Cliente, identidad y estado cloud
+│   ├── persistence/    # Puertos, Dexie y repositorios Supabase
+│   ├── sync/           # Outbox, red, reintentos y convergencia
 │   └── utils/
 ├── features/
+│   ├── device-enrollment/
+│   ├── player-profiles/
+│   ├── strategies/
 │   ├── teams/
 │   ├── match-setup/
 │   ├── matches/
@@ -571,22 +631,39 @@ src/app/
 
 ## Persistencia
 
-Las features no dependen directamente de Dexie. Consumen repository ports mediante tokens de
-inyección; `provideLocalPersistence()` conecta esos contratos con los adapters Dexie locales. Esto
-permite sustituir la estrategia de persistencia en el bootstrap sin modificar stores, servicios ni
-reglas de dominio.
+Las features no dependen directamente de Dexie ni del SDK de Supabase. Consumen repository ports
+mediante tokens de inyección. `provideLocalPersistence()` conecta los contratos con adaptadores
+Dexie para pruebas y modo local; en modo cloud, `providePersistence()` selecciona adaptadores
+offline-first que escriben en IndexedDB y encolan la mutación remota.
 
-La base de datos local contiene cuatro tablas:
+La base de datos local contiene siete tablas:
 
 - `teams`
 - `players`
+- `playerProfiles`
 - `matches`
 - `events`
+- `strategies`
+- `syncQueue`
 
 El seed integrado de Apaga es infraestructura local, transaccional e idempotente. Sus IDs
 son UUIDs fijos para garantizar esa idempotencia; el resto de altas continúa usando
-`createId()`/`crypto.randomUUID()`. Dexie v4 migra los IDs históricos y todas sus referencias sin
-borrar la base local. Consulta [`docs/architecture/cloud-data-model.md`](docs/architecture/cloud-data-model.md).
+`createId()`/`crypto.randomUUID()`. Dexie v4 migró los IDs históricos y sus referencias; las
+versiones posteriores añadieron histórico, perfiles y, en Dexie v7, la cola durable sin borrar la
+base local. Consulta [`cloud-data-model.md`](docs/architecture/cloud-data-model.md) y
+[`offline-sync.md`](docs/offline-sync.md).
+
+## Sincronización offline-first
+
+En modo cloud, la escritura de partido, eventos y operación de outbox se realiza dentro de la misma
+transacción IndexedDB. La interfaz recibe confirmación al terminar la transacción local, sin esperar
+a la red. La cola compacta actualizaciones del mismo partido, conserva eventos únicos por UUID y se
+procesa en orden de creación.
+
+Los fallos transitorios se reintentan con backoff entre 1 segundo y 5 minutos. Después de cinco
+intentos, o ante errores de permisos, validación o conflicto, la operación queda `failed` y se
+presenta como accionable. Al arrancar o reconectar, se envían pendientes y después se actualiza la
+caché desde la instantánea autorizada del equipo sin sobrescribir cambios locales sin resolver.
 
 El reloj persistido forma parte del registro `Match`. Marcador, faltas, quintetos, minutos y estadísticas se calculan a partir de los eventos; no se guardan copias derivadas innecesarias.
 
@@ -625,13 +702,13 @@ El estado en memoria del partido en directo solo se limpia después de que Index
 - Eventos como fuente de verdad de las estadísticas.
 - Cálculos de dominio puros y cubiertos por tests.
 - Operaciones críticas transaccionales.
-- Sin NgRx, backend ni dependencias visuales innecesarias.
+- Sin NgRx ni dependencias visuales innecesarias; la infraestructura cloud es opcional.
 - La entrada de datos durante el partido tiene prioridad sobre cualquier funcionalidad secundaria.
 - Las funcionalidades experimentales no deben comprometer la estabilidad del flujo principal.
 
 ---
 
-# Release `alpha_0.1`
+# Baseline histórico `alpha_0.1`
 
 Primera versión alpha de Futsal Stats centrada en establecer una base sólida para el registro y seguimiento de estadísticas durante partidos de fútbol sala.
 

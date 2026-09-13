@@ -54,9 +54,12 @@
       </section>
     }
 
-    <button class="btn btn--primary new-match" type="button" (click)="newMatch()">
-      <span class="btn__icon" aria-hidden="true">+</span><span>Nuevo partido</span>
-    </button>
+    <div class="match-create-actions">
+      <button class="btn btn--primary new-match" type="button" (click)="newMatch()">
+        <span class="btn__icon" aria-hidden="true">+</span><span>Nuevo partido</span>
+      </button>
+      <a class="btn btn--secondary import-match" routerLink="/matches/import">Importar partido</a>
+    </div>
 
     <section class="history" aria-labelledby="history-title">
       <div class="history-heading">

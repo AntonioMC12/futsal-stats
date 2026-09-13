@@ -31,6 +31,14 @@ export interface Match {
   startingLineupPlayerIds: string[];
   createdAt: number;
   updatedAt: number;
+  source?: 'native' | 'csv-import';
+  importMetadata?: {
+    fileName: string;
+    importedAt: string;
+    schemaVersion?: string;
+    fingerprint: string;
+    originalMatchId?: string;
+  };
 }
 
 export const ACTIVE_MATCH_STATUSES: readonly MatchStatus[] = [

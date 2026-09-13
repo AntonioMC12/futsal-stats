@@ -62,6 +62,7 @@ describe('MatchesPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Partido en curso');
     expect(fixture.nativeElement.textContent).toContain('Continuar partido');
     expect(fixture.nativeElement.textContent).toContain('Historial');
+    expect(fixture.nativeElement.querySelector('.import-match')?.getAttribute('href')).toBe('/matches/import');
     const finishedLink = fixture.nativeElement.querySelector('.history-actions > a');
     expect(finishedLink.textContent).toContain('Ver detalle');
     expect(finishedLink.getAttribute('href')).toBe('/matches/finished');

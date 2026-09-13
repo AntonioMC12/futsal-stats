@@ -137,6 +137,11 @@ export function serializeMatchCsv(exportData: MatchStatisticsExport): string {
     ],
     exportData.lineups,
   );
+  section(
+    'METADATOS',
+    ['schemaVersion', 'matchId', 'opponentShortName', 'description'],
+    exportData.metadata,
+  );
   return CSV_UTF8_BOM + lines.join('\r\n') + '\r\n';
 }
 

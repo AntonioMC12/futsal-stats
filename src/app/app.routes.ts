@@ -80,6 +80,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/matches/ui/matches-page').then((m) => m.MatchesPage),
   },
   {
+    path: 'matches/import',
+    canActivate: [teamWorkspaceGuard],
+    loadComponent: () =>
+      import('./features/matches/ui/import-match-page').then((m) => m.ImportMatchPage),
+  },
+  {
     path: 'matches/:matchId',
     canActivate: [matchTeamWorkspaceGuard],
     loadComponent: () =>

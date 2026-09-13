@@ -57,6 +57,7 @@ export interface MatchStatisticsExport {
   rows: PlayerMatchExportRow[];
   events: Record<string, string | number | boolean>[];
   lineups: Record<string, string | number | boolean>[];
+  metadata: Record<string, string>[];
 }
 
 export function buildMatchStatisticsExport(
@@ -217,6 +218,14 @@ export function buildMatchStatisticsExport(
       goalsAgainst: lineup.goalsAgainst,
       plusMinus: lineup.plusMinus,
     })),
+    metadata: [
+      {
+        schemaVersion: 'futsal-stats-csv/1',
+        matchId: match.id,
+        opponentShortName: match.awayTeam.shortName,
+        description: match.description,
+      },
+    ],
   };
 }
 
