@@ -237,7 +237,7 @@
             </div>
           </div>
           <div class="match-status-row">
-            <span>Faltas</span>
+            <span>Faltas acumuladas</span>
             <strong [class.is-warning]="store.currentPeriodFouls().home >= 5">{{
               store.currentPeriodFouls().home
             }}</strong>
@@ -541,6 +541,8 @@
                           <th scope="col">GC</th>
                           <th scope="col">+/-</th>
                           <th scope="col">F</th>
+                          <th scope="col">FA</th>
+                          <th scope="col">FNA</th>
                           <th scope="col">TA</th>
                           <th scope="col">2A</th>
                           <th scope="col">TR</th>
@@ -579,6 +581,8 @@
                                 {{ signed(stats.plusMinus) }}
                               </td>
                               <td>{{ stats.fouls }}</td>
+                              <td>{{ stats.accumulatedFouls }}</td>
+                              <td>{{ stats.nonAccumulatedInfringements }}</td>
                               <td>{{ stats.yellowCards }}</td>
                               <td>{{ stats.secondYellowSendOffs }}</td>
                               <td>{{ stats.directRedCards }}</td>
@@ -659,7 +663,7 @@
                         <div
                           [class.is-foul-warning]="store.disciplineView().home.totals.fouls >= 5"
                         >
-                          <dt>Faltas · P{{ match.currentPeriod }}</dt>
+                          <dt>Faltas acumuladas · P{{ match.currentPeriod }}</dt>
                           <dd>{{ store.disciplineView().home.totals.fouls }}</dd>
                         </div>
                         <div>
@@ -691,7 +695,7 @@
                         <div
                           [class.is-foul-warning]="store.disciplineView().away.totals.fouls >= 5"
                         >
-                          <dt>Faltas · P{{ match.currentPeriod }}</dt>
+                          <dt>Faltas acumuladas · P{{ match.currentPeriod }}</dt>
                           <dd>{{ store.disciplineView().away.totals.fouls }}</dd>
                         </div>
                         <div>
@@ -784,6 +788,54 @@
                                 (click)="store.replaceSentOffPlayer(sanction.eventId)"
                               >
                                 Rival repone
+                              </button>
+                            }
+                          </article>
+                        }
+                      </div>
+                    </section>
+                  }
+
+                  @if (store.disciplineView().editableYellowCards.length > 0) {
+                    <section
+                      class="yellow-card-history"
+                      aria-labelledby="yellow-card-history-title"
+                    >
+                      <header>
+                        <div>
+                          <span class="section-label">Tarjetas amarillas</span>
+                          <h3 id="yellow-card-history-title">Asignación por jugador</h3>
+                        </div>
+                        <small>Conservan minuto y periodo</small>
+                      </header>
+                      <div class="discipline-player-list">
+                        @for (
+                          card of store.disciplineView().editableYellowCards;
+                          track card.eventId
+                        ) {
+                          <article class="discipline-player-row yellow-card-row">
+                            <div class="discipline-player-identity">
+                              <strong>🟨 #{{ card.number }}</strong
+                              ><span>{{ card.name }}</span>
+                            </div>
+                            <div class="discipline-player-detail">
+                              <span
+                                >{{ formatDuration(card.gameClockMs) }} · P{{ card.period }} ·
+                                {{ card.reason }}</span
+                              >
+                              @if (card.linkedFoulPlayerLabel) {
+                                <small>Falta: {{ card.linkedFoulPlayerLabel }}</small>
+                              }
+                            </div>
+                            @if (match.status !== 'finished') {
+                              <button
+                                class="btn btn--secondary edit-yellow-card"
+                                type="button"
+                                aria-label="Editar amarilla de {{ card.name }}"
+                                [disabled]="store.saving()"
+                                (click)="openYellowCardEditor(card, $event)"
+                              >
+                                Editar
                               </button>
                             }
                           </article>
@@ -1240,6 +1292,106 @@
     </div>
   }
 
+  @if (editingYellowCard(); as card) {
+    <div class="substitution-backdrop" (click)="cancelYellowCardEditor()">
+      <dialog
+        class="substitution-sheet edit-yellow-card-sheet"
+        open
+        aria-labelledby="edit-yellow-card-title"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <p class="sheet-kicker">Corregir asignación</p>
+        <h2 id="edit-yellow-card-title" tabindex="-1" autofocus>Editar tarjeta amarilla</h2>
+        <dl class="edit-yellow-card-current">
+          <div>
+            <dt>Jugador actual</dt>
+            <dd>#{{ card.number }} {{ card.name }}</dd>
+          </div>
+          <div>
+            <dt>Momento</dt>
+            <dd>{{ formatDuration(card.gameClockMs) }} · P{{ card.period }}</dd>
+          </div>
+        </dl>
+
+        <label class="edit-yellow-card-search">
+          Buscar jugador
+          <input
+            type="search"
+            placeholder="Nombre o dorsal"
+            autocomplete="off"
+            [value]="editYellowCardSearch()"
+            [disabled]="store.saving()"
+            (input)="editYellowCardSearch.set($any($event.target).value)"
+          />
+        </label>
+        <div class="edit-yellow-card-options" role="radiogroup" aria-label="Nuevo jugador">
+          @for (player of eligibleYellowCardPlayers(); track player.id) {
+            <button
+              class="bench-option"
+              type="button"
+              role="radio"
+              [attr.aria-checked]="editYellowCardPlayerId() === player.id"
+              [class.is-selected]="editYellowCardPlayerId() === player.id"
+              [disabled]="store.saving()"
+              (click)="editYellowCardPlayerId.set(player.id)"
+            >
+              <strong>#{{ player.number }}</strong
+              ><span>{{ player.name }}</span>
+            </button>
+          } @empty {
+            <p class="discipline-empty">No hay jugadores que coincidan.</p>
+          }
+        </div>
+
+        @if (
+          editYellowCardPlayerId() !== card.playerId &&
+          (card.relatedEventId || card.linkedFoulPlayerId)
+        ) {
+          <p class="banner banner--warn" role="status">
+            Esta amarilla está vinculada a una falta
+            @if (card.linkedFoulPlayerLabel) {
+              de {{ card.linkedFoulPlayerLabel }}
+            }
+            . Se cambiará solo la tarjeta; la falta permanecerá intacta.
+          </p>
+        }
+
+        @if (store.error(); as message) {
+          <p class="banner banner--warn" role="alert">{{ message }}</p>
+        }
+        <div class="edit-yellow-card-actions">
+          <button
+            class="btn btn--secondary"
+            type="button"
+            [disabled]="store.saving()"
+            (click)="cancelYellowCardEditor()"
+          >
+            Cancelar
+          </button>
+          <button
+            class="btn btn--primary"
+            type="button"
+            [disabled]="
+              store.saving() ||
+              !editYellowCardPlayerId() ||
+              editYellowCardPlayerId() === card.playerId
+            "
+            (click)="saveYellowCardPlayer()"
+          >
+            {{
+              store.saving()
+                ? 'Guardando…'
+                : card.relatedEventId || card.linkedFoulPlayerId
+                  ? 'Cambiar solo tarjeta'
+                  : 'Guardar'
+            }}
+          </button>
+        </div>
+      </dialog>
+    </div>
+  }
+
   @if (benchDisciplineOpen()) {
     <div class="substitution-backdrop" (click)="cancelBenchDiscipline()">
       <dialog
@@ -1456,7 +1608,7 @@
             [disabled]="disciplineSaving()"
             (click)="benchDisciplineReason.set('protest')"
           >
-            <strong>Protesta / desobediencia</strong><small>+1 falta acumulada</small>
+            <strong>Protesta / desobediencia</strong><small>Solo sanción disciplinaria</small>
           </button>
           <button
             class="btn btn--secondary"
@@ -1469,15 +1621,8 @@
           </button>
         </div>
 
-        <p
-          class="bench-discipline-consequence"
-          [class.is-counting-foul]="benchDisciplineReason() === 'protest'"
-        >
-          {{
-            benchDisciplineReason() === 'protest'
-              ? '+1 FALTA ACUMULADA · Sin cambiar la reanudación'
-              : 'NO SUMA FALTA · Se registra únicamente la tarjeta'
-          }}
+        <p class="bench-discipline-consequence" [class.is-counting-foul]="false">
+          NO SUMA FALTA · Se registra únicamente la tarjeta
         </p>
         <dl class="bench-discipline-summary">
           <div>
@@ -1543,11 +1688,40 @@
       >
         <div class="sheet-handle" aria-hidden="true"></div>
         <h2 id="foul-dialog-title">
-          {{ team === 'home' ? 'Registrar falta propia' : 'Registrar falta rival' }}
+          {{
+            foulMode() === 'card'
+              ? team === 'home'
+                ? 'Registrar tarjeta propia'
+                : 'Registrar tarjeta rival'
+              : team === 'home'
+                ? 'Registrar falta propia'
+                : 'Registrar falta rival'
+          }}
         </h2>
 
+        <div class="record-mode-options" aria-label="Tipo de registro">
+          <button
+            class="btn btn--secondary"
+            type="button"
+            [class.is-selected]="foulMode() === 'foul'"
+            (click)="foulMode.set('foul')"
+          >
+            Falta / infracción
+          </button>
+          <button
+            class="btn btn--secondary"
+            type="button"
+            [class.is-selected]="foulMode() === 'card'"
+            (click)="foulMode.set('card')"
+          >
+            Solo tarjeta
+          </button>
+        </div>
+
         @if (team === 'home') {
-          <p class="sheet-kicker">¿Quién la ha cometido?</p>
+          <p class="sheet-kicker">
+            ¿Quién {{ foulMode() === 'card' ? 'recibe la tarjeta' : 'la ha cometido' }}?
+          </p>
           <div class="bench-options foul-player-options">
             @for (player of store.currentLineup(); track player.id) {
               <button
@@ -1567,16 +1741,58 @@
           </div>
         }
 
+        @if (foulMode() === 'foul') {
+          <label class="accumulated-foul-field">
+            <input
+              type="checkbox"
+              [checked]="foulAccumulated()"
+              [disabled]="disciplineSaving()"
+              (change)="foulAccumulated.set($any($event.target).checked)"
+            />
+            Cuenta como falta acumulada
+          </label>
+        } @else {
+          <p class="sheet-kicker sanction-kicker">Motivo</p>
+          <div class="disciplinary-options">
+            <button
+              class="btn btn--secondary"
+              type="button"
+              [class.is-selected]="standaloneDisciplineReason() === 'protest'"
+              (click)="standaloneDisciplineReason.set('protest')"
+            >
+              Protesta
+            </button>
+            <button
+              class="btn btn--secondary"
+              type="button"
+              [class.is-selected]="standaloneDisciplineReason() === 'delayRestart'"
+              (click)="standaloneDisciplineReason.set('delayRestart')"
+            >
+              Retrasar reanudación
+            </button>
+            <button
+              class="btn btn--secondary"
+              type="button"
+              [class.is-selected]="standaloneDisciplineReason() === 'other'"
+              (click)="standaloneDisciplineReason.set('other')"
+            >
+              Otro
+            </button>
+          </div>
+        }
+
         <p class="sheet-kicker sanction-kicker">Sanción</p>
         <div class="disciplinary-options">
-          <button
-            class="btn btn--secondary"
-            type="button"
-            [disabled]="disciplineSaving() || (team === 'home' && !selectedFoulPlayerId())"
-            (click)="chooseFoulAction('none')"
-          >
-            Sin tarjeta
-          </button>
+          @if (foulMode() === 'foul') {
+            <button
+              class="btn btn--secondary"
+              type="button"
+              [disabled]="disciplineSaving() || (team === 'home' && !selectedFoulPlayerId())"
+              (click)="chooseFoulAction('none')"
+            >
+              Sin tarjeta
+            </button>
+          }
           <button
             class="btn btn--secondary"
             type="button"

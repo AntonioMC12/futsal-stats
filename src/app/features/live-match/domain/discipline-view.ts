@@ -13,6 +13,7 @@ import {
   TeamDisciplineStatistics,
 } from './discipline';
 import { selectActiveEvents } from './derived-match-state';
+import { countsAsAccumulatedFoul } from './futsal-rules';
 
 export interface DisciplineParticipantSummary extends PlayerDisciplineStatistics {
   id: string;
@@ -46,11 +47,25 @@ export interface BenchDisciplineViewItem {
   sentOff: boolean;
 }
 
+export interface EditableYellowCardViewItem {
+  eventId: string;
+  playerId: string;
+  number: number;
+  name: string;
+  period: number;
+  gameClockMs: number;
+  reason: string;
+  relatedEventId?: string;
+  linkedFoulPlayerId?: string;
+  linkedFoulPlayerLabel?: string;
+}
+
 export interface DisciplineViewModel {
   home: DisciplineSideView;
   away: DisciplineSideView & { unattributedFouls: number };
   activeSanctions: ActiveDisciplineSanction[];
   bench: Readonly<Record<FoulTeam, BenchDisciplineViewItem[]>>;
+  editableYellowCards: EditableYellowCardViewItem[];
   hasActivity: boolean;
 }
 
@@ -64,17 +79,11 @@ export function createDisciplineView(
   const activeEvents = selectActiveEvents(events);
   const currentFouls = activeEvents.filter(
     (event): event is FoulEvent =>
-      event.type === 'FOUL' && event.period === currentPeriod && event.accumulated !== false,
-  );
-  const currentBenchFouls = activeEvents.filter(
-    (event): event is Extract<MatchEvent, { type: 'BENCH_DISCIPLINE' }> =>
-      event.type === 'BENCH_DISCIPLINE' &&
-      event.period === currentPeriod &&
-      event.countsAsAccumulatedFoul,
+      event.type === 'FOUL' && event.period === currentPeriod && countsAsAccumulatedFoul(event),
   );
   const homeFoulsByPlayer = countBy(
-    currentFouls.filter((event) => event.team === 'home' && event.playerId),
-    (event) => event.playerId!,
+    currentFouls.filter((event) => event.team === 'home' && (event.foulPlayerId ?? event.playerId)),
+    (event) => (event.foulPlayerId ?? event.playerId)!,
   );
   const awayFoulsByNumber = countBy(
     currentFouls.filter(
@@ -84,15 +93,13 @@ export function createDisciplineView(
   );
   const homeTotals = {
     ...state.teams.home,
-    fouls:
-      currentFouls.filter((event) => event.team === 'home').length +
-      currentBenchFouls.filter((event) => event.team === 'home').length,
+    fouls: currentFouls.filter((event) => event.team === 'home').length,
+    accumulatedFouls: currentFouls.filter((event) => event.team === 'home').length,
   };
   const awayTotals = {
     ...state.teams.away,
-    fouls:
-      currentFouls.filter((event) => event.team === 'away').length +
-      currentBenchFouls.filter((event) => event.team === 'away').length,
+    fouls: currentFouls.filter((event) => event.team === 'away').length,
+    accumulatedFouls: currentFouls.filter((event) => event.team === 'away').length,
   };
   const homeParticipants = Object.entries(state.players)
     .flatMap(([playerId, statistics]): DisciplineParticipantSummary[] => {
@@ -116,6 +123,8 @@ export function createDisciplineView(
       id: `opponent-${participant.jerseyNumber}`,
       number: participant.jerseyNumber,
       fouls: awayFoulsByNumber.get(participant.jerseyNumber) ?? 0,
+      accumulatedFouls: participant.accumulatedFouls,
+      nonAccumulatedInfringements: participant.nonAccumulatedInfringements,
       yellowCards: participant.yellowCards,
       secondYellowSendOffs: participant.secondYellowSendOffs,
       directRedCards: participant.directRedCards,
@@ -153,6 +162,7 @@ export function createDisciplineView(
     home: createBenchItems('home', activeEvents, playersById),
     away: createBenchItems('away', activeEvents, playersById),
   };
+  const editableYellowCards = createEditableYellowCards(activeEvents, playersById);
 
   const hasActivity =
     hasTeamDiscipline(homeTotals) || hasTeamDiscipline(awayTotals) || activeSanctions.length > 0;
@@ -162,8 +172,58 @@ export function createDisciplineView(
     away: { totals: awayTotals, participants: awayParticipants, unattributedFouls },
     activeSanctions,
     bench,
+    editableYellowCards,
     hasActivity,
   };
+}
+
+function createEditableYellowCards(
+  events: readonly MatchEvent[],
+  playersById: ReadonlyMap<string, Player>,
+): EditableYellowCardViewItem[] {
+  return events
+    .flatMap((event): EditableYellowCardViewItem[] => {
+      const isPlayerYellow =
+        ((event.type === 'FOUL' || event.type === 'DISCIPLINE') &&
+          event.team === 'home' &&
+          event.disciplinaryAction === 'yellow' &&
+          Boolean(event.playerId)) ||
+        (event.type === 'BENCH_DISCIPLINE' &&
+          event.team === 'home' &&
+          event.subjectKind === 'player' &&
+          event.disciplinaryAction === 'yellow' &&
+          Boolean(event.playerId));
+      if (!isPlayerYellow || !('playerId' in event) || !event.playerId) return [];
+      const player = playersById.get(event.playerId);
+      if (!player) return [];
+      const foulPlayerId =
+        event.type === 'FOUL' ? (event.foulPlayerId ?? event.playerId) : undefined;
+      const foulPlayer = foulPlayerId ? playersById.get(foulPlayerId) : undefined;
+      return [
+        {
+          eventId: event.id,
+          playerId: event.playerId,
+          number: player.number,
+          name: player.name,
+          period: event.period,
+          gameClockMs: event.gameClockMs,
+          reason:
+            event.type === 'FOUL'
+              ? 'Asociada a falta'
+              : event.reason === 'protest'
+                ? 'Protesta'
+                : event.reason === 'delayRestart'
+                  ? 'Retrasa la reanudación'
+                  : 'Otra conducta',
+          relatedEventId: event.relatedEventId,
+          linkedFoulPlayerId: foulPlayerId,
+          linkedFoulPlayerLabel: foulPlayer
+            ? `#${foulPlayer.number} ${foulPlayer.name}`
+            : undefined,
+        },
+      ];
+    })
+    .reverse();
 }
 
 function createBenchItems(
@@ -189,7 +249,7 @@ function createBenchItems(
           label,
           sanction: event.disciplinaryAction,
           reason: event.reason,
-          countsAsAccumulatedFoul: event.countsAsAccumulatedFoul,
+          countsAsAccumulatedFoul: false,
           sentOff:
             event.disciplinaryAction === 'secondYellow' || event.disciplinaryAction === 'directRed',
         },

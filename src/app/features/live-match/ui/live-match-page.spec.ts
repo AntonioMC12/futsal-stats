@@ -95,6 +95,8 @@ describe('LiveMatchPage', () => {
     initialEvents = lineupEvents(),
     sync?: Partial<OfflineSyncService>,
   ) {
+    let persistedMatch = match;
+    const persistedEvents = [...initialEvents];
     const committedEvents: MatchEvent[] = [];
     const csvExporter = {
       isExporting: signal(false),
@@ -107,13 +109,23 @@ describe('LiveMatchPage', () => {
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([]),
-        { provide: MatchRepository, useValue: { get: async () => match } },
+        { provide: MatchRepository, useValue: { get: async () => persistedMatch } },
         { provide: PlayerRepository, useValue: { listByIds: async () => players } },
         {
           provide: MatchEventRepository,
           useValue: {
-            listByMatch: async () => initialEvents,
-            commit: async (_match: Match, events: MatchEvent[]) => committedEvents.push(...events),
+            listByMatch: async () => [...persistedEvents],
+            commit: async (updatedMatch: Match, events: MatchEvent[]) => {
+              persistedMatch = updatedMatch;
+              committedEvents.push(...events);
+              persistedEvents.push(...events);
+            },
+            updateEvent: async (updatedMatch: Match, event: MatchEvent) => {
+              persistedMatch = updatedMatch;
+              const index = persistedEvents.findIndex(({ id }) => id === event.id);
+              if (index < 0) throw new Error('event not found');
+              persistedEvents[index] = event;
+            },
           },
         },
         { provide: DeleteMatchService, useValue: { execute: async () => undefined } },
@@ -1047,7 +1059,7 @@ describe('LiveMatchPage', () => {
     memberButtons[1]?.click();
     fixture.detectChanges();
     expect(sheet.textContent).toContain('Entrenador');
-    expect(sheet.textContent).toContain('+1 FALTA ACUMULADA');
+    expect(sheet.textContent).toContain('NO SUMA FALTA');
 
     (
       sheet.querySelector('.bench-discipline-confirmation .btn--primary') as HTMLButtonElement
@@ -1063,6 +1075,106 @@ describe('LiveMatchPage', () => {
     );
     expect(fixture.nativeElement.querySelector('.bench-discipline-sheet')).toBeNull();
     expect(notifications.notification()?.message).toBe('Disciplina de banquillo registrada');
+    fixture.destroy();
+  });
+
+  it('records an isolated card and a non-accumulated infringement without changing the counter', async () => {
+    const { fixture, store } = await createPage();
+    const openHomeFoul = () =>
+      (
+        fixture.nativeElement.querySelectorAll('.foul-actions button')[0] as HTMLButtonElement
+      ).click();
+
+    openHomeFoul();
+    fixture.detectChanges();
+    (
+      fixture.nativeElement.querySelectorAll('.record-mode-options button')[1] as HTMLButtonElement
+    ).click();
+    (
+      fixture.nativeElement.querySelector('.foul-player-options button') as HTMLButtonElement
+    ).click();
+    fixture.detectChanges();
+    const sanctionGroups = fixture.nativeElement.querySelectorAll(
+      '.foul-sheet .disciplinary-options',
+    ) as NodeListOf<HTMLElement>;
+    (
+      sanctionGroups[sanctionGroups.length - 1]!.querySelector('button') as HTMLButtonElement
+    ).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(store.currentPeriodFouls().home).toBe(0);
+    expect(store.disciplinaryState().teams.home.yellowCards).toBe(1);
+    expect(store.events().some((event) => event.type === 'DISCIPLINE')).toBe(true);
+
+    openHomeFoul();
+    fixture.detectChanges();
+    const accumulated = fixture.nativeElement.querySelector(
+      '.accumulated-foul-field input',
+    ) as HTMLInputElement;
+    accumulated.checked = false;
+    accumulated.dispatchEvent(new Event('change'));
+    (
+      fixture.nativeElement.querySelector('.foul-player-options button') as HTMLButtonElement
+    ).click();
+    fixture.detectChanges();
+    (
+      fixture.nativeElement.querySelector(
+        '.foul-sheet .disciplinary-options button',
+      ) as HTMLButtonElement
+    ).click();
+    await fixture.whenStable();
+
+    expect(store.currentPeriodFouls().home).toBe(0);
+    expect(store.events().at(-1)).toMatchObject({
+      type: 'FOUL',
+      countsAsAccumulatedFoul: false,
+      restart: 'indirect-free-kick',
+    });
+    fixture.destroy();
+  });
+
+  it('edits a related yellow card from Discipline without moving the foul or stopping the clock', async () => {
+    const relatedYellow = foulEvent('related-yellow', 6, 'home', {
+      playerId: 'p1',
+      action: 'yellow',
+    });
+    const { fixture, store } = await createPage(activeMatch(), [...lineupEvents(), relatedYellow]);
+    await store.startClock();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelectorAll('.match-nav button')[2] as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const row = fixture.nativeElement.querySelector('.yellow-card-row') as HTMLElement;
+    expect(row.textContent).toContain('#1');
+    (row.querySelector('.edit-yellow-card') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const options = fixture.nativeElement.querySelectorAll(
+      '.edit-yellow-card-options .bench-option',
+    ) as NodeListOf<HTMLButtonElement>;
+    options[1]?.click();
+    fixture.detectChanges();
+    const editor = fixture.nativeElement.querySelector('.edit-yellow-card-sheet') as HTMLElement;
+    expect(editor.textContent).toContain('Se cambiará solo la tarjeta');
+    (editor.querySelector('.edit-yellow-card-actions .btn--primary') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(store.clockRunning()).toBe(true);
+    expect(store.currentPeriodFouls().home).toBe(1);
+    expect(store.disciplinaryState().players['p1']).toMatchObject({ fouls: 1, yellowCards: 0 });
+    expect(store.disciplinaryState().players['p2']).toMatchObject({ fouls: 0, yellowCards: 1 });
+    expect(store.disciplinaryState().teams.home.yellowCards).toBe(1);
+    expect(store.events().find(({ id }) => id === relatedYellow.id)).toMatchObject({
+      id: relatedYellow.id,
+      playerId: 'p2',
+      foulPlayerId: 'p1',
+      gameClockMs: relatedYellow.gameClockMs,
+      period: relatedYellow.period,
+    });
+    expect(store.timeline().find(({ eventId }) => eventId === relatedYellow.id)?.label).toContain(
+      'Jugador 2',
+    );
     fixture.destroy();
   });
 });

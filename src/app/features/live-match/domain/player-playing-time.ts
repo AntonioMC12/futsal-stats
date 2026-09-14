@@ -194,6 +194,17 @@ export function createParticipationProjection(
           lineup.delete(event.playerId);
         }
         break;
+      case 'DISCIPLINE':
+        if (
+          event.team === 'home' &&
+          event.playerId &&
+          (event.disciplinaryAction === 'secondYellow' || event.disciplinaryAction === 'directRed')
+        ) {
+          accumulateUntil(event.gameClockMs);
+          leave(event.playerId, event.gameClockMs);
+          lineup.delete(event.playerId);
+        }
+        break;
       case 'BENCH_DISCIPLINE':
         break;
       case 'RED_CARD_REPLACEMENT':
@@ -241,6 +252,10 @@ export function createParticipationProjection(
       event.type === 'MATCH_FINISHED' ||
       event.type === 'PLAYER_LEFT' ||
       (event.type === 'FOUL' &&
+        event.team === 'home' &&
+        (event.disciplinaryAction === 'directRed' ||
+          event.disciplinaryAction === 'secondYellow')) ||
+      (event.type === 'DISCIPLINE' &&
         event.team === 'home' &&
         (event.disciplinaryAction === 'directRed' || event.disciplinaryAction === 'secondYellow'))
     )

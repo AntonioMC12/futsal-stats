@@ -533,7 +533,7 @@ describe('LiveMatchStore', () => {
         'protest',
       ),
     ).toBe(true);
-    expect(store.currentPeriodFouls().home).toBe(6);
+    expect(store.currentPeriodFouls().home).toBe(4);
     expect(store.disciplinaryState().reductions).toHaveLength(0);
     expect(
       await store.registerBenchDiscipline(
@@ -544,7 +544,7 @@ describe('LiveMatchStore', () => {
       ),
     ).toBe(true);
 
-    expect(store.currentPeriodFouls().home).toBe(6);
+    expect(store.currentPeriodFouls().home).toBe(4);
     expect(store.disciplinaryState().staffMembers[0]).toMatchObject({
       role: 'headCoach',
       directRedCards: 1,
@@ -557,11 +557,11 @@ describe('LiveMatchStore', () => {
 
     await store.load(persistedMatch.id);
     expect(await store.registerTeamFoul('p1')).toBe(true);
-    expect(store.currentPeriodFouls().home).toBe(7);
-    expect(persistedEvents.at(-1)).toMatchObject({ type: 'FOUL', periodFoulNumber: 7 });
+    expect(store.currentPeriodFouls().home).toBe(5);
+    expect(persistedEvents.at(-1)).toMatchObject({ type: 'FOUL', periodFoulNumber: 5 });
 
     await store.load(persistedMatch.id);
-    expect(store.currentPeriodFouls().home).toBe(7);
+    expect(store.currentPeriodFouls().home).toBe(5);
     expect(store.disciplinaryState().staffMembers).toHaveLength(1);
     expect(store.disciplinaryState().sentOffPlayerIds).toContain('p6');
     expect(store.timeline().filter((item) => item.type === 'BENCH_DISCIPLINE')).toHaveLength(3);
@@ -591,7 +591,7 @@ describe('LiveMatchStore', () => {
       'directRed',
       'protest',
     );
-    expect(store.currentPeriodFouls().home).toBe(1);
+    expect(store.currentPeriodFouls().home).toBe(0);
     expect(store.disciplinaryState().staffMembers[0]?.sentOff).toBe(true);
 
     expect(await store.undoLastEvent()).toBe(true);

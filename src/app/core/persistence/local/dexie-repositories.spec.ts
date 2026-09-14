@@ -193,6 +193,16 @@ describe('local Dexie repository adapters', () => {
 
     await events.commit({ ...snapshot, updatedAt: 30 }, []);
     expect(await db.matches.get(snapshot.id)).toMatchObject({ revision: 2, updatedAt: 30 });
+
+    const corrected = { ...earlierTimestamp, undone: true };
+    await events.updateEvent({ ...snapshot, updatedAt: 40 }, corrected);
+    expect((await events.listByMatch(snapshot.id)).find(({ id }) => id === corrected.id)).toEqual(
+      corrected,
+    );
+    expect(await db.events.get(corrected.id)).toMatchObject({
+      createdAt: earlierTimestamp.timestamp,
+      revision: 2,
+    });
   });
 
   it('rolls back the snapshot when appending events fails', async () => {

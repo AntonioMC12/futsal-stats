@@ -43,16 +43,27 @@ export class CsvMatchImportParser implements CsvImportAdapter {
     const sections = splitSections(rows);
     const metadata = recordFromSection(sections.get('METADATOS'));
     const schemaVersion = metadata['schemaVersion'];
-    if (schemaVersion && schemaVersion !== FUTSAL_STATS_CSV_SCHEMA_VERSION) {
+    if (
+      schemaVersion &&
+      schemaVersion !== FUTSAL_STATS_CSV_SCHEMA_VERSION &&
+      schemaVersion !== 'futsal-stats-csv/1'
+    ) {
       throw new UnsupportedCsvVersionError(`Versión de CSV no soportada: ${schemaVersion}`);
     }
 
     const issues: ImportIssue[] = [];
     if (!schemaVersion) {
-      issues.push(issue('warning', 'legacy-version', 'El archivo no declara versión; se ha aplicado el formato histórico compatible.'));
+      issues.push(
+        issue(
+          'warning',
+          'legacy-version',
+          'El archivo no declara versión; se ha aplicado el formato histórico compatible.',
+        ),
+      );
     }
     const mainRecords = records(sections.get('MAIN') ?? []);
-    if (mainRecords.length === 0) throw new InvalidCsvFormatError('El CSV no contiene jugadores ni datos del partido.');
+    if (mainRecords.length === 0)
+      throw new InvalidCsvFormatError('El CSV no contiene jugadores ni datos del partido.');
 
     const first = mainRecords[0]!;
     const opponent = first['rival']?.trim();
@@ -69,19 +80,35 @@ export class CsvMatchImportParser implements CsvImportAdapter {
     validateEvents(events, players, issues);
     const lineups = parseLineups(sections.get('QUINTETOS') ?? [], players, issues);
     if (lineups.length === 0) {
-      issues.push(issue('warning', 'missing-lineups', 'El archivo no contiene quintetos explícitos; se reconstruirán desde los eventos.'));
+      issues.push(
+        issue(
+          'warning',
+          'missing-lineups',
+          'El archivo no contiene quintetos explícitos; se reconstruirán desde los eventos.',
+        ),
+      );
     }
     if (!metadata['description']) {
-      issues.push(issue('warning', 'missing-description', 'El archivo no contiene descripción del partido.'));
+      issues.push(
+        issue('warning', 'missing-description', 'El archivo no contiene descripción del partido.'),
+      );
     }
     if (!metadata['opponentShortName']) {
-      issues.push(issue('warning', 'missing-abbreviation', 'El archivo no contiene abreviación del rival.'));
+      issues.push(
+        issue('warning', 'missing-abbreviation', 'El archivo no contiene abreviación del rival.'),
+      );
     }
 
     const score = parseScore(first['marcador'] ?? '');
     const originalMatchId = metadata['matchId'] || events[0]?.event.matchId || undefined;
-    const periodCount = Math.max(2, ...events.map(({ event }) => event.period).filter(Number.isFinite));
-    const periodDurationMs = Math.max(20 * 60 * 1000, ...events.map(({ event }) => event.gameClockMs));
+    const periodCount = Math.max(
+      2,
+      ...events.map(({ event }) => event.period).filter(Number.isFinite),
+    );
+    const periodDurationMs = Math.max(
+      20 * 60 * 1000,
+      ...events.map(({ event }) => event.gameClockMs),
+    );
     const fingerprint = await createMatchImportFingerprint({
       date,
       opponent: normalizePlayerName(opponent),
@@ -140,7 +167,8 @@ export function parseCsv(input: string): CsvRow[] {
       field = '';
     } else field += char;
   }
-  if (quoted) throw new InvalidCsvFormatError('El CSV contiene un campo entrecomillado incompleto.');
+  if (quoted)
+    throw new InvalidCsvFormatError('El CSV contiene un campo entrecomillado incompleto.');
   if (field.length > 0 || row.length > 0) {
     row.push(field);
     rows.push(row);
@@ -169,14 +197,19 @@ function splitSections(rows: readonly CsvRow[]): Map<string, CsvRow[]> {
 function records(rows: readonly CsvRow[]): CsvRecord[] {
   const [headers, ...values] = rows;
   if (!headers) return [];
-  return values.map((row) => Object.fromEntries(headers.map((header, index) => [header.trim(), row[index] ?? ''])));
+  return values.map((row) =>
+    Object.fromEntries(headers.map((header, index) => [header.trim(), row[index] ?? ''])),
+  );
 }
 
 function recordFromSection(rows?: readonly CsvRow[]): CsvRecord {
   return records(rows ?? [])[0] ?? {};
 }
 
-function parsePlayers(recordsToParse: CsvRecord[], sourceIds: Map<string, string>): ImportedPlayerDto[] {
+function parsePlayers(
+  recordsToParse: CsvRecord[],
+  sourceIds: Map<string, string>,
+): ImportedPlayerDto[] {
   return recordsToParse.map((record, index) => {
     const number = Number(record['dorsal']);
     const name = record['jugador']?.trim() ?? '';
@@ -195,28 +228,55 @@ function parsePlayers(recordsToParse: CsvRecord[], sourceIds: Map<string, string
   });
 }
 
-function playerSourceIds(eventRecords: CsvRecord[], lineupRecords: CsvRecord[]): Map<string, string> {
+function playerSourceIds(
+  eventRecords: CsvRecord[],
+  lineupRecords: CsvRecord[],
+): Map<string, string> {
   const result = new Map<string, string>();
   for (const record of eventRecords) {
     addPlayerSource(result, record['playerId'], record['playerNumber'], record['playerName']);
-    addPlayerSource(result, record['secondaryPlayerId'], record['secondaryPlayerNumber'], record['secondaryPlayerName']);
+    addPlayerSource(
+      result,
+      record['foulPlayerId'],
+      record['foulPlayerNumber'],
+      record['foulPlayerName'],
+    );
+    addPlayerSource(
+      result,
+      record['secondaryPlayerId'],
+      record['secondaryPlayerNumber'],
+      record['secondaryPlayerName'],
+    );
   }
   for (const record of lineupRecords) {
     const ids = (record['playerIds'] ?? '').split('|').filter(Boolean);
-    const labels = [...(record['players'] ?? '').matchAll(/(?:^| \| )#(\d+) (.*?)(?= \| #\d+ |$)/g)];
+    const labels = [
+      ...(record['players'] ?? '').matchAll(/(?:^| \| )#(\d+) (.*?)(?= \| #\d+ |$)/g),
+    ];
     labels.forEach((label, index) => addPlayerSource(result, ids[index], label[1], label[2]));
   }
   return result;
 }
 
-function addPlayerSource(result: Map<string, string>, id?: string, number?: string, name?: string): void {
+function addPlayerSource(
+  result: Map<string, string>,
+  id?: string,
+  number?: string,
+  name?: string,
+): void {
   if (!id || !name || !Number.isFinite(Number(number))) return;
   result.set(`${Number(number)}:${normalizePlayerName(name)}`, id);
 }
 
 function parseEvents(eventRecords: CsvRecord[], issues: ImportIssue[]): ImportedMatchEventDto[] {
   if (eventRecords.length === 0) {
-    issues.push(issue('warning', 'missing-events', 'El archivo no contiene eventos; las estadísticas no podrán reconstruirse.'));
+    issues.push(
+      issue(
+        'warning',
+        'missing-events',
+        'El archivo no contiene eventos; las estadísticas no podrán reconstruirse.',
+      ),
+    );
     return [];
   }
   return eventRecords.map((record, index) => {
@@ -234,7 +294,9 @@ function parseEvents(eventRecords: CsvRecord[], issues: ImportIssue[]): Imported
     const gameClockMs = Number(record['gameClockMs']);
     const timestamp = Number(record['createdAt']);
     if (![sequence, period, gameClockMs, timestamp].every(Number.isFinite) || gameClockMs < 0) {
-      throw new InvalidCsvFormatError(`El tiempo o secuencia del evento ${index + 1} no es válido.`);
+      throw new InvalidCsvFormatError(
+        `El tiempo o secuencia del evento ${index + 1} no es válido.`,
+      );
     }
     event = {
       ...event,
@@ -245,17 +307,53 @@ function parseEvents(eventRecords: CsvRecord[], issues: ImportIssue[]): Imported
       timestamp,
       undone: normalizeBoolean(record['undone']),
     };
+    if (event.type === 'FOUL' && event.countsAsAccumulatedFoul === undefined) {
+      if (event.accumulated === undefined) {
+        issues.push(
+          issue(
+            'warning',
+            'ambiguous-legacy-foul',
+            `La falta ${event.sequence} no declara si era acumulativa; se aplica la semántica histórica.`,
+          ),
+        );
+      }
+      event = {
+        ...event,
+        countsAsAccumulatedFoul: event.accumulated !== false,
+        restart: event.accumulated === false ? 'indirect-free-kick' : 'direct-free-kick',
+      };
+    }
     return { sourceId: event.id, event };
   });
 }
 
-function parseLineups(rows: readonly CsvRow[], players: ImportedPlayerDto[], issues: ImportIssue[]): ImportedLineupDto[] {
-  const sourceToKey = new Map(players.filter((player) => player.sourceId).map((player) => [player.sourceId!, player.importKey]));
+function parseLineups(
+  rows: readonly CsvRow[],
+  players: ImportedPlayerDto[],
+  issues: ImportIssue[],
+): ImportedLineupDto[] {
+  const sourceToKey = new Map(
+    players
+      .filter((player) => player.sourceId)
+      .map((player) => [player.sourceId!, player.importKey]),
+  );
   return records(rows).map((record, index) => {
     const sourceIds = (record['playerIds'] ?? '').split('|').filter(Boolean);
-    if (sourceIds.length > 5) issues.push(issue('error', 'lineup-too-large', `El quinteto ${index + 1} contiene más de 5 jugadores.`));
-    const playerImportKeys = sourceIds.map((id) => sourceToKey.get(id)).filter((id): id is string => Boolean(id));
-    if (playerImportKeys.length !== sourceIds.length) issues.push(issue('warning', 'lineup-reference', `El quinteto ${index + 1} contiene referencias no disponibles.`));
+    if (sourceIds.length > 5)
+      issues.push(
+        issue('error', 'lineup-too-large', `El quinteto ${index + 1} contiene más de 5 jugadores.`),
+      );
+    const playerImportKeys = sourceIds
+      .map((id) => sourceToKey.get(id))
+      .filter((id): id is string => Boolean(id));
+    if (playerImportKeys.length !== sourceIds.length)
+      issues.push(
+        issue(
+          'warning',
+          'lineup-reference',
+          `El quinteto ${index + 1} contiene referencias no disponibles.`,
+        ),
+      );
     const totalSeconds = Number(record['totalSeconds']);
     return { playerImportKeys, ...(Number.isFinite(totalSeconds) ? { totalSeconds } : {}) };
   });
@@ -267,7 +365,11 @@ function validateUniquePlayerKeys(players: ImportedPlayerDto[]): void {
   }
 }
 
-function validateEvents(events: ImportedMatchEventDto[], players: ImportedPlayerDto[], issues: ImportIssue[]): void {
+function validateEvents(
+  events: ImportedMatchEventDto[],
+  players: ImportedPlayerDto[],
+  issues: ImportIssue[],
+): void {
   if (new Set(events.map(({ sourceId }) => sourceId)).size !== events.length) {
     throw new InvalidCsvFormatError('El CSV contiene IDs de evento duplicados.');
   }
@@ -275,23 +377,54 @@ function validateEvents(events: ImportedMatchEventDto[], players: ImportedPlayer
   const eventIds = new Set(events.map(({ sourceId }) => sourceId));
   for (const { event } of events) {
     const record = event as unknown as Record<string, unknown>;
-    for (const key of ['playerId', 'scorerPlayerId', 'outPlayerId', 'inPlayerId'] as const) {
+    for (const key of [
+      'playerId',
+      'foulPlayerId',
+      'scorerPlayerId',
+      'outPlayerId',
+      'inPlayerId',
+    ] as const) {
       const id = record[key];
       if (typeof id === 'string' && id && !playerIds.has(id)) {
-        issues.push(issue('fatal', 'missing-player-reference', `El evento ${event.sequence} referencia un jugador que no está en la convocatoria.`));
+        issues.push(
+          issue(
+            'fatal',
+            'missing-player-reference',
+            `El evento ${event.sequence} referencia un jugador que no está en la convocatoria.`,
+          ),
+        );
       }
     }
-    for (const key of ['targetEventId', 'reductionEventId'] as const) {
+    for (const key of ['targetEventId', 'reductionEventId', 'relatedEventId'] as const) {
       const id = record[key];
       if (typeof id === 'string' && id && !eventIds.has(id)) {
-        issues.push(issue('fatal', 'missing-event-reference', `El evento ${event.sequence} contiene una referencia de evento inválida.`));
+        issues.push(
+          issue(
+            'fatal',
+            'missing-event-reference',
+            `El evento ${event.sequence} contiene una referencia de evento inválida.`,
+          ),
+        );
       }
     }
     const lineup = record['lineupPlayerIds'];
     if (Array.isArray(lineup)) {
-      if (lineup.length > 5) issues.push(issue('error', 'event-lineup-too-large', `El evento ${event.sequence} contiene más de 5 jugadores en pista.`));
+      if (lineup.length > 5)
+        issues.push(
+          issue(
+            'error',
+            'event-lineup-too-large',
+            `El evento ${event.sequence} contiene más de 5 jugadores en pista.`,
+          ),
+        );
       if (lineup.some((id) => typeof id !== 'string' || !playerIds.has(id))) {
-        issues.push(issue('fatal', 'event-lineup-reference', `El evento ${event.sequence} contiene un jugador en pista que no está en la convocatoria.`));
+        issues.push(
+          issue(
+            'fatal',
+            'event-lineup-reference',
+            `El evento ${event.sequence} contiene un jugador en pista que no está en la convocatoria.`,
+          ),
+        );
       }
     }
   }

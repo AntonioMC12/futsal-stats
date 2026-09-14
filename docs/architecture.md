@@ -78,7 +78,9 @@ Unión discriminada por `type`. Campos comunes: `id`, `matchId`, `type`, `period
 - `timestamp`: reloj de pared (`Date.now()`).
 - `sequence`: entero monótono por partido (orden total si hay empate de timestamps).
 
-Tipos MVP: `MATCH_STARTED`, `CLOCK_STARTED`, `CLOCK_STOPPED`, `CLOCK_RESET`, `PERIOD_STARTED`, `PERIOD_ENDED`, `PLAYER_ENTERED`, `PLAYER_LEFT`, `SUBSTITUTION`, `FOUL`, `GOAL_FOR`, `GOAL_AGAINST`, `EVENT_UNDONE`, `MATCH_FINISHED`.
+Tipos principales: `MATCH_STARTED`, `CLOCK_STARTED`, `CLOCK_STOPPED`, `CLOCK_RESET`, `PERIOD_STARTED`, `PERIOD_ENDED`, `PLAYER_ENTERED`, `PLAYER_LEFT`, `SUBSTITUTION`, `FOUL`, `DISCIPLINE`, `BENCH_DISCIPLINE`, `GOAL_FOR`, `GOAL_AGAINST`, `EVENT_UNDONE`, `MATCH_FINISHED`. `FOUL` clasifica de forma explícita si incrementa las faltas acumuladas; los eventos disciplinarios nunca las incrementan por sí mismos. Véase [Faltas no acumulables y tarjetas](non-accumulated-fouls-and-cards.md).
+
+Las correcciones de amarillas actualizan el evento existente mediante el puerto de persistencia, conservan todos los campos temporales y recalculan las proyecciones. En faltas con tarjeta, `foulPlayerId` mantiene separado al autor de la infracción del `playerId` disciplinario. Véase [Reasignación de tarjetas amarillas](edit-discipline-card-numbers.md).
 
 Los eventos nuevos y el snapshot actualizado del partido se escriben en una única transacción IndexedDB. `CLOCK_RESET` es explícito porque un reinicio cambia la línea temporal necesaria para calcular minutos, aunque el snapshot del reloj siga siendo la fuente para recuperar el tiempo en marcha.
 

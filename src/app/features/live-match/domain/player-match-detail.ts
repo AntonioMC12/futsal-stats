@@ -118,6 +118,16 @@ export function derivePlayerDetailHistory(
           add('out', 'Sale por expulsión');
         }
         break;
+      case 'DISCIPLINE':
+        if (
+          event.team === 'home' &&
+          event.playerId === playerId &&
+          (event.disciplinaryAction === 'secondYellow' || event.disciplinaryAction === 'directRed')
+        ) {
+          onCourt = false;
+          add('out', 'Sale por expulsión');
+        }
+        break;
     }
   }
   return {

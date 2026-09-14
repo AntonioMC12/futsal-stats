@@ -23,17 +23,37 @@ export class SupabaseMatchEventRepository implements MatchEventRepository {
   }
 
   async commit(match: Match, events: readonly MatchEvent[]): Promise<void> {
-    const { error } = match.source === 'csv-import'
-      ? await this.client.rpc('import_match_from_csv', {
-          p_players: [], p_match: matchToCloud(match), p_events: events.map(eventToCloud),
-        })
-      : await this.client.rpc('commit_match_events', {
-          p_match: matchToCloud(match), p_events: events.map(eventToCloud),
-        });
+    const { error } =
+      match.source === 'csv-import'
+        ? await this.client.rpc('import_match_from_csv', {
+            p_players: [],
+            p_match: matchToCloud(match),
+            p_events: events.map(eventToCloud),
+          })
+        : await this.client.rpc('commit_match_events', {
+            p_match: matchToCloud(match),
+            p_events: events.map(eventToCloud),
+          });
     if (error) throw error;
   }
 
-  async importMatch(match: Match, events: readonly MatchEvent[], newPlayers: readonly Player[]): Promise<void> {
+  async updateEvent(match: Match, event: MatchEvent): Promise<void> {
+    const cloudEvent = eventToCloud(event);
+    const { lineup_player_ids: _lineup, ...record } = cloudEvent;
+    const { error } = await this.client
+      .from('match_events')
+      .update(record)
+      .eq('id', event.id)
+      .eq('match_id', match.id);
+    if (error) throw error;
+    await this.commit(match, []);
+  }
+
+  async importMatch(
+    match: Match,
+    events: readonly MatchEvent[],
+    newPlayers: readonly Player[],
+  ): Promise<void> {
     const { error } = await this.client.rpc('import_match_from_csv', {
       p_players: newPlayers.map(playerToCloud),
       p_match: matchToCloud(match),

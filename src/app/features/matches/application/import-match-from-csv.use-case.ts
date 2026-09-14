@@ -36,7 +36,9 @@ export class ImportMatchFromCsvUseCase {
     const startedAt = performance.now();
     const dto = command.importedMatch;
     logImport('match_import_started', dto);
-    const blockingIssue = dto.issues.find(({ severity }) => severity === 'fatal' || severity === 'error');
+    const blockingIssue = dto.issues.find(
+      ({ severity }) => severity === 'fatal' || severity === 'error',
+    );
     if (blockingIssue) {
       logImport('match_import_validation_failed', dto);
       throw new PlayerResolutionError(blockingIssue.message);
@@ -50,7 +52,9 @@ export class ImportMatchFromCsvUseCase {
       throw new DuplicateImportedMatchError(existing.id);
     }
 
-    const resolutions = new Map(command.resolutions.map((item) => [item.csvPlayer.importKey, item]));
+    const resolutions = new Map(
+      command.resolutions.map((item) => [item.csvPlayer.importKey, item]),
+    );
     if (resolutions.size !== dto.players.length) {
       throw new PlayerResolutionError('Debes resolver todos los jugadores antes de importar.');
     }
@@ -61,7 +65,9 @@ export class ImportMatchFromCsvUseCase {
     for (const importedPlayer of dto.players) {
       const resolution = resolutions.get(importedPlayer.importKey)!;
       if (resolution.resolution === 'ignore') {
-        throw new PlayerResolutionError(`No se puede ignorar a ${importedPlayer.name}: forma parte de la convocatoria.`);
+        throw new PlayerResolutionError(
+          `No se puede ignorar a ${importedPlayer.name}: forma parte de la convocatoria.`,
+        );
       }
       if (resolution.resolution === 'existing' || resolution.resolution === 'manual') {
         const player = resolution.playerId ? existingById.get(resolution.playerId) : undefined;
@@ -191,14 +197,22 @@ function remapEvent(
   const event = { ...source } as unknown as Record<string, unknown>;
   event['id'] = eventIds.get(source.id)!;
   event['matchId'] = matchId;
-  for (const key of ['playerId', 'scorerPlayerId', 'outPlayerId', 'inPlayerId'] as const) {
+  for (const key of [
+    'playerId',
+    'foulPlayerId',
+    'scorerPlayerId',
+    'outPlayerId',
+    'inPlayerId',
+  ] as const) {
     if (typeof event[key] === 'string') event[key] = playerIds.get(event[key] as string);
   }
-  for (const key of ['targetEventId', 'reductionEventId'] as const) {
+  for (const key of ['targetEventId', 'reductionEventId', 'relatedEventId'] as const) {
     if (typeof event[key] === 'string') event[key] = eventIds.get(event[key] as string);
   }
   if (Array.isArray(event['lineupPlayerIds'])) {
-    event['lineupPlayerIds'] = event['lineupPlayerIds'].map((id) => playerIds.get(String(id))).filter(Boolean);
+    event['lineupPlayerIds'] = event['lineupPlayerIds']
+      .map((id) => playerIds.get(String(id)))
+      .filter(Boolean);
   }
   return event as unknown as MatchEvent;
 }

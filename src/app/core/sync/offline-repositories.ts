@@ -278,15 +278,58 @@ export class OfflineMatchEventRepository implements MatchEventRepository {
     this.sync.requestSync();
   }
 
-  async importMatch(match: Match, events: readonly MatchEvent[], newPlayers: readonly Player[]): Promise<void> {
+  async updateEvent(match: Match, event: MatchEvent): Promise<void> {
     await this.db.transaction(
-      'rw', this.db.teams, this.db.players, this.db.matches, this.db.events, this.db.syncQueue,
+      'rw',
+      this.db.matches,
+      this.db.events,
+      this.db.syncQueue,
       async () => {
-        if (!(await this.db.teams.get(match.teamId))) throw new Error('Import references missing team');
+        await assertEventReferences(this.db, match, [event]);
+        const previous = await this.db.events.get(event.id);
+        if (!previous || previous.matchId !== match.id) throw new Error('Match event not found');
+        await this.db.events.put({
+          ...toLocalMatchEventRecord(event),
+          createdAt: previous.createdAt,
+          updatedAt: Date.now(),
+          revision: previous.revision + 1,
+        });
+        const previousMatch = await this.db.matches.get(match.id);
+        await this.db.matches.put(toLocalMatchRecord(match, previousMatch));
+        await enqueueSyncOperation(this.db.syncQueue, {
+          kind: 'match-event-update',
+          teamId: match.teamId,
+          entityId: match.id,
+          match,
+          event,
+        });
+      },
+    );
+    this.sync.requestSync();
+  }
+
+  async importMatch(
+    match: Match,
+    events: readonly MatchEvent[],
+    newPlayers: readonly Player[],
+  ): Promise<void> {
+    await this.db.transaction(
+      'rw',
+      this.db.teams,
+      this.db.players,
+      this.db.matches,
+      this.db.events,
+      this.db.syncQueue,
+      async () => {
+        if (!(await this.db.teams.get(match.teamId)))
+          throw new Error('Import references missing team');
         for (const player of newPlayers) {
           await this.db.players.add(toLocalPlayerRecord(player, Date.now()));
           await enqueueSyncOperation(this.db.syncQueue, {
-            kind: 'player-upsert', teamId: player.teamId, entityId: player.id, player,
+            kind: 'player-upsert',
+            teamId: player.teamId,
+            entityId: player.id,
+            player,
           });
         }
         await assertMatchReferences(this.db, match);
@@ -294,7 +337,11 @@ export class OfflineMatchEventRepository implements MatchEventRepository {
         if (events.length > 0) await this.db.events.bulkAdd(events.map(toLocalMatchEventRecord));
         await this.db.matches.add(toLocalMatchRecord(match));
         await enqueueSyncOperation(this.db.syncQueue, {
-          kind: 'match-events-commit', teamId: match.teamId, entityId: match.id, match, events,
+          kind: 'match-events-commit',
+          teamId: match.teamId,
+          entityId: match.id,
+          match,
+          events,
         });
       },
     );

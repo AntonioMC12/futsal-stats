@@ -238,6 +238,10 @@ export class OfflineSyncService {
           operation.events.map((event) => ({ key: event.id, changes: { syncStatus: status } })),
         );
         return;
+      case 'match-event-update':
+        await this.db.matches.update(operation.match.id, { syncStatus: status });
+        await this.db.events.update(operation.event.id, { syncStatus: status });
+        return;
       case 'match-delete':
         return;
     }

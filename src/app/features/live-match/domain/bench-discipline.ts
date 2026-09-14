@@ -63,7 +63,8 @@ export function registerBenchDiscipline(
 
   const subject = validateSubject(input);
   if (!subject.ok) return subject;
-  const countsAsAccumulatedFoul = input.reason === 'protest';
+  // A disciplinary sanction on the bench never counts as a team accumulated foul by itself.
+  const countsAsAccumulatedFoul = false;
   const normalizedName = normalizeOptionalName(input.staffName);
 
   return ok({

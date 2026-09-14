@@ -2,6 +2,7 @@ import { formatGameClock } from '../../../core/clock/match-clock';
 import { MatchEvent } from '../../../shared/models/match-event';
 import { selectActiveEvents } from './derived-match-state';
 import { deriveDisciplinaryState } from './discipline';
+import { countsAsAccumulatedFoul } from './futsal-rules';
 
 export interface MatchTimelineItem {
   eventId: string;
@@ -61,6 +62,25 @@ export function eventLabel(
       return `Cambio: ${playerName(event.outPlayerId, playerNames)} → ${playerName(event.inPlayerId, playerNames)}`;
     case 'FOUL':
       return foulLabel(event, playerNames);
+    case 'DISCIPLINE': {
+      const card =
+        event.disciplinaryAction === 'yellow'
+          ? '🟨 Amarilla'
+          : event.disciplinaryAction === 'secondYellow'
+            ? '🟨🟨 Segunda amarilla · expulsado'
+            : '🟥 Roja directa';
+      const who =
+        event.team === 'home'
+          ? playerLabel(event.playerId ?? '', playerNames, playerNumbers)
+          : `rival #${event.opponentPlayerNumber}`;
+      const reason =
+        event.reason === 'protest'
+          ? 'Protesta'
+          : event.reason === 'delayRestart'
+            ? 'Retrasa la reanudación'
+            : 'Otra conducta';
+      return `${card} ${who} · ${reason}`;
+    }
     case 'BENCH_DISCIPLINE':
       return benchDisciplineLabel(event, playerNames, playerNumbers);
     case 'RED_CARD_REPLACEMENT':
@@ -97,12 +117,7 @@ function benchDisciplineLabel(
         ? `#${event.opponentPlayerNumber}`
         : `${staffRoleLabel(event.staffRole)}${event.staffName ? ` · ${event.staffName}` : ''}`;
   const reason = event.reason === 'protest' ? 'Protesta / desobediencia' : 'Otra conducta';
-  const foul = event.countsAsAccumulatedFoul
-    ? event.team === 'home'
-      ? ' · +1 falta'
-      : ' · +1 falta rival'
-    : '';
-  return `${card} ${side} · ${subject} · ${reason}${foul}`;
+  return `${card} ${side} · ${subject} · ${reason} · No acumulativa`;
 }
 
 function staffRoleLabel(
@@ -132,8 +147,9 @@ function foulLabel(
   event: Extract<MatchEvent, { type: 'FOUL' }>,
   playerNames: Readonly<Record<string, string>>,
 ): string {
+  const classification = countsAsAccumulatedFoul(event) ? 'Acumulativa' : 'No acumulativa';
   if (!event.playerId && (event.disciplinaryAction ?? 'none') === 'none') {
-    return `${event.team === 'home' ? 'Falta propia' : 'Falta rival'} · ${event.periodFoulNumber}ª`;
+    return `${event.team === 'home' ? 'Falta propia' : 'Falta rival'} · ${classification}`;
   }
   const who =
     event.team === 'home'
@@ -150,7 +166,7 @@ function foulLabel(
           : event.team === 'home'
             ? 'Falta propia'
             : 'Falta rival';
-  return `${prefix} ${who} · ${event.periodFoulNumber}ª`;
+  return `${prefix} ${who} · ${classification}`;
 }
 
 function playerName(playerId: string, playerNames: Readonly<Record<string, string>>): string {

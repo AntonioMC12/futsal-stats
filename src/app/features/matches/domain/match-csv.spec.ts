@@ -184,7 +184,7 @@ describe('match statistics CSV', () => {
     expect(csv).not.toContain('team-1');
     expect(csv).not.toContain(',p1,');
     expect(csv).toContain(
-      'entradas_en_pista,faltas,amarillas,segunda_amarilla,rojas_directas,expulsiones,' +
+      'entradas_en_pista,faltas,faltas_acumulables,infracciones_no_acumulables,amarillas,segunda_amarilla,rojas_directas,expulsiones,' +
         'faltas_equipo,faltas_rival,amarillas_equipo,amarillas_rival,' +
         'rojas_directas_equipo,rojas_directas_rival,expulsiones_equipo,expulsiones_rival',
     );

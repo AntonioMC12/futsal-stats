@@ -78,11 +78,22 @@ describe('offline-first match repositories', () => {
       expect(queued.operation.events.map(({ id }) => id)).toEqual(['event-1', 'event-2']);
     }
 
+    const corrected = { ...first, undone: true };
+    await events.updateEvent({ ...match, updatedAt: 4 }, corrected);
+    expect((await events.listByMatch(match.id)).find(({ id }) => id === corrected.id)).toEqual(
+      corrected,
+    );
+    const update = await db.syncQueue
+      .where('dedupeKey')
+      .equals(`match-event-update:${corrected.id}`)
+      .first();
+    expect(update?.operation).toMatchObject({ kind: 'match-event-update', event: corrected });
+
     db.close();
     db = new FutsalStatsDb();
     await db.open();
     expect(await db.events.count()).toBe(2);
-    expect(await db.syncQueue.count()).toBe(2);
+    expect(await db.syncQueue.count()).toBe(3);
   });
 
   it('rolls back local events and queue together when validation fails', async () => {

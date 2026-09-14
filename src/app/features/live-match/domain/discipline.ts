@@ -8,11 +8,14 @@ import {
   StaffRole,
 } from '../../../shared/models/match-event';
 import { selectActiveEvents } from './derived-match-state';
+import { countsAsAccumulatedFoul } from './futsal-rules';
 
 export const NUMERICAL_REDUCTION_DURATION_MS = 120_000;
 
 export interface PlayerDisciplineStatistics {
   fouls: number;
+  accumulatedFouls: number;
+  nonAccumulatedInfringements: number;
   yellowCards: number;
   secondYellowSendOffs: number;
   directRedCards: number;
@@ -21,6 +24,8 @@ export interface PlayerDisciplineStatistics {
 
 export interface TeamDisciplineStatistics {
   fouls: number;
+  accumulatedFouls: number;
+  nonAccumulatedInfringements: number;
   yellowCards: number;
   secondYellowSendOffs: number;
   directRedCards: number;
@@ -95,17 +100,23 @@ export function deriveDisciplinaryState(
   for (const event of selectActiveEvents(events)) {
     if (event.type === 'FOUL') {
       const action = event.disciplinaryAction ?? 'none';
-      if (event.accumulated !== false) {
-        teams[event.team].fouls += 1;
+      const accumulated = countsAsAccumulatedFoul(event);
+      teams[event.team].fouls += 1;
+      teams[event.team][accumulated ? 'accumulatedFouls' : 'nonAccumulatedInfringements'] += 1;
+      const foulPlayerId = event.foulPlayerId ?? event.playerId;
+      if (event.team === 'home' && foulPlayerId) {
+        const offender = (players[foulPlayerId] ??= emptyStatistics());
+        offender.fouls += 1;
+        offender[accumulated ? 'accumulatedFouls' : 'nonAccumulatedInfringements'] += 1;
       }
       if (event.team === 'home' && event.playerId) {
-        const player = (players[event.playerId] ??= emptyStatistics());
-        if (event.accumulated !== false) player.fouls += 1;
-        applyAction(player, action);
+        const disciplinedPlayer = (players[event.playerId] ??= emptyStatistics());
+        applyAction(disciplinedPlayer, action);
       }
       if (event.team === 'away' && event.opponentPlayerNumber !== undefined) {
         const opponent = ensureOpponentPlayer(opponentPlayers, event.opponentPlayerNumber);
-        if (event.accumulated !== false) opponent.fouls += 1;
+        opponent.fouls += 1;
+        opponent[accumulated ? 'accumulatedFouls' : 'nonAccumulatedInfringements'] += 1;
         applyAction(opponent, action);
         if (isSendOff(action)) opponent.sentOff = true;
       }
@@ -126,9 +137,35 @@ export function deriveDisciplinaryState(
       continue;
     }
 
+    if (event.type === 'DISCIPLINE') {
+      const action = event.disciplinaryAction;
+      applyAction(teams[event.team], action);
+      if (event.team === 'home' && event.playerId) {
+        const player = (players[event.playerId] ??= emptyStatistics());
+        applyAction(player, action);
+        if (isSendOff(action)) sentOffPlayerIds.add(event.playerId);
+      } else if (event.team === 'away' && event.opponentPlayerNumber !== undefined) {
+        const opponent = ensureOpponentPlayer(opponentPlayers, event.opponentPlayerNumber);
+        applyAction(opponent, action);
+        if (isSendOff(action)) opponent.sentOff = true;
+      }
+      if (isSendOff(action)) {
+        reductions.push({
+          eventId: event.id,
+          team: event.team,
+          playerId: event.playerId,
+          opponentPlayerNumber: event.opponentPlayerNumber,
+          source: action,
+          startedAtMatchElapsedMs: event.matchElapsedMs ?? 0,
+          status: 'active',
+          remainingMs: NUMERICAL_REDUCTION_DURATION_MS,
+        });
+      }
+      continue;
+    }
+
     if (event.type === 'BENCH_DISCIPLINE') {
       const action = event.disciplinaryAction;
-      if (event.countsAsAccumulatedFoul) teams[event.team].fouls += 1;
       applyAction(teams[event.team], action);
 
       if (event.subjectKind === 'player' && event.playerId) {
@@ -291,7 +328,15 @@ export function registerRedCardReplacement(
 }
 
 function emptyStatistics(): PlayerDisciplineStatistics {
-  return { fouls: 0, yellowCards: 0, secondYellowSendOffs: 0, directRedCards: 0, sendOffs: 0 };
+  return {
+    fouls: 0,
+    accumulatedFouls: 0,
+    nonAccumulatedInfringements: 0,
+    yellowCards: 0,
+    secondYellowSendOffs: 0,
+    directRedCards: 0,
+    sendOffs: 0,
+  };
 }
 
 function ensureOpponentPlayer(

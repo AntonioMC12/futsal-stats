@@ -40,6 +40,9 @@ export async function assertEventReferences(
     if (event.matchId !== match.id) {
       throw new Error(`MatchEvent ${event.id} references a different Match`);
     }
+    if (event.relatedEventId && !eventExists(event.relatedEventId)) {
+      throw new Error(`MatchEvent ${event.id} references missing related event`);
+    }
     switch (event.type) {
       case 'PLAYER_ENTERED':
       case 'PLAYER_LEFT':
@@ -50,6 +53,10 @@ export async function assertEventReferences(
         assertPlayer(event.inPlayerId);
         break;
       case 'FOUL':
+        assertPlayer(event.foulPlayerId);
+        assertPlayer(event.playerId);
+        break;
+      case 'DISCIPLINE':
       case 'BENCH_DISCIPLINE':
       case 'RED_CARD_REPLACEMENT':
         assertPlayer(event.playerId);

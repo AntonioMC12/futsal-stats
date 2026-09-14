@@ -182,6 +182,8 @@ function referencedPlayerIds(event: MatchEvent): string[] {
     case 'SUBSTITUTION':
       return [event.outPlayerId, event.inPlayerId];
     case 'FOUL':
+      return [event.foulPlayerId, event.playerId].filter((id): id is string => Boolean(id));
+    case 'DISCIPLINE':
     case 'BENCH_DISCIPLINE':
     case 'RED_CARD_REPLACEMENT':
       return event.playerId ? [event.playerId] : [];
@@ -197,9 +199,10 @@ function referencedPlayerIds(event: MatchEvent): string[] {
 }
 
 function referencedEventIds(event: MatchEvent): string[] {
-  if (event.type === 'EVENT_UNDONE') return [event.targetEventId];
-  if (event.type === 'RED_CARD_REPLACEMENT') return [event.reductionEventId];
-  return [];
+  const related = event.relatedEventId ? [event.relatedEventId] : [];
+  if (event.type === 'EVENT_UNDONE') return [event.targetEventId, ...related];
+  if (event.type === 'RED_CARD_REPLACEMENT') return [event.reductionEventId, ...related];
+  return related;
 }
 
 function rewriteEvent(
@@ -210,6 +213,7 @@ function rewriteEvent(
 ): MatchEvent {
   const id = requiredMappedId(eventIds, event.id, 'MatchEvent');
   const matchId = requiredMappedId(matchIds, event.matchId, 'Match');
+  const relatedEventId = optionalMappedId(eventIds, event.relatedEventId, 'MatchEvent');
   switch (event.type) {
     case 'PLAYER_ENTERED':
     case 'PLAYER_LEFT':
@@ -217,6 +221,7 @@ function rewriteEvent(
         ...event,
         id,
         matchId,
+        relatedEventId,
         playerId: requiredMappedId(playerIds, event.playerId, 'Player'),
       };
     case 'SUBSTITUTION':
@@ -224,15 +229,26 @@ function rewriteEvent(
         ...event,
         id,
         matchId,
+        relatedEventId,
         outPlayerId: requiredMappedId(playerIds, event.outPlayerId, 'Player'),
         inPlayerId: requiredMappedId(playerIds, event.inPlayerId, 'Player'),
       };
     case 'FOUL':
+      return {
+        ...event,
+        id,
+        matchId,
+        relatedEventId,
+        foulPlayerId: optionalMappedId(playerIds, event.foulPlayerId, 'Player'),
+        playerId: optionalMappedId(playerIds, event.playerId, 'Player'),
+      };
+    case 'DISCIPLINE':
     case 'BENCH_DISCIPLINE':
       return {
         ...event,
         id,
         matchId,
+        relatedEventId,
         playerId: optionalMappedId(playerIds, event.playerId, 'Player'),
       };
     case 'RED_CARD_REPLACEMENT':
@@ -240,6 +256,7 @@ function rewriteEvent(
         ...event,
         id,
         matchId,
+        relatedEventId,
         reductionEventId: requiredMappedId(eventIds, event.reductionEventId, 'MatchEvent'),
         playerId: optionalMappedId(playerIds, event.playerId, 'Player'),
       };
@@ -248,6 +265,7 @@ function rewriteEvent(
         ...event,
         id,
         matchId,
+        relatedEventId,
         scorerPlayerId: optionalMappedId(playerIds, event.scorerPlayerId, 'Player'),
         lineupPlayerIds: event.lineupPlayerIds.map((id) =>
           requiredMappedId(playerIds, id, 'Player'),
@@ -258,6 +276,7 @@ function rewriteEvent(
         ...event,
         id,
         matchId,
+        relatedEventId,
         lineupPlayerIds: event.lineupPlayerIds.map((id) =>
           requiredMappedId(playerIds, id, 'Player'),
         ),
@@ -267,10 +286,11 @@ function rewriteEvent(
         ...event,
         id,
         matchId,
+        relatedEventId,
         targetEventId: requiredMappedId(eventIds, event.targetEventId, 'MatchEvent'),
       };
     default:
-      return { ...event, id, matchId };
+      return { ...event, id, matchId, relatedEventId };
   }
 }
 

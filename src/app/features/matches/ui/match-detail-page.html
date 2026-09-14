@@ -85,6 +85,8 @@
                   <th>Goles</th>
                   <th>+/−</th>
                   <th>Faltas</th>
+                  <th>Acumulables</th>
+                  <th>No acumulables</th>
                   <th>Tarjetas</th>
                 </tr>
               </thead>
@@ -103,6 +105,8 @@
                       {{ row.statistics!.plusMinus > 0 ? '+' : '' }}{{ row.statistics!.plusMinus }}
                     </td>
                     <td>{{ row.statistics!.fouls }}</td>
+                    <td>{{ row.statistics!.accumulatedFouls }}</td>
+                    <td>{{ row.statistics!.nonAccumulatedInfringements }}</td>
                     <td>{{ row.statistics!.yellowCards }}A · {{ row.statistics!.sendOffs }}R</td>
                   </tr>
                 }

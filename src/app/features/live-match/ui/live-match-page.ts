@@ -6,6 +6,7 @@ import {
   BenchDisciplineAction,
   BenchDisciplineReason,
   DisciplinaryAction,
+  DisciplineReason,
   FoulTeam,
   MatchEventType,
   StaffRole,
@@ -16,6 +17,7 @@ import { SystemNotificationService } from '../../../core/notifications/system-no
 import { BenchDisciplineSubject, createStaffIdentityKey } from '../domain/bench-discipline';
 import { PlayerMatchDetailComponent } from './player-match-detail';
 import type { PlayerMatchStatistics } from '../domain/match-statistics';
+import type { EditableYellowCardViewItem } from '../domain/discipline-view';
 import { MatchDate, matchDateTimestamp } from '../../../shared/models/match';
 import { OfflineSyncService } from '../../../core/sync/offline-sync.service';
 
@@ -48,6 +50,9 @@ export class LiveMatchPage {
   protected readonly confirmAbandon = signal(false);
   protected readonly confirmFinish = signal(false);
   protected readonly foulTeam = signal<FoulTeam | null>(null);
+  protected readonly foulMode = signal<'foul' | 'card'>('foul');
+  protected readonly foulAccumulated = signal(true);
+  protected readonly standaloneDisciplineReason = signal<DisciplineReason>('protest');
   protected readonly selectedFoulPlayerId = signal<string | null>(null);
   protected readonly disciplineSaving = signal(false);
   protected readonly replacingReductionId = signal<string | null>(null);
@@ -61,6 +66,25 @@ export class LiveMatchPage {
   protected readonly initialLineupIds = signal<Set<string>>(new Set());
   protected readonly initialLineupCount = computed(() => this.initialLineupIds().size);
   protected readonly detailPlayerId = signal<string | null>(null);
+  protected readonly editingYellowCardId = signal<string | null>(null);
+  protected readonly editYellowCardPlayerId = signal<string | null>(null);
+  protected readonly editYellowCardSearch = signal('');
+  protected readonly editingYellowCard = computed(() =>
+    this.store
+      .disciplineView()
+      .editableYellowCards.find((card) => card.eventId === this.editingYellowCardId()),
+  );
+  protected readonly eligibleYellowCardPlayers = computed(() => {
+    const search = this.editYellowCardSearch().trim().toLocaleLowerCase('es-ES');
+    return [...this.store.players()]
+      .filter(
+        (player) =>
+          !search ||
+          player.name.toLocaleLowerCase('es-ES').includes(search) ||
+          String(player.number).includes(search),
+      )
+      .sort((left, right) => left.number - right.number || left.name.localeCompare(right.name));
+  });
   protected playerDetailTrigger: HTMLElement | null = null;
   protected readonly benchDisciplineOpen = signal(false);
   protected readonly benchDisciplineTeam = signal<FoulTeam>('home');
@@ -83,6 +107,7 @@ export class LiveMatchPage {
   ];
   private substitutionTrigger: HTMLElement | null = null;
   private goalTrigger: HTMLElement | null = null;
+  private editYellowCardTrigger: HTMLElement | null = null;
   readonly matchId = input.required<string>();
   protected readonly substitutionOutPlayer = computed(() =>
     this.store.currentLineup().find((player) => player.id === this.selectedOutPlayerId()),
@@ -328,6 +353,38 @@ export class LiveMatchPage {
     this.closeGoalSelector();
   }
 
+  protected openYellowCardEditor(card: EditableYellowCardViewItem, event: Event): void {
+    if (this.store.match()?.status === 'finished' || this.store.saving()) return;
+    this.editYellowCardTrigger = event.currentTarget as HTMLElement;
+    this.editingYellowCardId.set(card.eventId);
+    this.editYellowCardPlayerId.set(card.playerId);
+    this.editYellowCardSearch.set('');
+  }
+
+  protected cancelYellowCardEditor(): void {
+    if (this.store.saving()) return;
+    this.closeYellowCardEditor();
+  }
+
+  protected async saveYellowCardPlayer(): Promise<void> {
+    const eventId = this.editingYellowCardId();
+    const playerId = this.editYellowCardPlayerId();
+    if (!eventId || !playerId || this.store.saving()) return;
+    if (await this.store.editYellowCard(eventId, playerId)) {
+      this.notifications.success('Tarjeta amarilla actualizada');
+      this.closeYellowCardEditor();
+    }
+  }
+
+  private closeYellowCardEditor(): void {
+    this.editingYellowCardId.set(null);
+    this.editYellowCardPlayerId.set(null);
+    this.editYellowCardSearch.set('');
+    const trigger = this.editYellowCardTrigger;
+    this.editYellowCardTrigger = null;
+    queueMicrotask(() => trigger?.focus());
+  }
+
   private closeGoalSelector(): void {
     this.goalSelectorOpen.set(false);
     const trigger = this.goalTrigger;
@@ -350,10 +407,13 @@ export class LiveMatchPage {
     }
   }
 
-  protected openFoul(team: FoulTeam): void | Promise<void> {
+  protected openFoul(team: FoulTeam, mode: 'foul' | 'card' = 'foul'): void | Promise<void> {
     if (!this.store.canRegisterFoul() || this.store.saving()) return;
     return this.runAfterClockStopped('FOUL', () => {
       this.selectedFoulPlayerId.set(null);
+      this.foulMode.set(mode);
+      this.foulAccumulated.set(true);
+      this.standaloneDisciplineReason.set('protest');
       this.resetOpponentSelection();
       this.foulTeam.set(team);
     });
@@ -417,6 +477,7 @@ export class LiveMatchPage {
   }
 
   protected chooseFoulAction(action: DisciplinaryAction): void {
+    if (this.foulMode() === 'card' && action === 'none') return;
     if (this.foulTeam() === 'away' && action !== 'none') {
       this.pendingOpponentAction.set(action);
       this.selectedOpponentNumber.set(null);
@@ -461,11 +522,31 @@ export class LiveMatchPage {
     this.disciplineSaving.set(true);
     try {
       const saved =
-        team === 'home'
-          ? await this.store.registerTeamFoul(this.selectedFoulPlayerId() ?? undefined, action)
-          : await this.store.registerOpponentFoul(action, opponentPlayerNumber);
+        this.foulMode() === 'card' && action !== 'none'
+          ? await this.store.registerStandaloneDiscipline(
+              team,
+              action,
+              this.standaloneDisciplineReason(),
+              this.selectedFoulPlayerId() ?? undefined,
+              opponentPlayerNumber,
+            )
+          : team === 'home'
+            ? await this.store.registerTeamFoul(
+                this.selectedFoulPlayerId() ?? undefined,
+                action,
+                this.foulAccumulated(),
+              )
+            : await this.store.registerOpponentFoul(
+                action,
+                opponentPlayerNumber,
+                this.foulAccumulated(),
+              );
       if (saved) {
-        this.showActionFeedback(action === 'none' ? 'Falta registrada' : 'Tarjeta registrada');
+        this.showActionFeedback(
+          this.foulMode() === 'card' || action !== 'none'
+            ? 'Tarjeta registrada'
+            : 'Falta registrada',
+        );
         this.cancelFoulAfterSave();
       }
     } finally {
@@ -499,7 +580,9 @@ export class LiveMatchPage {
 
   @HostListener('document:keydown.escape')
   protected closeSubstitutionOnEscape(): void {
-    if (this.initialLineupOpen() && !this.store.saving()) {
+    if (this.editingYellowCardId() && !this.store.saving()) {
+      this.cancelYellowCardEditor();
+    } else if (this.initialLineupOpen() && !this.store.saving()) {
       this.cancelInitialLineup();
     } else if (this.detailPlayerId()) {
       this.detailPlayerId.set(null);
@@ -566,7 +649,7 @@ export class LiveMatchPage {
   protected timelineSymbol(type: MatchEventType, label: string): string {
     if (type === 'GOAL_FOR' || type === 'GOAL_AGAINST') return '⚽';
     if (type === 'SUBSTITUTION' || type === 'RED_CARD_REPLACEMENT') return '⇄';
-    if (type === 'FOUL' || type === 'BENCH_DISCIPLINE') {
+    if (type === 'FOUL' || type === 'DISCIPLINE' || type === 'BENCH_DISCIPLINE') {
       if (label.includes('Roja')) return '🟥';
       if (label.includes('Amarilla')) return '🟨';
       return '⚠';
@@ -577,7 +660,8 @@ export class LiveMatchPage {
   protected timelineKind(type: MatchEventType): string {
     if (type === 'GOAL_FOR' || type === 'GOAL_AGAINST') return 'goal';
     if (type === 'SUBSTITUTION' || type === 'RED_CARD_REPLACEMENT') return 'change';
-    if (type === 'FOUL' || type === 'BENCH_DISCIPLINE') return 'discipline';
+    if (type === 'FOUL' || type === 'DISCIPLINE' || type === 'BENCH_DISCIPLINE')
+      return 'discipline';
     return 'system';
   }
 
@@ -591,6 +675,7 @@ export class LiveMatchPage {
 
   private cancelFoulAfterSave(): void {
     this.foulTeam.set(null);
+    this.foulMode.set('foul');
     this.selectedFoulPlayerId.set(null);
     this.resetOpponentSelection();
   }

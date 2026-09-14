@@ -56,6 +56,9 @@ export class SyncRemoteGateway {
       case 'match-events-commit':
         await this.events.commit(operation.match, operation.events);
         return;
+      case 'match-event-update':
+        await this.events.updateEvent(operation.match, operation.event);
+        return;
       case 'match-delete':
         await this.matches.delete(operation.entityId);
     }

@@ -82,6 +82,8 @@ describe('futsal discipline and numerical reductions', () => {
 
     expect(state.players['p1']).toEqual({
       fouls: 2,
+      accumulatedFouls: 2,
+      nonAccumulatedInfringements: 0,
       yellowCards: 2,
       secondYellowSendOffs: 1,
       directRedCards: 0,

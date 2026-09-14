@@ -884,12 +884,104 @@
   box-shadow: none;
 }
 .bench-discipline-toggle .is-selected,
+.record-mode-options .is-selected,
 .staff-role-options .is-selected,
 .disciplinary-options .is-selected,
 .bench-reason-options .is-selected {
   border-color: var(--ds-primary);
   background: var(--ds-primary-soft);
   color: var(--ds-primary);
+}
+
+.record-mode-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ds-space-2);
+  margin-bottom: var(--ds-space-4);
+}
+
+.yellow-card-history {
+  margin-bottom: var(--ds-space-5);
+}
+
+.yellow-card-history > header,
+.yellow-card-row,
+.edit-yellow-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+}
+
+.yellow-card-row .edit-yellow-card {
+  min-width: 5.5rem;
+  min-height: 2.75rem;
+}
+
+.edit-yellow-card-sheet {
+  max-width: 38rem;
+}
+
+.edit-yellow-card-current {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ds-space-3);
+  margin: var(--ds-space-4) 0;
+}
+
+.edit-yellow-card-current div,
+.edit-yellow-card-search {
+  display: grid;
+  gap: var(--ds-space-1);
+}
+
+.edit-yellow-card-current dt,
+.edit-yellow-card-search {
+  color: var(--ds-text-muted);
+  font-size: 0.875rem;
+}
+
+.edit-yellow-card-current dd {
+  margin: 0;
+  color: var(--ds-text);
+  font-weight: 700;
+}
+
+.edit-yellow-card-search input {
+  min-height: 2.75rem;
+}
+
+.edit-yellow-card-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ds-space-2);
+  max-height: min(45vh, 24rem);
+  margin: var(--ds-space-3) 0;
+  overflow-y: auto;
+}
+
+.edit-yellow-card-actions {
+  position: sticky;
+  bottom: 0;
+  padding-top: var(--ds-space-3);
+  background: var(--ds-surface);
+}
+
+.edit-yellow-card-actions .btn {
+  flex: 1;
+  min-height: 3rem;
+}
+
+@media (max-width: 560px) {
+  .yellow-card-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .edit-yellow-card-current,
+  .edit-yellow-card-options {
+    grid-template-columns: 1fr;
+  }
 }
 .bench-discipline-subjects {
   margin-top: var(--ds-space-3);

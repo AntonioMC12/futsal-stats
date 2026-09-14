@@ -16,6 +16,7 @@ import { Match } from '../../../shared/models/match';
 import {
   BenchDisciplineAction,
   BenchDisciplineReason,
+  DisciplineReason,
   DisciplinaryAction,
   FoulTeam,
   MatchEvent,
@@ -25,6 +26,7 @@ import { deriveMatchState } from '../domain/derived-match-state';
 import { deriveDisciplinaryState, registerRedCardReplacement } from '../domain/discipline';
 import { createDisciplineView } from '../domain/discipline-view';
 import { registerFoul as createFoul } from '../domain/foul';
+import { registerDisciplinarySanction as createDisciplinarySanction } from '../domain/disciplinary-sanction';
 import { GoalSide, registerGoal as createGoal } from '../domain/goal';
 import {
   finishPeriod,
@@ -49,6 +51,14 @@ import {
   createStaffIdentityKey,
   registerBenchDiscipline as createBenchDiscipline,
 } from '../domain/bench-discipline';
+import {
+  DisciplineUpdateError,
+  EditYellowCardUseCase,
+  InvalidDisciplinaryPlayerError,
+  MatchReadonlyError,
+  PlayerNotInMatchError,
+  YellowCardNotFoundError,
+} from './edit-yellow-card.use-case';
 
 @Injectable()
 export class LiveMatchStore {
@@ -56,6 +66,7 @@ export class LiveMatchStore {
   private readonly eventStore = inject(MATCH_EVENT_REPOSITORY);
   private readonly playerRepository = inject(PLAYER_REPOSITORY);
   private readonly deleteMatchService = inject(DeleteMatchService);
+  private readonly editYellowCardUseCase = inject(EditYellowCardUseCase);
   private readonly destroyRef = inject(DestroyRef);
   private readonly now = signal(Date.now());
   private commandInProgress = false;
@@ -410,15 +421,111 @@ export class LiveMatchStore {
   registerTeamFoul(
     playerId?: string,
     disciplinaryAction: DisciplinaryAction = 'none',
+    countsAsAccumulatedFoul = true,
   ): Promise<boolean> {
-    return this.registerFoul('home', disciplinaryAction, playerId);
+    return this.registerFoul(
+      'home',
+      disciplinaryAction,
+      playerId,
+      undefined,
+      countsAsAccumulatedFoul,
+    );
   }
 
   registerOpponentFoul(
     disciplinaryAction: DisciplinaryAction = 'none',
     opponentPlayerNumber?: number,
+    countsAsAccumulatedFoul = true,
   ): Promise<boolean> {
-    return this.registerFoul('away', disciplinaryAction, undefined, opponentPlayerNumber);
+    return this.registerFoul(
+      'away',
+      disciplinaryAction,
+      undefined,
+      opponentPlayerNumber,
+      countsAsAccumulatedFoul,
+    );
+  }
+
+  async registerStandaloneDiscipline(
+    team: FoulTeam,
+    disciplinaryAction: BenchDisciplineAction,
+    reason: DisciplineReason,
+    playerId?: string,
+    opponentPlayerNumber?: number,
+  ): Promise<boolean> {
+    const match = this.match();
+    if (!match || this.commandInProgress) return false;
+    const homeSubject = this.disciplinaryState().players[playerId ?? ''];
+    const awaySubject = this.disciplinaryState().opponentPlayers.find(
+      (player) => player.jerseyNumber === opponentPlayerNumber,
+    );
+    this.commandInProgress = true;
+    this.saving.set(true);
+    this.error.set(null);
+    const timestamp = Date.now();
+    try {
+      const result = createDisciplinarySanction({
+        match,
+        team,
+        playerId,
+        opponentPlayerNumber,
+        disciplinaryAction,
+        reason,
+        currentLineupPlayerIds: this.lineupPlayerIds(),
+        currentYellowCards:
+          team === 'home' ? (homeSubject?.yellowCards ?? 0) : (awaySubject?.yellowCards ?? 0),
+        subjectSentOff:
+          team === 'home' ? (homeSubject?.sendOffs ?? 0) > 0 : (awaySubject?.sentOff ?? false),
+        gameClockMs: projectRemaining(match.clock, timestamp),
+        matchElapsedMs: this.matchElapsedAt(timestamp),
+        timestamp,
+        sequence: this.nextSequence(this.events()),
+        eventId: createId(),
+      });
+      if (!result.ok) {
+        this.error.set(result.error);
+        return false;
+      }
+      await this.eventStore.commit(result.value.match, [result.value.event]);
+      this.now.set(timestamp);
+      this.match.set(result.value.match);
+      this.events.update((events) => [...events, result.value.event]);
+      return true;
+    } catch {
+      this.error.set('No se ha podido guardar la tarjeta.');
+      return false;
+    } finally {
+      this.commandInProgress = false;
+      this.saving.set(false);
+    }
+  }
+
+  async editYellowCard(eventId: string, newPlayerId: string): Promise<boolean> {
+    const match = this.match();
+    if (!match || this.commandInProgress) return false;
+    this.commandInProgress = true;
+    this.saving.set(true);
+    this.error.set(null);
+    this.notice.set(null);
+    try {
+      const result = await this.editYellowCardUseCase.execute({
+        matchId: match.id,
+        eventId,
+        newPlayerId,
+      });
+      this.match.set(result.match);
+      this.events.update((events) =>
+        events.map((event) => (event.id === result.event.id ? result.event : event)),
+      );
+      this.notice.set('Tarjeta amarilla actualizada.');
+      return true;
+    } catch (error) {
+      this.error.set(editYellowCardErrorMessage(error));
+      return false;
+    } finally {
+      this.commandInProgress = false;
+      this.saving.set(false);
+    }
   }
 
   async registerBenchDiscipline(
@@ -665,6 +772,7 @@ export class LiveMatchStore {
     disciplinaryAction: DisciplinaryAction,
     playerId?: string,
     opponentPlayerNumber?: number,
+    countsAsAccumulatedFoul = true,
   ): Promise<boolean> {
     const match = this.match();
     if (!match || this.commandInProgress) {
@@ -696,6 +804,7 @@ export class LiveMatchStore {
           ? (this.disciplinaryState().players[playerId]?.yellowCards ?? 0)
           : 0,
         disciplinaryAction,
+        countsAsAccumulatedFoul,
         matchElapsedMs: this.matchElapsedAt(timestamp),
         gameClockMs: projectRemaining(match.clock, timestamp),
         timestamp,
@@ -868,4 +977,17 @@ function labelFor(match: Match | null): string {
     default:
       return '';
   }
+}
+
+function editYellowCardErrorMessage(error: unknown): string {
+  if (
+    error instanceof YellowCardNotFoundError ||
+    error instanceof InvalidDisciplinaryPlayerError ||
+    error instanceof PlayerNotInMatchError ||
+    error instanceof MatchReadonlyError ||
+    error instanceof DisciplineUpdateError
+  ) {
+    return error.message;
+  }
+  return 'No se ha podido actualizar la tarjeta.';
 }

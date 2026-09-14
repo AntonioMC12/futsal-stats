@@ -42,13 +42,40 @@ export class DexieMatchEventRepository implements MatchEventRepository {
     );
   }
 
-  async importMatch(match: Match, events: readonly MatchEvent[], newPlayers: readonly Player[]): Promise<void> {
+  async updateEvent(match: Match, event: MatchEvent): Promise<void> {
+    await this.db.transaction('rw', this.db.matches, this.db.events, async () => {
+      await assertEventReferences(this.db, match, [event]);
+      const previous = await this.db.events.get(event.id);
+      if (!previous || previous.matchId !== match.id) throw new Error('Match event not found');
+      await this.db.events.put({
+        ...toLocalMatchEventRecord(event),
+        createdAt: previous.createdAt,
+        updatedAt: Date.now(),
+        revision: previous.revision + 1,
+      });
+      const previousMatch = await this.db.matches.get(match.id);
+      await this.db.matches.put(toLocalMatchRecord(match, previousMatch));
+    });
+  }
+
+  async importMatch(
+    match: Match,
+    events: readonly MatchEvent[],
+    newPlayers: readonly Player[],
+  ): Promise<void> {
     await this.db.transaction(
-      'rw', this.db.teams, this.db.players, this.db.matches, this.db.events,
+      'rw',
+      this.db.teams,
+      this.db.players,
+      this.db.matches,
+      this.db.events,
       async () => {
-        if (!(await this.db.teams.get(match.teamId))) throw new Error('Import references missing team');
+        if (!(await this.db.teams.get(match.teamId)))
+          throw new Error('Import references missing team');
         if (newPlayers.length > 0) {
-          await this.db.players.bulkPut(newPlayers.map((player) => toLocalPlayerRecord(player, Date.now())));
+          await this.db.players.bulkPut(
+            newPlayers.map((player) => toLocalPlayerRecord(player, Date.now())),
+          );
         }
         await assertMatchReferences(this.db, match);
         await assertEventReferences(this.db, match, events);

@@ -1,6 +1,6 @@
 import { MatchEvent } from '../../../shared/models/match-event';
 
-export const FUTSAL_STATS_CSV_SCHEMA_VERSION = 'futsal-stats-csv/1';
+export const FUTSAL_STATS_CSV_SCHEMA_VERSION = 'futsal-stats-csv/2';
 export const MAX_MATCH_CSV_BYTES = 5 * 1024 * 1024;
 
 export type ImportIssueSeverity = 'info' | 'warning' | 'error' | 'fatal';
@@ -80,4 +80,3 @@ export class DuplicateImportedMatchError extends Error {
 }
 export class PlayerResolutionError extends Error {}
 export class ImportPersistenceError extends Error {}
-

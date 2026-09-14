@@ -16,6 +16,13 @@ export type SyncOperation =
       match: Match;
       events: readonly MatchEvent[];
     }
+  | {
+      kind: 'match-event-update';
+      teamId: string;
+      entityId: string;
+      match: Match;
+      event: MatchEvent;
+    }
   | { kind: 'match-delete'; teamId: string; entityId: string };
 
 export type SyncQueueStatus = 'pending' | 'failed';
@@ -52,6 +59,8 @@ export function syncDedupeKey(operation: SyncOperation): string {
       return `match:${operation.entityId}`;
     case 'match-events-commit':
       return `match-events:${operation.entityId}`;
+    case 'match-event-update':
+      return `match-event-update:${operation.event.id}`;
   }
 }
 
@@ -79,6 +88,8 @@ export function operationLabel(operation: SyncOperation): string {
       return 'Partido';
     case 'match-events-commit':
       return `${operation.events.length} acción${operation.events.length === 1 ? '' : 'es'} de partido`;
+    case 'match-event-update':
+      return 'Corrección disciplinaria';
     case 'match-delete':
       return 'Eliminación de partido';
   }
