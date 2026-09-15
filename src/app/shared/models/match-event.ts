@@ -93,6 +93,8 @@ export interface FoulEvent extends MatchEventBase {
   team: FoulTeam;
   /** Original offender when an embedded card is later reassigned. */
   foulPlayerId?: string;
+  /** Original rival offender when an embedded card is later reassigned. */
+  foulOpponentPlayerNumber?: number;
   playerId?: string;
   opponentPlayerNumber?: number;
   periodFoulNumber: number;

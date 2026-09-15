@@ -449,6 +449,8 @@ describe('LiveMatchStore', () => {
     });
     expect(store.playerPlayingTimes()['p1']?.playedMs).toBe(5_000);
     expect(store.playerPlayingTimes()['p6']?.playedMs).toBe(0);
+    expect(store.currentStintDuration('p2')).toBe(5_000);
+    expect(store.currentStintDuration('p6')).toBe(0);
 
     vi.setSystemTime(16_000);
     expect(await store.registerGoalFor('p6')).toBe(true);
@@ -462,6 +464,7 @@ describe('LiveMatchStore', () => {
     expect(store.statistics().players['p1']?.goalsForOnCourt).toBe(0);
     expect(store.statistics().players['p6']?.goalsForOnCourt).toBe(1);
     expect(store.statistics().players['p6']?.goals).toBe(1);
+    expect(store.currentStintDuration('p6')).toBe(1_000);
     expect(store.lineupStatistics().find((lineup) => lineup.id === 'p2|p3|p4|p5|p6')).toMatchObject(
       { playedMs: 1_000, goalsFor: 1, goalsAgainst: 0, plusMinus: 1 },
     );

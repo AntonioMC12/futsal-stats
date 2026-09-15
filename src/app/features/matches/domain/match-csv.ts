@@ -115,6 +115,7 @@ export function serializeMatchCsv(exportData: MatchStatisticsExport): string {
       'foulPlayerId',
       'foulPlayerNumber',
       'foulPlayerName',
+      'foulOpponentPlayerNumber',
       'secondaryPlayerId',
       'secondaryPlayerNumber',
       'secondaryPlayerName',

@@ -8,29 +8,28 @@ import { Match } from '../../../shared/models/match';
 import { MatchEvent } from '../../../shared/models/match-event';
 import { selectActiveEvents } from '../domain/derived-match-state';
 
-export interface EditYellowCardCommand {
+interface EditYellowCardCommandBase {
   matchId: string;
   eventId: string;
-  newPlayerId: string;
 }
+
+export type EditYellowCardCommand = EditYellowCardCommandBase &
+  (
+    | { newPlayerId: string; newOpponentPlayerNumber?: never }
+    | { newPlayerId?: never; newOpponentPlayerNumber: number }
+  );
 
 export interface EditYellowCardResult {
   match: Match;
   event: EditableYellowCardEvent;
-  previousPlayerId: string;
+  previousPlayerId?: string;
+  previousOpponentPlayerNumber?: number;
 }
 
 export type EditableYellowCardEvent =
-  | (Extract<MatchEvent, { type: 'FOUL' }> & { playerId: string; disciplinaryAction: 'yellow' })
-  | (Extract<MatchEvent, { type: 'DISCIPLINE' }> & {
-      playerId: string;
-      disciplinaryAction: 'yellow';
-    })
-  | (Extract<MatchEvent, { type: 'BENCH_DISCIPLINE' }> & {
-      subjectKind: 'player';
-      playerId: string;
-      disciplinaryAction: 'yellow';
-    });
+  | (Extract<MatchEvent, { type: 'FOUL' }> & { disciplinaryAction: 'yellow' })
+  | (Extract<MatchEvent, { type: 'DISCIPLINE' }> & { disciplinaryAction: 'yellow' })
+  | (Extract<MatchEvent, { type: 'BENCH_DISCIPLINE' }> & { disciplinaryAction: 'yellow' });
 
 export class YellowCardNotFoundError extends Error {}
 export class InvalidDisciplinaryPlayerError extends Error {}
@@ -50,14 +49,6 @@ export class EditYellowCardUseCase {
     if (match.status === 'finished') {
       throw new MatchReadonlyError('El partido está finalizado y no admite cambios.');
     }
-    if (!match.squadPlayerIds.includes(command.newPlayerId)) {
-      throw new PlayerNotInMatchError('El nuevo jugador no pertenece a la convocatoria.');
-    }
-    const [player] = await this.players.listByIds([command.newPlayerId]);
-    if (!player) {
-      throw new InvalidDisciplinaryPlayerError('El jugador seleccionado no está disponible.');
-    }
-
     const currentEvents = await this.events.listByMatch(match.id);
     const source = selectActiveEvents(currentEvents).find((event) => event.id === command.eventId);
     if (!source) throw new YellowCardNotFoundError('No se ha encontrado la tarjeta amarilla.');
@@ -65,16 +56,24 @@ export class EditYellowCardUseCase {
       throw new YellowCardNotFoundError('El evento seleccionado no es una amarilla editable.');
     }
 
+    if (source.team === 'home') {
+      if (!command.newPlayerId) {
+        throw new InvalidDisciplinaryPlayerError('Selecciona un jugador válido.');
+      }
+      if (!match.squadPlayerIds.includes(command.newPlayerId)) {
+        throw new PlayerNotInMatchError('El nuevo jugador no pertenece a la convocatoria.');
+      }
+      const [player] = await this.players.listByIds([command.newPlayerId]);
+      if (!player) {
+        throw new InvalidDisciplinaryPlayerError('El jugador seleccionado no está disponible.');
+      }
+    } else if (!isValidOpponentNumber(command.newOpponentPlayerNumber)) {
+      throw new InvalidDisciplinaryPlayerError('Introduce un dorsal rival entre 1 y 999.');
+    }
+
     const timestamp = Date.now();
     const updatedMatch = { ...match, updatedAt: timestamp };
-    const updatedEvent: EditableYellowCardEvent =
-      source.type === 'FOUL'
-        ? {
-            ...source,
-            foulPlayerId: source.foulPlayerId ?? source.playerId,
-            playerId: command.newPlayerId,
-          }
-        : { ...source, playerId: command.newPlayerId };
+    const updatedEvent = updateCardSubject(source, command);
     try {
       await this.events.updateEvent(updatedMatch, updatedEvent);
     } catch (cause) {
@@ -84,6 +83,7 @@ export class EditYellowCardUseCase {
       match: updatedMatch,
       event: updatedEvent,
       previousPlayerId: source.playerId,
+      previousOpponentPlayerNumber: source.opponentPlayerNumber,
     };
   }
 }
@@ -91,14 +91,44 @@ export class EditYellowCardUseCase {
 export function isEditableYellowCard(event: MatchEvent): event is EditableYellowCardEvent {
   if (event.type === 'FOUL' || event.type === 'DISCIPLINE') {
     return (
-      event.team === 'home' && event.disciplinaryAction === 'yellow' && Boolean(event.playerId)
+      event.disciplinaryAction === 'yellow' &&
+      (event.team === 'home' ? Boolean(event.playerId) : event.opponentPlayerNumber !== undefined)
     );
   }
   return (
     event.type === 'BENCH_DISCIPLINE' &&
-    event.team === 'home' &&
-    event.subjectKind === 'player' &&
     event.disciplinaryAction === 'yellow' &&
-    Boolean(event.playerId)
+    (event.team === 'home'
+      ? event.subjectKind === 'player' && Boolean(event.playerId)
+      : event.subjectKind === 'opponentPlayer' && event.opponentPlayerNumber !== undefined)
   );
+}
+
+function updateCardSubject(
+  source: EditableYellowCardEvent,
+  command: EditYellowCardCommand,
+): EditableYellowCardEvent {
+  if (source.team === 'home') {
+    const newPlayerId = command.newPlayerId!;
+    return source.type === 'FOUL'
+      ? {
+          ...source,
+          foulPlayerId: source.foulPlayerId ?? source.playerId,
+          playerId: newPlayerId,
+        }
+      : { ...source, playerId: newPlayerId };
+  }
+
+  const newOpponentPlayerNumber = command.newOpponentPlayerNumber!;
+  return source.type === 'FOUL'
+    ? {
+        ...source,
+        foulOpponentPlayerNumber: source.foulOpponentPlayerNumber ?? source.opponentPlayerNumber,
+        opponentPlayerNumber: newOpponentPlayerNumber,
+      }
+    : { ...source, opponentPlayerNumber: newOpponentPlayerNumber };
+}
+
+function isValidOpponentNumber(value: number | undefined): value is number {
+  return value !== undefined && Number.isSafeInteger(value) && value >= 1 && value <= 999;
 }

@@ -126,6 +126,10 @@ Faltas: por periodo según reglas; acumulado de periodo se deriva. Jugador opcio
 
 Único punto de comandos (`startClock`, `registerGoalFor`, `makeSubstitution`, `undoLastEvent`, …). Persiste vía repositorios. Los computed (`score`, `currentLineup`, `playerPlayingTime`, …) se calculan con funciones puras sobre eventos + proyección de reloj.
 
+El tiempo consecutivo del tramo actual de cada jugador en pista reutiliza la
+proyección de participación y el ticker global del reloj. Véase
+[Tiempo del tramo actual en pista](./on-court-stint-time.md).
+
 ## PWA
 
 Service Worker de Angular en producción. IndexedDB es la fuente local. Al abrir: si hay partido no `finished`, ofrecer **Continuar partido**.

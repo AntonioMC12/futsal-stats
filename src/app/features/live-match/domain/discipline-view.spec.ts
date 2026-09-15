@@ -100,6 +100,13 @@ describe('discipline view projection', () => {
       expect.objectContaining({ number: 7, fouls: 1, ordinaryYellowCards: 1 }),
     ]);
     expect(view.away.unattributedFouls).toBe(2);
+    expect(view.editableYellowCards).toEqual([
+      expect.objectContaining({
+        team: 'away',
+        opponentPlayerNumber: 7,
+        number: 7,
+      }),
+    ]);
   });
 
   it('shows bench discipline separately without adding protest cards to current-period totals', () => {

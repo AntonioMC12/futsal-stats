@@ -492,6 +492,14 @@
   white-space: nowrap;
 }
 
+.court-player .court-player-stint {
+  color: var(--ds-text);
+  font-size: clamp(0.68rem, 2.6vw, 0.82rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .court-player:disabled {
   cursor: default;
   opacity: 0.72;
@@ -900,12 +908,6 @@
   margin-bottom: var(--ds-space-4);
 }
 
-.yellow-card-history {
-  margin-bottom: var(--ds-space-5);
-}
-
-.yellow-card-history > header,
-.yellow-card-row,
 .edit-yellow-card-actions {
   display: flex;
   align-items: center;
@@ -913,7 +915,31 @@
   gap: var(--ds-space-3);
 }
 
-.yellow-card-row .edit-yellow-card {
+.yellow-card-edit-line {
+  width: 100%;
+  padding-top: var(--ds-space-2);
+  border-top: 1px solid var(--ds-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+}
+
+.yellow-card-edit-line__context {
+  min-width: 0;
+  display: grid;
+  gap: var(--ds-space-1);
+  color: var(--ds-text);
+  text-align: left;
+}
+
+.yellow-card-edit-line__context small {
+  color: var(--ds-text-muted);
+  font-weight: 600;
+}
+
+.yellow-card-edit-line .edit-yellow-card {
+  flex: 0 0 auto;
   min-width: 5.5rem;
   min-height: 2.75rem;
 }
@@ -973,11 +999,6 @@
 }
 
 @media (max-width: 560px) {
-  .yellow-card-row {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
   .edit-yellow-card-current,
   .edit-yellow-card-options {
     grid-template-columns: 1fr;

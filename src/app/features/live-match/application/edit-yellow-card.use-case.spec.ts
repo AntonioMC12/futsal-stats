@@ -15,6 +15,7 @@ import { CsvMatchImportParser } from '../../matches/data/csv-match-import-parser
 import {
   DisciplineUpdateError,
   EditYellowCardUseCase,
+  InvalidDisciplinaryPlayerError,
   MatchReadonlyError,
   PlayerNotInMatchError,
   YellowCardNotFoundError,
@@ -138,6 +139,79 @@ describe('EditYellowCardUseCase', () => {
     expect(state.players['p12']).toMatchObject({ fouls: 1, yellowCards: 0 });
     expect(state.players['p7']).toMatchObject({ fouls: 0, yellowCards: 1 });
     expect(state.teams.home).toMatchObject({ fouls: 1, yellowCards: 1 });
+  });
+
+  it('reassigns a rival yellow to another dorsal without changing the event', async () => {
+    const source = yellow({ team: 'away', playerId: undefined, opponentPlayerNumber: 12 });
+    const { useCase, updateEvent } = setup(match(), [source]);
+    const result = await useCase.execute({
+      matchId: 'match-1',
+      eventId: source.id,
+      newOpponentPlayerNumber: 7,
+    });
+
+    expect(result.event).toEqual({ ...source, opponentPlayerNumber: 7 });
+    expect(result.event).toMatchObject({
+      id: source.id,
+      gameClockMs: source.gameClockMs,
+      period: source.period,
+      relatedEventId: source.relatedEventId,
+      timestamp: source.timestamp,
+    });
+    expect(updateEvent).toHaveBeenCalledWith(result.match, result.event);
+  });
+
+  it('moves only an embedded rival yellow while retaining the original rival foul', async () => {
+    const source: MatchEvent = {
+      ...yellow({ team: 'away', playerId: undefined, opponentPlayerNumber: 12 }),
+      type: 'FOUL',
+      disciplinaryAction: 'yellow',
+      countsAsAccumulatedFoul: true,
+      restart: 'direct-free-kick',
+      periodFoulNumber: 1,
+    } as MatchEvent;
+    const { useCase } = setup(match(), [source]);
+    const result = await useCase.execute({
+      matchId: 'match-1',
+      eventId: source.id,
+      newOpponentPlayerNumber: 7,
+    });
+
+    expect(result.event).toMatchObject({
+      opponentPlayerNumber: 7,
+      foulOpponentPlayerNumber: 12,
+    });
+    const state = deriveDisciplinaryState([result.event], 0);
+    expect(state.opponentPlayers).toEqual([
+      expect.objectContaining({ jerseyNumber: 7, fouls: 0, yellowCards: 1 }),
+      expect.objectContaining({ jerseyNumber: 12, fouls: 1, yellowCards: 0 }),
+    ]);
+    expect(state.teams.away).toMatchObject({ fouls: 1, yellowCards: 1 });
+    const exported = buildMatchStatisticsExport(match(), [result.event], players, 10_000);
+    expect(exported.events[0]).toMatchObject({
+      playerNumber: 7,
+      foulOpponentPlayerNumber: 12,
+    });
+    const imported = await new CsvMatchImportParser().parseText(
+      serializeMatchCsv(exported),
+      'corrected-opponent.csv',
+    );
+    expect(imported.events[0]?.event).toMatchObject({
+      opponentPlayerNumber: 7,
+      foulOpponentPlayerNumber: 12,
+    });
+  });
+
+  it('rejects an invalid rival dorsal', async () => {
+    const source = yellow({ team: 'away', playerId: undefined, opponentPlayerNumber: 12 });
+    const { useCase } = setup(match(), [source]);
+    await expect(
+      useCase.execute({
+        matchId: 'match-1',
+        eventId: source.id,
+        newOpponentPlayerNumber: 0,
+      }),
+    ).rejects.toBeInstanceOf(InvalidDisciplinaryPlayerError);
   });
 
   it('rejects a player outside the match', async () => {

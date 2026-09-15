@@ -41,7 +41,7 @@ import {
 import { createEventsForTransition, MatchClockCommand } from '../domain/match-transition-events';
 import { createMatchStatisticsProjection, MatchStatistics } from '../domain/match-statistics';
 import { createMatchTimeline } from '../domain/match-timeline';
-import { PlayerPlayingTimes } from '../domain/player-playing-time';
+import { currentOnCourtStintDuration, PlayerPlayingTimes } from '../domain/player-playing-time';
 import { makeSubstitution as createSubstitution } from '../domain/substitution';
 import { findLastUndoableEvent, undoLastEvent as createUndoLastEvent } from '../domain/undo';
 import { configureStartingLineup, hasValidStartingLineup } from '../domain/starting-lineup';
@@ -176,6 +176,16 @@ export class LiveMatchStore {
   );
   readonly playerPlayingTimes = computed<PlayerPlayingTimes>(() => this.statistics().players);
   readonly lineupStatistics = computed(() => this.statistics().lineups);
+  readonly currentStintDurations = computed<Readonly<Record<string, number>>>(() => {
+    const period = this.match()?.currentPeriod ?? 1;
+    const stints = this.statistics().playerStints;
+    return Object.fromEntries(
+      this.lineupPlayerIds().map((playerId) => [
+        playerId,
+        currentOnCourtStintDuration(stints[playerId], period),
+      ]),
+    );
+  });
   readonly canSubstitute = computed(() => {
     const status = this.match()?.status;
     return status === 'firstHalf' || status === 'halftime' || status === 'secondHalf';
@@ -236,6 +246,10 @@ export class LiveMatchStore {
 
   opponentYellowCardsByNumber(number: number): number {
     return this.opponentDiscipline(number)?.yellowCards ?? 0;
+  }
+
+  currentStintDuration(playerId: string): number {
+    return this.currentStintDurations()[playerId] ?? 0;
   }
 
   opponentDirectRedsByNumber(number: number): number {
@@ -518,6 +532,34 @@ export class LiveMatchStore {
         events.map((event) => (event.id === result.event.id ? result.event : event)),
       );
       this.notice.set('Tarjeta amarilla actualizada.');
+      return true;
+    } catch (error) {
+      this.error.set(editYellowCardErrorMessage(error));
+      return false;
+    } finally {
+      this.commandInProgress = false;
+      this.saving.set(false);
+    }
+  }
+
+  async editOpponentYellowCard(eventId: string, newOpponentPlayerNumber: number): Promise<boolean> {
+    const match = this.match();
+    if (!match || this.commandInProgress) return false;
+    this.commandInProgress = true;
+    this.saving.set(true);
+    this.error.set(null);
+    this.notice.set(null);
+    try {
+      const result = await this.editYellowCardUseCase.execute({
+        matchId: match.id,
+        eventId,
+        newOpponentPlayerNumber,
+      });
+      this.match.set(result.match);
+      this.events.update((events) =>
+        events.map((event) => (event.id === result.event.id ? result.event : event)),
+      );
+      this.notice.set('Dorsal de la tarjeta rival actualizado.');
       return true;
     } catch (error) {
       this.error.set(editYellowCardErrorMessage(error));

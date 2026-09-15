@@ -49,14 +49,17 @@ export interface BenchDisciplineViewItem {
 
 export interface EditableYellowCardViewItem {
   eventId: string;
-  playerId: string;
+  team: FoulTeam;
+  playerId?: string;
+  opponentPlayerNumber?: number;
   number: number;
-  name: string;
+  name?: string;
   period: number;
   gameClockMs: number;
   reason: string;
   relatedEventId?: string;
   linkedFoulPlayerId?: string;
+  linkedFoulOpponentPlayerNumber?: number;
   linkedFoulPlayerLabel?: string;
 }
 
@@ -87,9 +90,11 @@ export function createDisciplineView(
   );
   const awayFoulsByNumber = countBy(
     currentFouls.filter(
-      (event) => event.team === 'away' && event.opponentPlayerNumber !== undefined,
+      (event) =>
+        event.team === 'away' &&
+        (event.foulOpponentPlayerNumber ?? event.opponentPlayerNumber) !== undefined,
     ),
-    (event) => event.opponentPlayerNumber!,
+    (event) => (event.foulOpponentPlayerNumber ?? event.opponentPlayerNumber)!,
   );
   const homeTotals = {
     ...state.teams.home,
@@ -136,7 +141,9 @@ export function createDisciplineView(
     .sort(compareParticipants);
 
   const unattributedFouls = currentFouls.filter(
-    (event) => event.team === 'away' && event.opponentPlayerNumber === undefined,
+    (event) =>
+      event.team === 'away' &&
+      (event.foulOpponentPlayerNumber ?? event.opponentPlayerNumber) === undefined,
   ).length;
   const activeSanctions = state.reductions
     .filter(
@@ -183,7 +190,7 @@ function createEditableYellowCards(
 ): EditableYellowCardViewItem[] {
   return events
     .flatMap((event): EditableYellowCardViewItem[] => {
-      const isPlayerYellow =
+      const isHomePlayerYellow =
         ((event.type === 'FOUL' || event.type === 'DISCIPLINE') &&
           event.team === 'home' &&
           event.disciplinaryAction === 'yellow' &&
@@ -193,18 +200,37 @@ function createEditableYellowCards(
           event.subjectKind === 'player' &&
           event.disciplinaryAction === 'yellow' &&
           Boolean(event.playerId));
-      if (!isPlayerYellow || !('playerId' in event) || !event.playerId) return [];
-      const player = playersById.get(event.playerId);
-      if (!player) return [];
+      const isOpponentYellow =
+        ((event.type === 'FOUL' || event.type === 'DISCIPLINE') &&
+          event.team === 'away' &&
+          event.disciplinaryAction === 'yellow' &&
+          event.opponentPlayerNumber !== undefined) ||
+        (event.type === 'BENCH_DISCIPLINE' &&
+          event.team === 'away' &&
+          event.subjectKind === 'opponentPlayer' &&
+          event.disciplinaryAction === 'yellow' &&
+          event.opponentPlayerNumber !== undefined);
+      if (!isHomePlayerYellow && !isOpponentYellow) return [];
+      const playerId = 'playerId' in event ? event.playerId : undefined;
+      const player = playerId ? playersById.get(playerId) : undefined;
+      if (event.team === 'home' && !player) return [];
+      const opponentPlayerNumber =
+        'opponentPlayerNumber' in event ? event.opponentPlayerNumber : undefined;
       const foulPlayerId =
         event.type === 'FOUL' ? (event.foulPlayerId ?? event.playerId) : undefined;
+      const foulOpponentPlayerNumber =
+        event.type === 'FOUL'
+          ? (event.foulOpponentPlayerNumber ?? event.opponentPlayerNumber)
+          : undefined;
       const foulPlayer = foulPlayerId ? playersById.get(foulPlayerId) : undefined;
       return [
         {
           eventId: event.id,
-          playerId: event.playerId,
-          number: player.number,
-          name: player.name,
+          team: event.team,
+          playerId,
+          opponentPlayerNumber,
+          number: player?.number ?? opponentPlayerNumber!,
+          name: player?.name,
           period: event.period,
           gameClockMs: event.gameClockMs,
           reason:
@@ -217,9 +243,12 @@ function createEditableYellowCards(
                   : 'Otra conducta',
           relatedEventId: event.relatedEventId,
           linkedFoulPlayerId: foulPlayerId,
+          linkedFoulOpponentPlayerNumber: foulOpponentPlayerNumber,
           linkedFoulPlayerLabel: foulPlayer
             ? `#${foulPlayer.number} ${foulPlayer.name}`
-            : undefined,
+            : foulOpponentPlayerNumber !== undefined
+              ? `rival #${foulOpponentPlayerNumber}`
+              : undefined,
         },
       ];
     })

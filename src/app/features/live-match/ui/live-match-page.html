@@ -142,11 +142,21 @@
                   [attr.data-slot]="slot + 1"
                   [title]="player.name"
                   [disabled]="!store.canSubstitute() || store.saving()"
-                  [attr.aria-label]="'Cambiar jugador ' + player.number + ', ' + player.name"
+                  [attr.aria-label]="
+                    'Cambiar jugador ' +
+                    player.number +
+                    ', ' +
+                    player.name +
+                    '. Tiempo de tramo ' +
+                    formatDuration(store.currentStintDuration(player.id))
+                  "
                   (click)="selectOutPlayer(player.id, $event)"
                 >
                   <strong>#{{ player.number }}</strong>
                   <span>{{ player.name }}</span>
+                  <small class="court-player-stint" aria-label="Tiempo de tramo actual">{{
+                    formatDuration(store.currentStintDuration(player.id))
+                  }}</small>
                 </button>
               } @else if (
                 store.ourReductions()[slot - store.currentLineup().length];
@@ -796,54 +806,6 @@
                     </section>
                   }
 
-                  @if (store.disciplineView().editableYellowCards.length > 0) {
-                    <section
-                      class="yellow-card-history"
-                      aria-labelledby="yellow-card-history-title"
-                    >
-                      <header>
-                        <div>
-                          <span class="section-label">Tarjetas amarillas</span>
-                          <h3 id="yellow-card-history-title">Asignación por jugador</h3>
-                        </div>
-                        <small>Conservan minuto y periodo</small>
-                      </header>
-                      <div class="discipline-player-list">
-                        @for (
-                          card of store.disciplineView().editableYellowCards;
-                          track card.eventId
-                        ) {
-                          <article class="discipline-player-row yellow-card-row">
-                            <div class="discipline-player-identity">
-                              <strong>🟨 #{{ card.number }}</strong
-                              ><span>{{ card.name }}</span>
-                            </div>
-                            <div class="discipline-player-detail">
-                              <span
-                                >{{ formatDuration(card.gameClockMs) }} · P{{ card.period }} ·
-                                {{ card.reason }}</span
-                              >
-                              @if (card.linkedFoulPlayerLabel) {
-                                <small>Falta: {{ card.linkedFoulPlayerLabel }}</small>
-                              }
-                            </div>
-                            @if (match.status !== 'finished') {
-                              <button
-                                class="btn btn--secondary edit-yellow-card"
-                                type="button"
-                                aria-label="Editar amarilla de {{ card.name }}"
-                                [disabled]="store.saving()"
-                                (click)="openYellowCardEditor(card, $event)"
-                              >
-                                Editar
-                              </button>
-                            }
-                          </article>
-                        }
-                      </div>
-                    </section>
-                  }
-
                   <div class="discipline-participants">
                     <section class="discipline-side" aria-labelledby="home-discipline-title">
                       <header>
@@ -897,6 +859,33 @@
                                     >
                                   }
                                 </div>
+                                @for (
+                                  card of editableYellowCardsForPlayer(player.id);
+                                  track card.eventId
+                                ) {
+                                  <div class="yellow-card-edit-line">
+                                    <span class="yellow-card-edit-line__context">
+                                      <strong>Tarjeta amarilla</strong>
+                                      <small
+                                        >{{ formatDuration(card.gameClockMs) }} · P{{
+                                          card.period
+                                        }}
+                                        · {{ card.reason }}</small
+                                      >
+                                    </span>
+                                    @if (match.status !== 'finished') {
+                                      <button
+                                        class="btn btn--primary edit-yellow-card"
+                                        type="button"
+                                        aria-label="Editar amarilla de {{ card.name }}"
+                                        [disabled]="store.saving()"
+                                        (click)="openYellowCardEditor(card, $event)"
+                                      >
+                                        Editar
+                                      </button>
+                                    }
+                                  </div>
+                                }
                               </div>
                             </article>
                           }
@@ -958,6 +947,35 @@
                                     >
                                   }
                                 </div>
+                                @for (
+                                  card of editableYellowCardsForOpponent(player.number);
+                                  track card.eventId
+                                ) {
+                                  <div class="yellow-card-edit-line">
+                                    <span class="yellow-card-edit-line__context">
+                                      <strong>Tarjeta amarilla rival</strong>
+                                      <small
+                                        >{{ formatDuration(card.gameClockMs) }} · P{{
+                                          card.period
+                                        }}
+                                        · {{ card.reason }}</small
+                                      >
+                                    </span>
+                                    @if (match.status !== 'finished') {
+                                      <button
+                                        class="btn btn--primary edit-yellow-card"
+                                        type="button"
+                                        aria-label="Editar amarilla del rival con dorsal {{
+                                          card.number
+                                        }}"
+                                        [disabled]="store.saving()"
+                                        (click)="openYellowCardEditor(card, $event)"
+                                      >
+                                        Editar
+                                      </button>
+                                    }
+                                  </div>
+                                }
                               </div>
                             </article>
                           }
@@ -1305,8 +1323,13 @@
         <h2 id="edit-yellow-card-title" tabindex="-1" autofocus>Editar tarjeta amarilla</h2>
         <dl class="edit-yellow-card-current">
           <div>
-            <dt>Jugador actual</dt>
-            <dd>#{{ card.number }} {{ card.name }}</dd>
+            <dt>{{ card.team === 'home' ? 'Jugador actual' : 'Dorsal rival actual' }}</dt>
+            <dd>
+              #{{ card.number }}
+              @if (card.name) {
+                {{ card.name }}
+              }
+            </dd>
           </div>
           <div>
             <dt>Momento</dt>
@@ -1314,39 +1337,60 @@
           </div>
         </dl>
 
-        <label class="edit-yellow-card-search">
-          Buscar jugador
-          <input
-            type="search"
-            placeholder="Nombre o dorsal"
-            autocomplete="off"
-            [value]="editYellowCardSearch()"
-            [disabled]="store.saving()"
-            (input)="editYellowCardSearch.set($any($event.target).value)"
-          />
-        </label>
-        <div class="edit-yellow-card-options" role="radiogroup" aria-label="Nuevo jugador">
-          @for (player of eligibleYellowCardPlayers(); track player.id) {
-            <button
-              class="bench-option"
-              type="button"
-              role="radio"
-              [attr.aria-checked]="editYellowCardPlayerId() === player.id"
-              [class.is-selected]="editYellowCardPlayerId() === player.id"
+        @if (card.team === 'home') {
+          <label class="edit-yellow-card-search">
+            Buscar jugador
+            <input
+              type="search"
+              placeholder="Nombre o dorsal"
+              autocomplete="off"
+              [value]="editYellowCardSearch()"
               [disabled]="store.saving()"
-              (click)="editYellowCardPlayerId.set(player.id)"
-            >
-              <strong>#{{ player.number }}</strong
-              ><span>{{ player.name }}</span>
-            </button>
-          } @empty {
-            <p class="discipline-empty">No hay jugadores que coincidan.</p>
-          }
-        </div>
+              (input)="editYellowCardSearch.set($any($event.target).value)"
+            />
+          </label>
+          <div class="edit-yellow-card-options" role="radiogroup" aria-label="Nuevo jugador">
+            @for (player of eligibleYellowCardPlayers(); track player.id) {
+              <button
+                class="bench-option"
+                type="button"
+                role="radio"
+                [attr.aria-checked]="editYellowCardPlayerId() === player.id"
+                [class.is-selected]="editYellowCardPlayerId() === player.id"
+                [disabled]="store.saving()"
+                (click)="editYellowCardPlayerId.set(player.id)"
+              >
+                <strong>#{{ player.number }}</strong
+                ><span>{{ player.name }}</span>
+              </button>
+            } @empty {
+              <p class="discipline-empty">No hay jugadores que coincidan.</p>
+            }
+          </div>
+        } @else {
+          <label class="edit-yellow-card-search edit-opponent-yellow-card-number">
+            Nuevo dorsal rival
+            <input
+              type="number"
+              inputmode="numeric"
+              min="1"
+              max="999"
+              step="1"
+              autocomplete="off"
+              aria-describedby="edit-opponent-yellow-card-help"
+              [value]="editYellowCardOpponentNumber()"
+              [disabled]="store.saving()"
+              (input)="editYellowCardOpponentNumber.set($any($event.target).value)"
+            />
+            <small id="edit-opponent-yellow-card-help">Introduce un dorsal entre 1 y 999.</small>
+          </label>
+        }
 
         @if (
-          editYellowCardPlayerId() !== card.playerId &&
-          (card.relatedEventId || card.linkedFoulPlayerId)
+          yellowCardAssignmentChanged() &&
+          (card.relatedEventId ||
+            card.linkedFoulPlayerId ||
+            card.linkedFoulOpponentPlayerNumber !== undefined)
         ) {
           <p class="banner banner--warn" role="status">
             Esta amarilla está vinculada a una falta
@@ -1372,17 +1416,15 @@
           <button
             class="btn btn--primary"
             type="button"
-            [disabled]="
-              store.saving() ||
-              !editYellowCardPlayerId() ||
-              editYellowCardPlayerId() === card.playerId
-            "
+            [disabled]="store.saving() || !yellowCardAssignmentChanged()"
             (click)="saveYellowCardPlayer()"
           >
             {{
               store.saving()
                 ? 'Guardando…'
-                : card.relatedEventId || card.linkedFoulPlayerId
+                : card.relatedEventId ||
+                    card.linkedFoulPlayerId ||
+                    card.linkedFoulOpponentPlayerNumber !== undefined
                   ? 'Cambiar solo tarjeta'
                   : 'Guardar'
             }}

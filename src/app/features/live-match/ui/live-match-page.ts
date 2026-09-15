@@ -68,6 +68,7 @@ export class LiveMatchPage {
   protected readonly detailPlayerId = signal<string | null>(null);
   protected readonly editingYellowCardId = signal<string | null>(null);
   protected readonly editYellowCardPlayerId = signal<string | null>(null);
+  protected readonly editYellowCardOpponentNumber = signal('');
   protected readonly editYellowCardSearch = signal('');
   protected readonly editingYellowCard = computed(() =>
     this.store
@@ -84,6 +85,18 @@ export class LiveMatchPage {
           String(player.number).includes(search),
       )
       .sort((left, right) => left.number - right.number || left.name.localeCompare(right.name));
+  });
+  protected readonly editYellowCardOpponentNumberValid = computed(() => {
+    const value = Number(this.editYellowCardOpponentNumber());
+    return Number.isSafeInteger(value) && value >= 1 && value <= 999;
+  });
+  protected readonly yellowCardAssignmentChanged = computed(() => {
+    const card = this.editingYellowCard();
+    if (!card) return false;
+    return card.team === 'home'
+      ? Boolean(this.editYellowCardPlayerId()) && this.editYellowCardPlayerId() !== card.playerId
+      : this.editYellowCardOpponentNumberValid() &&
+          Number(this.editYellowCardOpponentNumber()) !== card.opponentPlayerNumber;
   });
   protected playerDetailTrigger: HTMLElement | null = null;
   protected readonly benchDisciplineOpen = signal(false);
@@ -357,8 +370,27 @@ export class LiveMatchPage {
     if (this.store.match()?.status === 'finished' || this.store.saving()) return;
     this.editYellowCardTrigger = event.currentTarget as HTMLElement;
     this.editingYellowCardId.set(card.eventId);
-    this.editYellowCardPlayerId.set(card.playerId);
+    this.editYellowCardPlayerId.set(card.playerId ?? null);
+    this.editYellowCardOpponentNumber.set(
+      card.opponentPlayerNumber === undefined ? '' : String(card.opponentPlayerNumber),
+    );
     this.editYellowCardSearch.set('');
+  }
+
+  protected editableYellowCardsForPlayer(playerId: string): EditableYellowCardViewItem[] {
+    return this.store
+      .disciplineView()
+      .editableYellowCards.filter((card) => card.playerId === playerId);
+  }
+
+  protected editableYellowCardsForOpponent(
+    opponentPlayerNumber: number,
+  ): EditableYellowCardViewItem[] {
+    return this.store
+      .disciplineView()
+      .editableYellowCards.filter(
+        (card) => card.team === 'away' && card.opponentPlayerNumber === opponentPlayerNumber,
+      );
   }
 
   protected cancelYellowCardEditor(): void {
@@ -368,9 +400,16 @@ export class LiveMatchPage {
 
   protected async saveYellowCardPlayer(): Promise<void> {
     const eventId = this.editingYellowCardId();
-    const playerId = this.editYellowCardPlayerId();
-    if (!eventId || !playerId || this.store.saving()) return;
-    if (await this.store.editYellowCard(eventId, playerId)) {
+    const card = this.editingYellowCard();
+    if (!eventId || !card || !this.yellowCardAssignmentChanged() || this.store.saving()) return;
+    const saved =
+      card.team === 'home'
+        ? await this.store.editYellowCard(eventId, this.editYellowCardPlayerId()!)
+        : await this.store.editOpponentYellowCard(
+            eventId,
+            Number(this.editYellowCardOpponentNumber()),
+          );
+    if (saved) {
       this.notifications.success('Tarjeta amarilla actualizada');
       this.closeYellowCardEditor();
     }
@@ -379,6 +418,7 @@ export class LiveMatchPage {
   private closeYellowCardEditor(): void {
     this.editingYellowCardId.set(null);
     this.editYellowCardPlayerId.set(null);
+    this.editYellowCardOpponentNumber.set('');
     this.editYellowCardSearch.set('');
     const trigger = this.editYellowCardTrigger;
     this.editYellowCardTrigger = null;

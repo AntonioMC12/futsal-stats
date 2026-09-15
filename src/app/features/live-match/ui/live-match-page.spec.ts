@@ -300,6 +300,11 @@ describe('LiveMatchPage', () => {
       '.court-player:not(.court-player--empty)',
     );
     expect(courtPlayers).toHaveLength(5);
+    expect(
+      [...courtPlayers].map((player) =>
+        player.querySelector('.court-player-stint')?.textContent?.trim(),
+      ),
+    ).toEqual(['00:00', '00:00', '00:00', '00:00', '00:00']);
     const court = fixture.nativeElement.querySelector('.futsal-court') as HTMLElement;
     expect(court.getAttribute('aria-label')).toContain('Formación');
     expect(court.querySelector('.court-markings')).not.toBeNull();
@@ -336,6 +341,60 @@ describe('LiveMatchPage', () => {
     expect(fixture.nativeElement.querySelector('.substitution-sheet')).toBeNull();
     expect(notifications.notification()?.message).toBe('Cambio realizado');
     expect(notifications.notification()?.action?.label).toBe('Deshacer');
+    fixture.destroy();
+  });
+
+  it('renders the current effective stint and starts a paused substitution at 00:00', async () => {
+    const currentMatch = activeMatch();
+    currentMatch.clock = { ...currentMatch.clock, remainingMs: 1_055_000 };
+    const events: MatchEvent[] = [
+      ...lineupEvents(),
+      {
+        id: 'clock-started',
+        matchId: currentMatch.id,
+        type: 'CLOCK_STARTED',
+        period: 1,
+        gameClockMs: 1_200_000,
+        timestamp: 6,
+        sequence: 6,
+        undone: false,
+      },
+      {
+        id: 'clock-stopped',
+        matchId: currentMatch.id,
+        type: 'CLOCK_STOPPED',
+        period: 1,
+        gameClockMs: 1_055_000,
+        timestamp: 7,
+        sequence: 7,
+        undone: false,
+      },
+      {
+        id: 'paused-change',
+        matchId: currentMatch.id,
+        type: 'SUBSTITUTION',
+        outPlayerId: 'p1',
+        inPlayerId: 'p6',
+        period: 1,
+        gameClockMs: 1_055_000,
+        timestamp: 8,
+        sequence: 8,
+        undone: false,
+      },
+    ];
+    const { fixture } = await createPage(currentMatch, events);
+
+    const court = fixture.nativeElement.querySelector('.futsal-court') as HTMLElement;
+    const p6 = [...court.querySelectorAll('.court-player')].find((player) =>
+      player.textContent?.includes('Banquillo'),
+    ) as HTMLElement;
+    expect(p6.querySelector('.court-player-stint')?.textContent).toContain('00:00');
+    expect(
+      [...court.querySelectorAll('.court-player-stint')].filter((timer) =>
+        timer.textContent?.includes('02:25'),
+      ),
+    ).toHaveLength(4);
+    expect(p6.getAttribute('aria-label')).toContain('Tiempo de tramo 00:00');
     fixture.destroy();
   });
 
@@ -1145,8 +1204,14 @@ describe('LiveMatchPage', () => {
     (fixture.nativeElement.querySelectorAll('.match-nav button')[2] as HTMLButtonElement).click();
     fixture.detectChanges();
 
-    const row = fixture.nativeElement.querySelector('.yellow-card-row') as HTMLElement;
+    const row = [
+      ...fixture.nativeElement
+        .querySelectorAll('.discipline-side')[0]
+        .querySelectorAll('.discipline-player-row'),
+    ].find((candidate) => candidate.textContent?.includes('Jugador 1')) as HTMLElement;
     expect(row.textContent).toContain('#1');
+    expect(row.textContent).toContain('Tarjeta amarilla');
+    expect(row.textContent).toContain('Editar');
     (row.querySelector('.edit-yellow-card') as HTMLButtonElement).click();
     fixture.detectChanges();
     const options = fixture.nativeElement.querySelectorAll(
@@ -1174,6 +1239,56 @@ describe('LiveMatchPage', () => {
     });
     expect(store.timeline().find(({ eventId }) => eventId === relatedYellow.id)?.label).toContain(
       'Jugador 2',
+    );
+    fixture.destroy();
+  });
+
+  it('edits a rival yellow dorsal from its Discipline row without moving the foul', async () => {
+    const rivalYellow = foulEvent('rival-yellow', 6, 'away', {
+      opponentPlayerNumber: 12,
+      action: 'yellow',
+    });
+    const { fixture, store } = await createPage(activeMatch(), [...lineupEvents(), rivalYellow]);
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelectorAll('.match-nav button')[2] as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const rivalSide = fixture.nativeElement
+      .querySelector('#away-discipline-title')
+      .closest('.discipline-side') as HTMLElement;
+    const row = [...rivalSide.querySelectorAll('.discipline-player-row')].find((candidate) =>
+      candidate.textContent?.includes('#12'),
+    ) as HTMLElement;
+    expect(row.textContent).toContain('Tarjeta amarilla rival');
+    (row.querySelector('.edit-yellow-card') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const editor = fixture.nativeElement.querySelector('.edit-yellow-card-sheet') as HTMLElement;
+    const input = editor.querySelector(
+      '.edit-opponent-yellow-card-number input',
+    ) as HTMLInputElement;
+    input.value = '7';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(editor.textContent).toContain('Se cambiará solo la tarjeta');
+    (editor.querySelector('.edit-yellow-card-actions .btn--primary') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(store.currentPeriodFouls().away).toBe(1);
+    expect(store.disciplinaryState().opponentPlayers).toEqual([
+      expect.objectContaining({ jerseyNumber: 7, fouls: 0, yellowCards: 1 }),
+      expect.objectContaining({ jerseyNumber: 12, fouls: 1, yellowCards: 0 }),
+    ]);
+    expect(store.events().find(({ id }) => id === rivalYellow.id)).toMatchObject({
+      id: rivalYellow.id,
+      opponentPlayerNumber: 7,
+      foulOpponentPlayerNumber: 12,
+      gameClockMs: rivalYellow.gameClockMs,
+      period: rivalYellow.period,
+    });
+    expect(store.timeline().find(({ eventId }) => eventId === rivalYellow.id)?.label).toContain(
+      'rival #7',
     );
     fixture.destroy();
   });

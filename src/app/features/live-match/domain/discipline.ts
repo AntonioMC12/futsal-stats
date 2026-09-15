@@ -113,12 +113,21 @@ export function deriveDisciplinaryState(
         const disciplinedPlayer = (players[event.playerId] ??= emptyStatistics());
         applyAction(disciplinedPlayer, action);
       }
-      if (event.team === 'away' && event.opponentPlayerNumber !== undefined) {
-        const opponent = ensureOpponentPlayer(opponentPlayers, event.opponentPlayerNumber);
-        opponent.fouls += 1;
-        opponent[accumulated ? 'accumulatedFouls' : 'nonAccumulatedInfringements'] += 1;
-        applyAction(opponent, action);
-        if (isSendOff(action)) opponent.sentOff = true;
+      if (event.team === 'away') {
+        const foulOpponentNumber = event.foulOpponentPlayerNumber ?? event.opponentPlayerNumber;
+        if (foulOpponentNumber !== undefined) {
+          const offender = ensureOpponentPlayer(opponentPlayers, foulOpponentNumber);
+          offender.fouls += 1;
+          offender[accumulated ? 'accumulatedFouls' : 'nonAccumulatedInfringements'] += 1;
+        }
+        if (event.opponentPlayerNumber !== undefined) {
+          const disciplinedPlayer = ensureOpponentPlayer(
+            opponentPlayers,
+            event.opponentPlayerNumber,
+          );
+          applyAction(disciplinedPlayer, action);
+          if (isSendOff(action)) disciplinedPlayer.sentOff = true;
+        }
       }
       applyAction(teams[event.team], action);
       if (isSendOff(action)) {

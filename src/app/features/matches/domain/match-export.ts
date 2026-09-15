@@ -195,6 +195,8 @@ export function buildMatchStatisticsExport(
           foulPlayerId: foulPlayerId ?? '',
           foulPlayerNumber: foulPlayer?.number ?? '',
           foulPlayerName: foulPlayer?.name ?? '',
+          foulOpponentPlayerNumber:
+            event.type === 'FOUL' ? (event.foulOpponentPlayerNumber ?? '') : '',
           secondaryPlayerId: secondaryPlayerId ?? '',
           secondaryPlayerNumber: secondary?.number ?? '',
           secondaryPlayerName: secondary?.name ?? '',

@@ -36,6 +36,14 @@ export interface Participation {
   lineups: LineupPlayingTime[];
   playerStints: Readonly<Record<string, readonly PlayerCourtStint[]>>;
 }
+
+export function currentOnCourtStintDuration(
+  stints: readonly PlayerCourtStint[] | undefined,
+  currentPeriod: number,
+): number {
+  const latest = stints?.at(-1);
+  return latest?.period === currentPeriod ? latest.durationMs : 0;
+}
 export function derivePlayerPlayingTimes(
   match: Match,
   events: readonly MatchEvent[],
@@ -68,6 +76,7 @@ export function createParticipationProjection(
   let matchElapsedMs = 0;
   let period = 1;
   let periodOpen = true;
+  let latestGameClockMs: number | null = null;
   let activeStint: string | null = null;
   const playerStints: Record<string, PlayerCourtStint[]> = {};
   const openStints = new Map<string, PlayerCourtStint>();
@@ -157,8 +166,11 @@ export function createParticipationProjection(
         segmentRemainingMs = null;
         break;
       case 'CLOCK_RESET':
+        for (const playerId of lineup) leave(playerId, latestGameClockMs ?? event.gameClockMs);
+        for (const playerId of lineup) enter(playerId, event);
         clockRunning = false;
         segmentRemainingMs = null;
+        activeStint = null;
         break;
       case 'PLAYER_ENTERED':
         accumulateUntil(event.gameClockMs);
@@ -239,6 +251,7 @@ export function createParticipationProjection(
       case 'EVENT_UNDONE':
         break;
     }
+    latestGameClockMs = event.gameClockMs;
     if (event.type === 'PERIOD_ENDED' || event.type === 'MATCH_FINISHED') periodOpen = false;
     // A substitution is atomic, even while the clock is stopped.
     if (
