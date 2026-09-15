@@ -1,16 +1,19 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { CLOUD_CONFIG } from './cloud.config';
 import { SupabaseClientService } from './supabase-client.service';
+import { AuthService } from '../auth/auth.service';
 
-export type CloudStatus = 'disabled' | 'connecting' | 'connected' | 'authError' | 'unreachable';
+export type CloudStatus =
+  'disabled' | 'connecting' | 'connected' | 'authRequired' | 'authError' | 'unreachable';
 
 @Injectable({ providedIn: 'root' })
 export class CloudFoundationService {
   private readonly config = inject(CLOUD_CONFIG);
   private readonly supabase = inject(SupabaseClientService);
+  private readonly auth = inject(AuthService);
 
   readonly status = signal<CloudStatus>(this.config.mode === 'cloud' ? 'connecting' : 'disabled');
-  readonly anonymousUserId = signal<string | null>(null);
+  readonly userId = signal<string | null>(null);
   readonly error = signal<string | null>(null);
   readonly lastCheckedAt = signal<number | null>(null);
 
@@ -20,15 +23,14 @@ export class CloudFoundationService {
     this.error.set(null);
     const client = this.supabase.requireClient();
     try {
-      let { data, error } = await client.auth.getSession();
-      if (error) throw error;
-      if (!data.session) {
-        const result = await client.auth.signInAnonymously();
-        data = { session: result.data.session };
-        error = result.error;
-        if (error) throw error;
+      await this.auth.initialize();
+      const user = this.auth.user();
+      if (!user) {
+        this.userId.set(null);
+        this.status.set('authRequired');
+        return;
       }
-      this.anonymousUserId.set(data.session?.user.id ?? null);
+      this.userId.set(user.id);
     } catch (error) {
       this.fail('authError', error);
       return;

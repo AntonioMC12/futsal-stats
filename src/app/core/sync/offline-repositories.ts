@@ -28,12 +28,14 @@ import { PlayerRepository } from '../persistence/ports/player.repository';
 import { TeamRepository } from '../persistence/ports/team.repository';
 import { enqueueSyncOperation } from './sync-queue';
 import { OfflineSyncService } from './offline-sync.service';
+import { TeamAccessService } from '../team-workspace/team-access.service';
 
 @Injectable()
 export class OfflineTeamRepository implements TeamRepository {
   private readonly local = inject(DexieTeamRepository);
   private readonly db = inject(FutsalStatsDb);
   private readonly sync = inject(OfflineSyncService);
+  private readonly access = inject(TeamAccessService);
 
   list(): Promise<Team[]> {
     return this.local.list();
@@ -44,6 +46,8 @@ export class OfflineTeamRepository implements TeamRepository {
   }
 
   async put(team: Team): Promise<string> {
+    const existing = await this.db.teams.get(team.id);
+    if (existing) await this.access.assertCanWrite(team.id);
     await this.db.transaction('rw', this.db.teams, this.db.syncQueue, async () => {
       const previous = await this.db.teams.get(team.id);
       await this.db.teams.put(toLocalTeamRecord(team, previous));
@@ -54,6 +58,7 @@ export class OfflineTeamRepository implements TeamRepository {
         team,
       });
     });
+    if (!existing) this.access.assumeCreatedTeam(team.id);
     this.sync.requestSync();
     return team.id;
   }
@@ -64,6 +69,7 @@ export class OfflinePlayerRepository implements PlayerRepository {
   private readonly local = inject(DexiePlayerRepository);
   private readonly db = inject(FutsalStatsDb);
   private readonly sync = inject(OfflineSyncService);
+  private readonly access = inject(TeamAccessService);
 
   listActiveByTeam(teamId: string): Promise<Player[]> {
     return this.local.listActiveByTeam(teamId);
@@ -82,6 +88,7 @@ export class OfflinePlayerRepository implements PlayerRepository {
   }
 
   async put(player: Player): Promise<string> {
+    await this.access.assertCanWrite(player.teamId);
     await this.db.transaction('rw', this.db.teams, this.db.players, this.db.syncQueue, async () => {
       if (!(await this.db.teams.get(player.teamId))) {
         throw new Error(`Player ${player.id} references missing Team ${player.teamId}`);
@@ -105,6 +112,7 @@ export class OfflinePlayerProfileRepository implements PlayerProfileRepository {
   private readonly local = inject(DexiePlayerProfileRepository);
   private readonly db = inject(FutsalStatsDb);
   private readonly sync = inject(OfflineSyncService);
+  private readonly access = inject(TeamAccessService);
 
   get(playerId: string): Promise<PlayerProfile | undefined> {
     return this.local.get(playerId);
@@ -115,6 +123,7 @@ export class OfflinePlayerProfileRepository implements PlayerProfileRepository {
   }
 
   async put(profile: PlayerProfile): Promise<string> {
+    await this.access.assertCanWrite(profile.teamId);
     await this.db.transaction(
       'rw',
       this.db.players,
@@ -145,6 +154,7 @@ export class OfflineMatchRepository implements MatchRepository {
   private readonly local = inject(DexieMatchRepository);
   private readonly db = inject(FutsalStatsDb);
   private readonly sync = inject(OfflineSyncService);
+  private readonly access = inject(TeamAccessService);
 
   findActive(): Promise<Match | null> {
     return this.local.findActive();
@@ -163,12 +173,14 @@ export class OfflineMatchRepository implements MatchRepository {
   }
 
   async put(match: Match): Promise<string> {
+    await this.access.assertCanWrite(match.teamId);
     await this.write(match, false);
     this.sync.requestSync();
     return match.id;
   }
 
   async addIfNoActive(match: Match): Promise<boolean> {
+    await this.access.assertCanWrite(match.teamId);
     const added = await this.db.transaction(
       'rw',
       this.db.teams,
@@ -198,6 +210,8 @@ export class OfflineMatchRepository implements MatchRepository {
   }
 
   async delete(matchId: string): Promise<void> {
+    const existing = await this.db.matches.get(matchId);
+    if (existing) await this.access.assertCanWrite(existing.teamId);
     await this.db.transaction(
       'rw',
       this.db.matches,
@@ -247,12 +261,14 @@ export class OfflineMatchEventRepository implements MatchEventRepository {
   private readonly local = inject(DexieMatchEventRepository);
   private readonly db = inject(FutsalStatsDb);
   private readonly sync = inject(OfflineSyncService);
+  private readonly access = inject(TeamAccessService);
 
   listByMatch(matchId: string): Promise<MatchEvent[]> {
     return this.local.listByMatch(matchId);
   }
 
   async commit(match: Match, events: readonly MatchEvent[]): Promise<void> {
+    await this.access.assertCanWrite(match.teamId);
     await this.db.transaction(
       'rw',
       this.db.teams,
@@ -279,6 +295,7 @@ export class OfflineMatchEventRepository implements MatchEventRepository {
   }
 
   async updateEvent(match: Match, event: MatchEvent): Promise<void> {
+    await this.access.assertCanWrite(match.teamId);
     await this.db.transaction(
       'rw',
       this.db.matches,
@@ -313,6 +330,7 @@ export class OfflineMatchEventRepository implements MatchEventRepository {
     events: readonly MatchEvent[],
     newPlayers: readonly Player[],
   ): Promise<void> {
+    await this.access.assertCanWrite(match.teamId);
     await this.db.transaction(
       'rw',
       this.db.teams,

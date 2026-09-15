@@ -3,14 +3,14 @@
   <header class="page-head">
     <div>
       <p class="eyebrow">Acceso al equipo</p>
-      <h1>Dispositivos</h1>
-      <p class="lede">Comparte {{ activeTeam()?.name }} sin cuentas personales.</p>
+      <h1>Miembros</h1>
+      <p class="lede">Comparte {{ activeTeam()?.name }} con cuentas verificadas por email.</p>
     </div>
   </header>
 
   @if (cloudConfig.mode !== 'cloud') {
     <p class="banner banner--warn" role="status">
-      La incorporación de dispositivos necesita que el modo cloud esté configurado.
+      La incorporación de miembros necesita que el modo cloud esté configurado.
     </p>
   } @else {
     @if (error(); as message) {
@@ -22,7 +22,7 @@
 
     <section class="panel stack" aria-labelledby="invite-title">
       <div>
-        <h2 id="invite-title">Añadir dispositivo</h2>
+        <h2 id="invite-title">Añadir miembro</h2>
         <p class="meta">La invitación solo se puede usar una vez y caduca automáticamente.</p>
       </div>
       <form class="invite-form" [formGroup]="inviteForm" (ngSubmit)="createInvitation()">
@@ -76,16 +76,16 @@
         <p class="meta">Los cambios de rol y las revocaciones se aplican en el servidor.</p>
       </div>
       @if (!loading() && devices().length === 0) {
-        <p class="empty">No hay dispositivos disponibles o no tienes permisos OWNER.</p>
+        <p class="empty">No hay miembros disponibles o no tienes permisos OWNER.</p>
       }
       <div class="device-list">
         @for (device of devices(); track device.authUserId) {
           <article class="device-card">
             <div class="device-card__head">
               <div>
-                <strong>{{ device.deviceName || 'Dispositivo sin nombre' }}</strong>
+                <strong>{{ device.deviceName || 'Miembro sin alias' }}</strong>
                 @if (device.isCurrent) {
-                  <span class="current">Este dispositivo</span>
+                  <span class="current">Tu cuenta</span>
                 }
               </div>
               <span class="role-badge">{{ roleLabel(device.role) }}</span>

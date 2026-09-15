@@ -42,7 +42,7 @@
         <a class="btn btn--secondary" routerLink="/join">Tengo un código de invitación</a>
       }
       @if (workspaceMode()) {
-        <a class="btn btn--secondary" routerLink="/settings/devices">Gestionar dispositivos</a>
+        <a class="btn btn--secondary" routerLink="/settings/devices">Gestionar miembros</a>
         <a class="btn btn--secondary" routerLink="/teams">Gestionar y cambiar equipos</a>
       }
     </form>
@@ -81,6 +81,40 @@
             </button>
           }
         </div>
+      </section>
+      <section class="updates-panel" aria-labelledby="storage-title">
+        <div>
+          <p class="updates-panel__eyebrow">Protección offline</p>
+          <h2 id="storage-title">Almacenamiento local</h2>
+        </div>
+        <dl>
+          <div>
+            <dt>Persistencia</dt>
+            <dd>
+              {{
+                !storage.supported
+                  ? 'No disponible'
+                  : storage.persisted() === true
+                    ? 'Concedida'
+                    : storage.persisted() === false
+                      ? 'No concedida'
+                      : 'Comprobando…'
+              }}
+            </dd>
+          </div>
+          <div>
+            <dt>Espacio</dt>
+            <dd>{{ storageEstimate() }}</dd>
+          </div>
+        </dl>
+        @if (storage.error(); as message) {
+          <p class="banner banner--warn" role="status">{{ message }}</p>
+        }
+        @if (storage.supported && storage.persisted() !== true) {
+          <button class="btn btn--secondary" type="button" (click)="storage.requestPersistence()">
+            Proteger datos offline
+          </button>
+        }
       </section>
     }
   }

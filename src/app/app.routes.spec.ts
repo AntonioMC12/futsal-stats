@@ -12,13 +12,13 @@ describe('application routes', () => {
     expect(loadedComponent.name).toMatch(/StrategiesPage$/);
   });
 
-  it('exposes device administration and public invitation consumption routes', () => {
+  it('protects device administration and invitation consumption routes', () => {
     const devicesRoute = routes.find(({ path }) => path === 'settings/devices');
     const joinRoute = routes.find(({ path }) => path === 'join');
 
-    expect(devicesRoute?.canActivate).toHaveLength(1);
+    expect(devicesRoute?.canActivate).toHaveLength(3);
     expect(devicesRoute?.loadComponent).toBeTypeOf('function');
-    expect(joinRoute?.canActivate).toBeUndefined();
+    expect(joinRoute?.canActivate).toHaveLength(1);
     expect(joinRoute?.loadComponent).toBeTypeOf('function');
   });
 });

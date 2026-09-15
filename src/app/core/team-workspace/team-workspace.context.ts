@@ -1,12 +1,14 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { TEAM_REPOSITORY } from '../persistence/persistence.tokens';
 import { Team } from '../../shared/models/team';
+import { TeamAccessService } from './team-access.service';
 
 const ACTIVE_TEAM_STORAGE_KEY = 'futsal-stats.active-team-id';
 
 @Injectable()
 export class TeamWorkspaceContext {
   private readonly teamsRepository = inject(TEAM_REPOSITORY);
+  private readonly access = inject(TeamAccessService);
   private initialization: Promise<void> | null = null;
 
   readonly teams = signal<readonly Team[]>([]);
@@ -31,7 +33,7 @@ export class TeamWorkspaceContext {
   async selectTeam(teamId: string): Promise<boolean> {
     await this.initialize();
     if (!this.teams().some(({ id }) => id === teamId)) return false;
-    this.activate(teamId);
+    await this.activate(teamId);
     return true;
   }
 
@@ -44,19 +46,22 @@ export class TeamWorkspaceContext {
       const activeId = teams.some(({ id }) => id === storedTeamId)
         ? storedTeamId
         : (teams[0]?.id ?? null);
-      this.activate(activeId);
+      await this.activate(activeId);
     } catch {
       this.teams.set([]);
       this.activeTeamId.set(null);
+      this.access.reset();
       this.error.set('No se ha podido cargar el espacio de equipo.');
     } finally {
       this.ready.set(true);
     }
   }
 
-  private activate(teamId: string | null): void {
+  private async activate(teamId: string | null): Promise<void> {
     this.activeTeamId.set(teamId);
     writeStoredTeamId(teamId);
+    if (teamId) await this.access.load(teamId);
+    else this.access.reset();
   }
 }
 

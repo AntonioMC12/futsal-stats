@@ -6,6 +6,7 @@ import { TeamsService } from '../application/teams.service';
 import { TeamWorkspaceContext } from '../../../core/team-workspace/team-workspace.context';
 import { PwaUpdateService } from '../../../core/update/pwa-update.service';
 import { PwaUpdateState } from '../../../core/update/pwa-update.models';
+import { StoragePersistenceService } from '../../../core/storage/storage-persistence.service';
 
 @Component({
   selector: 'app-team-editor-page',
@@ -19,6 +20,7 @@ export class TeamEditorPage {
   private readonly formBuilder = inject(FormBuilder);
   private readonly workspace = inject(TeamWorkspaceContext, { optional: true });
   protected readonly updates = inject(PwaUpdateService);
+  protected readonly storage = inject(StoragePersistenceService);
 
   readonly teamId = input<string>();
   readonly workspaceMode = input(false);
@@ -36,6 +38,7 @@ export class TeamEditorPage {
   });
 
   constructor() {
+    void this.storage.refresh();
     effect(() => {
       const id = this.resolvedTeamId();
       if (!id) {
@@ -43,6 +46,12 @@ export class TeamEditorPage {
       }
       void this.load(id);
     });
+  }
+
+  protected storageEstimate(): string {
+    const estimate = this.storage.estimate();
+    if (!estimate?.quota) return 'No disponible';
+    return `${megabytes(estimate.usage)} MB usados de ${megabytes(estimate.quota)} MB`;
   }
 
   protected isEdit(): boolean {
@@ -109,4 +118,8 @@ export class TeamEditorPage {
     }
     this.form.setValue({ name: team.name, shortName: team.shortName });
   }
+}
+
+function megabytes(bytes: number): string {
+  return new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(bytes / (1024 * 1024));
 }

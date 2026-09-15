@@ -11,14 +11,18 @@ import { DexieTeamRepository } from '../persistence/local/dexie-team.repository'
 import { FutsalStatsDb } from '../persistence/local/futsal-stats.db';
 import { OfflineMatchEventRepository, OfflineMatchRepository } from './offline-repositories';
 import { OfflineSyncService } from './offline-sync.service';
+import { TeamAccessService } from '../team-workspace/team-access.service';
 
 describe('offline-first match repositories', () => {
   let db: FutsalStatsDb;
   const requestSync = vi.fn();
+  const assertCanWrite = vi.fn();
 
   beforeEach(async () => {
     await Dexie.delete('futsal-stats');
     requestSync.mockReset();
+    assertCanWrite.mockReset();
+    assertCanWrite.mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       providers: [
         FutsalStatsDb,
@@ -29,6 +33,7 @@ describe('offline-first match repositories', () => {
         OfflineMatchRepository,
         OfflineMatchEventRepository,
         { provide: OfflineSyncService, useValue: { requestSync } },
+        { provide: TeamAccessService, useValue: { assertCanWrite } },
       ],
     });
     db = TestBed.inject(FutsalStatsDb);
@@ -102,6 +107,18 @@ describe('offline-first match repositories', () => {
     await expect(
       repository.commit(match, [{ ...eventFixture('bad', 1), matchId: 'other' }]),
     ).rejects.toThrow();
+    expect(await db.events.count()).toBe(0);
+    expect(await db.syncQueue.count()).toBe(0);
+  });
+
+  it('does not touch IndexedDB when the current membership is read-only', async () => {
+    assertCanWrite.mockRejectedValueOnce(new Error('read-only'));
+    const repository = TestBed.inject(OfflineMatchEventRepository);
+
+    await expect(repository.commit(matchFixture(), [eventFixture('event-1', 1)])).rejects.toThrow(
+      'read-only',
+    );
+
     expect(await db.events.count()).toBe(0);
     expect(await db.syncQueue.count()).toBe(0);
   });

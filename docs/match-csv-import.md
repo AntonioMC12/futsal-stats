@@ -34,4 +34,3 @@ La detección prioriza el ID original y después un fingerprint SHA-256 determin
 El contrato principal es `Match → buildMatchStatisticsExport → serializeMatchCsv → CsvMatchImportParser → ImportMatchFromCsvUseCase`. Los UUID locales pueden cambiar, pero convocatoria, titulares, eventos, sustituciones, marcador y proyecciones estadísticas conservan su significado. Los quintetos se recalculan desde los eventos; la sección exportada se usa como comprobación y resumen, no como segunda fuente de verdad.
 
 Para añadir una versión, implemente otro `CsvImportAdapter` que produzca `ImportedMatchDto` sin acoplar el dominio al CSV. Excel, proveedores externos, merge y overwrite quedan fuera de este formato.
-

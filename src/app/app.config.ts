@@ -17,6 +17,7 @@ import { providePersistence } from './core/persistence/provide-persistence';
 import { CLOUD_CONFIG } from './core/cloud/cloud.config';
 import { CloudFoundationService } from './core/cloud/cloud-foundation.service';
 import { OfflineSyncService } from './core/sync/offline-sync.service';
+import { AuthService } from './core/auth/auth.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -31,14 +32,18 @@ export const appConfig: ApplicationConfig = {
       const config = inject(CLOUD_CONFIG);
       const cloud = inject(CloudFoundationService);
       const sync = inject(OfflineSyncService);
+      const auth = inject(AuthService);
       return (async () => {
         if (config.mode === 'cloud') {
-          await cloud.initialize();
-          await sync.initialize();
+          await auth.initialize();
+          if (auth.authenticated()) {
+            await cloud.initialize();
+            await sync.initialize();
+          }
         } else {
           await builtInData.ensureBuiltInTeams();
         }
-        await workspace.initialize();
+        if (config.mode === 'local' || auth.authenticated()) await workspace.initialize();
       })();
     }),
     provideHttpClient(),
