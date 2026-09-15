@@ -1,0 +1,48 @@
+{
+  "$schema": "./node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "resources": {
+        "files": [
+          "/favicon.ico",
+          "/index.csr.html",
+          "/index.html",
+          "/manifest.webmanifest",
+          "/*.css",
+          "/main-*.js"
+        ]
+      }
+    },
+    {
+      "name": "lazy-code",
+      "installMode": "lazy",
+      "updateMode": "lazy",
+      "resources": { "files": ["/*.js", "!/main-*.js"] }
+    },
+    {
+      "name": "assets",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": ["/**/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"]
+      }
+    },
+    {
+      "name": "rfef-corpus",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/rfef/manifest.json",
+          "/rfef/chunks.json",
+          "/rfef/embeddings.json",
+          "/rfef/embeddings.f32"
+        ]
+      }
+    }
+  ],
+  "appData": { "version": "0.0.0" }
+}

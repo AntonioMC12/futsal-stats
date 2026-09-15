@@ -46,5 +46,42 @@
         <a class="btn btn--secondary" routerLink="/teams">Gestionar y cambiar equipos</a>
       }
     </form>
+    @if (workspaceMode()) {
+      <section class="updates-panel" aria-labelledby="updates-title">
+        <div>
+          <p class="updates-panel__eyebrow">Futsal Stats</p>
+          <h2 id="updates-title">Actualizaciones</h2>
+        </div>
+        <dl>
+          <div>
+            <dt>Versión instalada</dt>
+            <dd>v{{ updates.state().currentVersion }}</dd>
+          </div>
+          <div>
+            <dt>Estado</dt>
+            <dd role="status">{{ updateStatus(updates.state()) }}</dd>
+          </div>
+        </dl>
+        <div class="updates-panel__actions">
+          <button
+            class="btn btn--secondary"
+            type="button"
+            [disabled]="
+              !updates.isEnabled ||
+              updates.state().status === 'checking' ||
+              updates.state().status === 'updating'
+            "
+            (click)="updates.checkForUpdate()"
+          >
+            Buscar actualizaciones
+          </button>
+          @if (updates.state().status === 'available') {
+            <button class="btn btn--primary" type="button" (click)="updates.applyUpdate()">
+              Actualizar ahora
+            </button>
+          }
+        </div>
+      </section>
+    }
   }
 </section>
