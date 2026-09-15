@@ -7,6 +7,8 @@ import { CLOUD_CONFIG } from '../../../core/cloud/cloud.config';
 import { CloudFoundationService } from '../../../core/cloud/cloud-foundation.service';
 import { PwaUpdateService } from '../../../core/update/pwa-update.service';
 import { UpdateNotificationComponent } from '../update-notification/update-notification';
+import { AuthService } from '../../../core/auth/auth.service';
+import { OfflineSyncService } from '../../../core/sync/offline-sync.service';
 
 @Component({
   selector: 'app-shell',
@@ -25,6 +27,8 @@ export class AppShell {
   protected readonly workspace = inject(TeamWorkspaceContext, { optional: true });
   protected readonly cloudConfig = inject(CLOUD_CONFIG);
   protected readonly cloud = inject(CloudFoundationService);
+  protected readonly auth = inject(AuthService);
+  protected readonly sync = inject(OfflineSyncService, { optional: true });
   private readonly router = inject(Router);
   private readonly updates = inject(PwaUpdateService);
 
@@ -52,5 +56,14 @@ export class AppShell {
   protected async retryCloud(): Promise<void> {
     await this.cloud.initialize();
     if (this.cloud.status() === 'connected') await this.workspace?.refresh();
+  }
+
+  protected async signOut(): Promise<void> {
+    await this.auth.signOut();
+    await this.router.navigate(['/login']);
+  }
+
+  protected async retrySync(): Promise<void> {
+    await this.sync?.retryFailed();
   }
 }

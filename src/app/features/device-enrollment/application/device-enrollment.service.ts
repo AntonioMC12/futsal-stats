@@ -110,13 +110,12 @@ function enrollmentError(error: { message?: string }): Error {
   if (/invalid, expired or already used/i.test(message)) {
     return new Error('La invitación no es válida, ha caducado o ya se ha usado.');
   }
-  if (/already belongs/i.test(message))
-    return new Error('Este dispositivo ya pertenece al equipo.');
+  if (/already belongs/i.test(message)) return new Error('Tu cuenta ya pertenece al equipo.');
   if (/at least one owner|last owner/i.test(message)) {
-    return new Error('El equipo debe conservar al menos un dispositivo OWNER.');
+    return new Error('El equipo debe conservar al menos un miembro OWNER.');
   }
   if (/only an owner/i.test(message)) {
-    return new Error('Solo un dispositivo OWNER puede gestionar accesos.');
+    return new Error('Solo un miembro OWNER puede gestionar accesos.');
   }
   return new Error(message || 'No se ha podido completar la operación de acceso.');
 }

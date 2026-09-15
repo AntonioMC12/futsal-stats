@@ -1,11 +1,9 @@
 <section class="join-page stack">
   <a class="back" routerLink="/dashboard">← Inicio</a>
   <div>
-    <p class="eyebrow">Acceso sin cuenta</p>
-    <h1>Unir este dispositivo</h1>
-    <p class="lede">
-      Escanea el QR en este dispositivo o introduce el código que muestra el OWNER.
-    </p>
+    <p class="eyebrow">Invitación de equipo</p>
+    <h1>Unirse al equipo</h1>
+    <p class="lede">Abre el QR o introduce el código que comparte el OWNER.</p>
   </div>
 
   @if (cloudConfig.mode !== 'cloud') {
@@ -23,12 +21,12 @@
         />
       </label>
       <label class="field">
-        Nombre de este dispositivo <span class="optional">(opcional)</span>
+        Alias visible <span class="optional">(opcional)</span>
         <input
           formControlName="deviceName"
           type="text"
           maxlength="80"
-          placeholder="Tablet del banquillo"
+          placeholder="Entrenador, analista…"
           autocomplete="off"
         />
       </label>

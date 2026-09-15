@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { TeamWorkspaceContext } from './team-workspace.context';
 import { MATCH_REPOSITORY, PLAYER_REPOSITORY } from '../persistence/persistence.tokens';
+import { TeamAccessService } from './team-access.service';
 
 export const teamWorkspaceGuard: CanActivateFn = async () => {
   const workspace = inject(TeamWorkspaceContext);
@@ -40,4 +41,39 @@ export const playerTeamWorkspaceGuard: CanActivateFn = async (route) => {
     // The profile screen owns its missing/load-error handling.
   }
   return true;
+};
+
+export const workspaceWriteGuard: CanActivateFn = async () => {
+  const workspace = inject(TeamWorkspaceContext);
+  const access = inject(TeamAccessService);
+  const router = inject(Router);
+  await workspace.initialize();
+  const teamId = workspace.activeTeamId();
+  if (teamId) await access.load(teamId);
+  return teamId && access.canWrite()
+    ? true
+    : router.createUrlTree(['/dashboard'], { queryParams: { readOnly: 'true' } });
+};
+
+export const workspaceOwnerGuard: CanActivateFn = async () => {
+  const workspace = inject(TeamWorkspaceContext);
+  const access = inject(TeamAccessService);
+  const router = inject(Router);
+  await workspace.initialize();
+  const teamId = workspace.activeTeamId();
+  if (teamId) await access.load(teamId);
+  return teamId && access.role() === 'owner'
+    ? true
+    : router.createUrlTree(['/dashboard'], { queryParams: { ownerRequired: 'true' } });
+};
+
+export const teamRouteWriteGuard: CanActivateFn = async (route) => {
+  const access = inject(TeamAccessService);
+  const router = inject(Router);
+  const teamId = route.paramMap.get('teamId');
+  if (!teamId) return true;
+  await access.load(teamId);
+  return access.canWrite()
+    ? true
+    : router.createUrlTree(['/teams', teamId], { queryParams: { readOnly: 'true' } });
 };

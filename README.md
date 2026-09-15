@@ -5,14 +5,14 @@
 Futsal Stats es una aplicación web progresiva para registrar, seguir y consultar estadísticas de partidos de fútbol sala en tiempo real. Está orientada a entrenadores, analistas y miembros del cuerpo técnico que necesitan operar con rapidez desde móvil, tablet u ordenador durante un partido.
 
 La aplicación funciona por defecto de forma **local-first** sobre IndexedDB. El modo cloud puede
-activarse por despliegue con Supabase, autenticación anónima, RLS y repositorios offline-first. Las
+activarse por despliegue con Supabase, autenticación passwordless por email, RLS y repositorios offline-first. Las
 acciones de partido se confirman localmente y se sincronizan mediante una cola durable cuando hay
 conectividad. Consulta [`cloud-foundation.md`](docs/architecture/cloud-foundation.md) y
 [`offline-sync.md`](docs/offline-sync.md).
 
 > **Estado Alpha**  
 > `alpha_0.1` permanece como referencia histórica. El árbol de desarrollo incorpora posteriormente
-> workspaces de equipo, acceso por dispositivo, histórico, perfiles individuales y sincronización
+> workspaces de equipo, acceso por membresía, histórico, perfiles individuales y sincronización
 > offline resiliente.
 
 ---
@@ -173,7 +173,7 @@ estaba en pista.
 
 Las fotografías se eligen desde un archivo local; no se introducen URLs manualmente. Se admiten
 JPEG, PNG y WebP de hasta 5 MB, con previsualización antes de guardar. En modo cloud, las acciones de
-edición solo aparecen para dispositivos `OWNER` o `EDITOR`.
+edición solo aparecen para miembros `OWNER` o `EDITOR`.
 
 ---
 
@@ -402,17 +402,17 @@ Para un entorno de partido se recomienda abrir la aplicación y comprobar que ca
 
 # Estado de las iteraciones técnicas
 
-| Iteración | Área                                       | Estado actual                           |
-| --------- | ------------------------------------------ | --------------------------------------- |
-| 1         | Dominio y contratos de persistencia        | Integrada                               |
-| 2         | Modelo de datos sincronizable              | Integrada                               |
-| 3         | Team Workspace                             | Integrada                               |
-| 4         | Cloud Foundation                           | Integrada y activable por configuración |
-| 5         | Incorporación y revocación de dispositivos | Integrada                               |
-| 6         | Histórico de partidos                      | Integrada                               |
-| 7         | Perfiles de jugador                        | Integrada                               |
-| 8         | Realtime para viewers y controlador único  | Pendiente                               |
-| 9         | Offline sync y recuperación                | Integrada                               |
+| Iteración | Área                                      | Estado actual                           |
+| --------- | ----------------------------------------- | --------------------------------------- |
+| 1         | Dominio y contratos de persistencia       | Integrada                               |
+| 2         | Modelo de datos sincronizable             | Integrada                               |
+| 3         | Team Workspace                            | Integrada                               |
+| 4         | Cloud Foundation                          | Integrada y activable por configuración |
+| 5         | Incorporación y revocación de miembros    | Integrada                               |
+| 6         | Histórico de partidos                     | Integrada                               |
+| 7         | Perfiles de jugador                       | Integrada                               |
+| 8         | Realtime para viewers y controlador único | Pendiente                               |
+| 9         | Offline sync y recuperación               | Integrada                               |
 
 La sincronización offline no habilita edición concurrente del live match. La política continúa
 siendo un único dispositivo controlador; el realtime de observadores pertenece a la Iteración 8.
@@ -543,7 +543,7 @@ La aplicación principal no debe depender de esta funcionalidad para registrar u
 - Angular Signals para estado reactivo.
 - Angular Router y Reactive Forms.
 - Dexie sobre IndexedDB para persistencia.
-- Supabase/PostgreSQL opcional, con autenticación anónima y RLS por equipo.
+- Supabase/PostgreSQL opcional, con Magic Link/OTP por email y RLS por equipo.
 - Outbox durable y sincronización offline-first con reintentos.
 - Angular Service Worker para capacidades PWA.
 - SCSS responsive orientado a móvil y tablet.
@@ -632,7 +632,8 @@ npm run ng -- <comando>
 | `/matches/new`        | Datos y convocatoria del nuevo partido    |
 | `/matches/:matchId`   | Detalle de un partido terminado           |
 | `/settings`           | Ajustes y cambio del equipo activo        |
-| `/settings/devices`   | Invitaciones, dispositivos y revocación   |
+| `/login`              | Acceso passwordless por email             |
+| `/settings/devices`   | Invitaciones, miembros y revocación       |
 | `/join`               | Incorporación mediante invitación         |
 | `/strategies`         | Diseñador y biblioteca táctica            |
 | `/live/:matchId`      | Registro del partido en directo           |

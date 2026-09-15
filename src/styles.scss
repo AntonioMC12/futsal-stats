@@ -6,6 +6,80 @@
   font-synthesis: none;
 }
 
+/* Auth and sync controls live in the shell but are global to keep its component style budget flat. */
+.account-summary {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  color: var(--ds-text-muted);
+  font-size: var(--ds-font-xs);
+}
+
+.account-summary span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account-summary button,
+.sync-summary {
+  border: 0;
+  background: transparent;
+  font: inherit;
+}
+
+.account-summary button {
+  min-height: var(--ds-touch-min);
+  color: var(--ds-primary);
+  font-weight: var(--ds-weight-strong);
+  white-space: nowrap;
+}
+
+.sync-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  min-height: 2rem;
+  color: var(--ds-text-muted);
+  font-size: var(--ds-text-xs);
+}
+
+.sync-summary__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ds-success);
+}
+
+.sync-summary--problem {
+  color: var(--ds-warning);
+  cursor: pointer;
+}
+
+.sync-summary--problem .sync-summary__dot {
+  background: var(--ds-warning);
+}
+
+@media (max-width: 640px) {
+  .account-summary > span,
+  .sync-summary__label {
+    display: none;
+  }
+}
+
+@media (min-width: 1100px) {
+  .shell:not(.shell--live-match) .account-summary {
+    margin-top: auto;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .shell:not(.shell--live-match) .account-summary button {
+    padding: 0;
+    text-align: left;
+  }
+}
+
 *,
 *::before,
 *::after {
