@@ -5,10 +5,18 @@ import { SystemNotificationComponent } from '../system-notification/system-notif
 import { TeamWorkspaceContext } from '../../../core/team-workspace/team-workspace.context';
 import { CLOUD_CONFIG } from '../../../core/cloud/cloud.config';
 import { CloudFoundationService } from '../../../core/cloud/cloud-foundation.service';
+import { PwaUpdateService } from '../../../core/update/pwa-update.service';
+import { UpdateNotificationComponent } from '../update-notification/update-notification';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, SystemNotificationComponent],
+  imports: [
+    RouterLink,
+    RouterLinkActive,
+    RouterOutlet,
+    SystemNotificationComponent,
+    UpdateNotificationComponent,
+  ],
   templateUrl: './app-shell.html',
   styleUrl: './app-shell.scss',
 })
@@ -18,6 +26,11 @@ export class AppShell {
   protected readonly cloudConfig = inject(CLOUD_CONFIG);
   protected readonly cloud = inject(CloudFoundationService);
   private readonly router = inject(Router);
+  private readonly updates = inject(PwaUpdateService);
+
+  constructor() {
+    this.updates.initialize();
+  }
 
   get liveMatchActive(): boolean {
     return this.router.url.startsWith('/live/');

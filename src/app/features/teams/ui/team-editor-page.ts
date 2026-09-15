@@ -4,6 +4,8 @@ import { Router, RouterLink } from '@angular/router';
 import { TEAM_NAME_MAX_LENGTH, TEAM_SHORT_NAME_MAX_LENGTH } from '../domain/roster';
 import { TeamsService } from '../application/teams.service';
 import { TeamWorkspaceContext } from '../../../core/team-workspace/team-workspace.context';
+import { PwaUpdateService } from '../../../core/update/pwa-update.service';
+import { PwaUpdateState } from '../../../core/update/pwa-update.models';
 
 @Component({
   selector: 'app-team-editor-page',
@@ -16,6 +18,7 @@ export class TeamEditorPage {
   private readonly router = inject(Router);
   private readonly formBuilder = inject(FormBuilder);
   private readonly workspace = inject(TeamWorkspaceContext, { optional: true });
+  protected readonly updates = inject(PwaUpdateService);
 
   readonly teamId = input<string>();
   readonly workspaceMode = input(false);
@@ -44,6 +47,28 @@ export class TeamEditorPage {
 
   protected isEdit(): boolean {
     return Boolean(this.resolvedTeamId());
+  }
+
+  protected updateStatus(state: PwaUpdateState): string {
+    if (!this.updates.isEnabled) {
+      return 'Las actualizaciones PWA solo están disponibles en producción.';
+    }
+    switch (state.status) {
+      case 'checking':
+        return 'Buscando actualizaciones…';
+      case 'available':
+        return 'Nueva versión disponible.';
+      case 'deferred':
+        return 'Actualización pendiente hasta finalizar el partido.';
+      case 'updating':
+        return 'Aplicando actualización…';
+      case 'error':
+        return state.error ?? 'No se pudo comprobar.';
+      case 'idle':
+        return state.lastCheckOutcome === 'up-to-date'
+          ? 'Ya tienes la última versión.'
+          : 'Actualizado.';
+    }
   }
 
   protected async save(): Promise<void> {

@@ -14,6 +14,53 @@ form {
   background: var(--ds-surface);
 }
 
+.updates-panel {
+  padding: var(--ds-space-5);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface);
+}
+
+.updates-panel__eyebrow {
+  margin: 0 0 var(--ds-space-1);
+  color: var(--ds-primary);
+  font-size: var(--ds-font-xs);
+  font-weight: var(--ds-weight-strong);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.updates-panel h2 {
+  margin: 0;
+}
+
+.updates-panel dl {
+  margin: var(--ds-space-4) 0;
+  display: grid;
+  gap: var(--ds-space-3);
+}
+
+.updates-panel dl div {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.45fr) minmax(0, 1fr);
+  gap: var(--ds-space-3);
+}
+
+.updates-panel dt {
+  color: var(--ds-text-muted);
+}
+
+.updates-panel dd {
+  margin: 0;
+  font-weight: var(--ds-weight-strong);
+}
+
+.updates-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-2);
+}
+
 .back {
   color: var(--color-text-muted);
   text-decoration: none;

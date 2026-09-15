@@ -1,0 +1,38 @@
+@if (updates.notificationVisible() && updates.state(); as state) {
+  @if (state.status === 'available' || state.status === 'deferred') {
+    <aside
+      class="update-notification"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      aria-labelledby="update-title"
+    >
+      <div>
+        <h2 id="update-title">Nueva versión disponible</h2>
+        <p>
+          @if (state.status === 'deferred') {
+            La actualización se podrá instalar cuando finalice el partido.
+          } @else if (state.error) {
+            {{ state.error }}
+          } @else {
+            Hay una nueva versión de Futsal Stats lista para instalar.
+          }
+        </p>
+      </div>
+      <div class="update-notification__actions">
+        @if (state.status === 'deferred') {
+          <button class="btn btn--secondary" type="button" (click)="updates.dismissNotification()">
+            Entendido
+          </button>
+        } @else {
+          <button class="btn btn--secondary" type="button" (click)="updates.dismissNotification()">
+            Más tarde
+          </button>
+          <button class="btn btn--primary" type="button" (click)="updates.applyUpdate()">
+            Actualizar ahora
+          </button>
+        }
+      </div>
+    </aside>
+  }
+}
