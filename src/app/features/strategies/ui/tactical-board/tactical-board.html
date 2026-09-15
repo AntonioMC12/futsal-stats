@@ -1,6 +1,11 @@
-<div class="board-frame" [class.board-frame--compact]="compact()">
+<div
+  class="board-frame"
+  [class.board-frame--compact]="compact()"
+  [class.board-frame--interactive]="!locked()"
+>
   <svg
     class="board"
+    [class.board--interactive]="!locked()"
     [class.board--drawing]="tool() === 'pass' || tool() === 'movement'"
     viewBox="0 0 1000 600"
     preserveAspectRatio="xMidYMid meet"
@@ -79,6 +84,7 @@
             (pointermove)="arrowHandleMove($event)"
             (pointerup)="arrowHandleEnd($event)"
             (pointercancel)="arrowHandleEnd($event)"
+            (lostpointercapture)="arrowHandleEnd($event)"
           />
           <circle
             class="arrow-handle"
@@ -88,6 +94,7 @@
             (pointermove)="arrowHandleMove($event)"
             (pointerup)="arrowHandleEnd($event)"
             (pointercancel)="arrowHandleEnd($event)"
+            (lostpointercapture)="arrowHandleEnd($event)"
           />
         }
       }
@@ -121,6 +128,7 @@
           (pointermove)="piecePointerMove($event)"
           (pointerup)="piecePointerEnd($event)"
           (pointercancel)="piecePointerEnd($event)"
+          (lostpointercapture)="piecePointerEnd($event)"
         >
           @if (piece.type === 'ball') {
             <circle r="16" />

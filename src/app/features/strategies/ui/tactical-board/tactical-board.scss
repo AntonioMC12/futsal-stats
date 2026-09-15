@@ -44,6 +44,13 @@
   box-shadow: var(--ds-shadow-md);
   overflow: hidden;
 }
+.board-frame--interactive,
+.board--interactive {
+  touch-action: none;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
 .board {
   display: block;
   width: 100%;
@@ -109,6 +116,9 @@
   transform-origin: 0 0;
   cursor: grab;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .piece:active {
   cursor: grabbing;
@@ -178,6 +188,9 @@
   transform-origin: 0 0;
   cursor: grab;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .board-legend {
   padding: 0.5rem 0.5rem 0;

@@ -27,6 +27,10 @@ export class AppShell {
     return this.router.url.startsWith('/strategies');
   }
 
+  get strategyDesignerActive(): boolean {
+    return this.router.url.startsWith('/strategies/designer');
+  }
+
   protected async changeWorkspace(event: Event): Promise<void> {
     const teamId = (event.target as HTMLSelectElement).value;
     if (await this.workspace?.selectTeam(teamId)) await this.router.navigate(['/dashboard']);
