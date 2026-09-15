@@ -2,10 +2,17 @@ export const PREFERRED_FEET = ['unknown', 'right', 'left', 'both'] as const;
 
 export type PreferredFoot = (typeof PREFERRED_FEET)[number];
 
+export interface PlayerPhotoRef {
+  storageKey: string;
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
+  updatedAt: number;
+}
+
 export interface PlayerProfile {
   playerId: string;
   teamId: string;
   photoUrl?: string;
+  photoRef?: PlayerPhotoRef;
   preferredFoot: PreferredFoot;
   notes: string;
   metadata: Readonly<Record<string, string>>;

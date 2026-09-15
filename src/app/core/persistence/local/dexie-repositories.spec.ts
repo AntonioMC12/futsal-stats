@@ -11,6 +11,7 @@ import {
   MATCH_REPOSITORY,
   PLAYER_REPOSITORY,
   PLAYER_PROFILE_REPOSITORY,
+  PLAYER_PHOTO_REPOSITORY,
   TEAM_REPOSITORY,
 } from '../persistence.tokens';
 import { provideLocalPersistence } from '../provide-local-persistence';
@@ -129,6 +130,22 @@ describe('local Dexie repository adapters', () => {
     await expect(repository.put({ ...profile, playerId: 'missing' })).rejects.toThrow(
       'missing or foreign Player',
     );
+  });
+
+  it('stores, replaces and deletes player photos outside the profile entity', async () => {
+    const repository = TestBed.inject(PLAYER_PHOTO_REPOSITORY);
+    const first = new Blob(['first'], { type: 'image/png' });
+    const second = new Blob(['second'], { type: 'image/png' });
+    const firstRef = await repository.save('team-a', 'player-a', first, 'image/png');
+    const secondRef = await repository.save('team-a', 'player-a', second, 'image/png');
+
+    expect(secondRef.storageKey).toBe(firstRef.storageKey);
+    expect(await (await repository.get(secondRef))?.text()).toBe('second');
+    expect(await (await repository.getMany([secondRef])).get(secondRef.storageKey)?.text()).toBe(
+      'second',
+    );
+    await repository.delete(secondRef);
+    expect(await repository.get(secondRef)).toBeUndefined();
   });
 
   it('persists tactical strategies behind the team boundary', async () => {

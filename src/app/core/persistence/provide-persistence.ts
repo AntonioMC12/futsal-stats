@@ -10,6 +10,7 @@ import { DexieMatchEventRepository } from './local/dexie-match-event.repository'
 import { DexieMatchRepository } from './local/dexie-match.repository';
 import { DexiePlayerRepository } from './local/dexie-player.repository';
 import { DexiePlayerProfileRepository } from './local/dexie-player-profile.repository';
+import { DexiePlayerPhotoRepository } from './local/dexie-player-photo.repository';
 import { DexieStrategyRepository } from './local/dexie-strategy.repository';
 import { DexieTeamRepository } from './local/dexie-team.repository';
 import { FutsalStatsDb } from './local/futsal-stats.db';
@@ -17,6 +18,7 @@ import {
   MATCH_EVENT_REPOSITORY,
   MATCH_REPOSITORY,
   PLAYER_PROFILE_REPOSITORY,
+  PLAYER_PHOTO_REPOSITORY,
   PLAYER_REPOSITORY,
   TEAM_REPOSITORY,
 } from './persistence.tokens';
@@ -41,6 +43,7 @@ export function providePersistence(): Provider[] {
     DexieTeamRepository,
     DexiePlayerRepository,
     DexiePlayerProfileRepository,
+    DexiePlayerPhotoRepository,
     DexieMatchRepository,
     DexieMatchEventRepository,
     DexieStrategyRepository,
@@ -74,6 +77,7 @@ export function providePersistence(): Provider[] {
       ),
       deps: [CLOUD_CONFIG, Injector],
     },
+    { provide: PLAYER_PHOTO_REPOSITORY, useExisting: DexiePlayerPhotoRepository },
     {
       provide: MATCH_REPOSITORY,
       useFactory: select<MatchRepository>(DexieMatchRepository, OfflineMatchRepository),

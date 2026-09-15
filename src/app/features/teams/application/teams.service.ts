@@ -74,7 +74,7 @@ export class TeamsService {
   }
 
   async updatePlayer(playerId: string, input: PlayerInput): Promise<DomainResult<Player>> {
-    const roster = await this.players.listActiveByTeam(input.teamId);
+    const roster = await this.players.listByTeam(input.teamId);
     const current = roster.find((player) => player.id === playerId);
     if (!current) {
       return fail('No se ha encontrado el jugador.');

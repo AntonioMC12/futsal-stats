@@ -8,5 +8,13 @@ import { LocalSyncMetadata } from './sync-metadata';
 export type LocalTeamRecord = Team & LocalSyncMetadata;
 export type LocalPlayerRecord = Player & LocalSyncMetadata;
 export type LocalPlayerProfileRecord = PlayerProfile & LocalSyncMetadata;
+export interface LocalPlayerPhotoRecord {
+  storageKey: string;
+  teamId: string;
+  playerId: string;
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
+  data: ArrayBuffer;
+  updatedAt: number;
+}
 export type LocalMatchRecord = Match & LocalSyncMetadata;
 export type LocalMatchEventRecord = MatchEvent & LocalSyncMetadata;

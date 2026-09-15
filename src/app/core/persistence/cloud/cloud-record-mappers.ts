@@ -1,7 +1,11 @@
 import { Match, MatchDate } from '../../../shared/models/match';
 import { MatchEvent } from '../../../shared/models/match-event';
 import { Player } from '../../../shared/models/player';
-import { PlayerProfile, PreferredFoot } from '../../../shared/models/player-profile';
+import {
+  PlayerPhotoRef,
+  PlayerProfile,
+  PreferredFoot,
+} from '../../../shared/models/player-profile';
 import { Team } from '../../../shared/models/team';
 
 type JsonRecord = Record<string, unknown>;
@@ -53,29 +57,51 @@ export function playerToCloud(player: Player): JsonRecord {
 }
 
 export function playerProfileFromCloud(row: JsonRecord): PlayerProfile {
+  const metadata = (row['metadata'] as Record<string, string> | null) ?? {};
   return {
     playerId: string(row['player_id']),
     teamId: string(row['team_id']),
     photoUrl: optionalString(row['photo_url']),
+    photoRef: photoRefFromMetadata(metadata),
     preferredFoot: (optionalString(row['preferred_foot']) ?? 'unknown') as PreferredFoot,
     notes: optionalString(row['notes']) ?? '',
-    metadata: (row['metadata'] as Record<string, string> | null) ?? {},
+    metadata,
     createdAt: timestamp(row['created_at']),
     updatedAt: timestamp(row['updated_at']),
   };
 }
 
 export function playerProfileToCloud(profile: PlayerProfile): JsonRecord {
+  const metadata = { ...profile.metadata };
+  if (profile.photoRef) {
+    metadata['photoStorageKey'] = profile.photoRef.storageKey;
+    metadata['photoMimeType'] = profile.photoRef.mimeType;
+    metadata['photoUpdatedAt'] = String(profile.photoRef.updatedAt);
+  } else {
+    delete metadata['photoStorageKey'];
+    delete metadata['photoMimeType'];
+    delete metadata['photoUpdatedAt'];
+  }
   return {
     player_id: profile.playerId,
     team_id: profile.teamId,
     photo_url: profile.photoUrl ?? null,
     preferred_foot: profile.preferredFoot,
     notes: profile.notes,
-    metadata: profile.metadata,
+    metadata,
     created_at: iso(profile.createdAt),
     updated_at: iso(profile.updatedAt),
   };
+}
+
+function photoRefFromMetadata(metadata: Record<string, string>): PlayerPhotoRef | undefined {
+  const storageKey = metadata['photoStorageKey'];
+  const mimeType = metadata['photoMimeType'];
+  const updatedAt = Number(metadata['photoUpdatedAt']);
+  if (!storageKey || !['image/jpeg', 'image/png', 'image/webp'].includes(mimeType) || !updatedAt) {
+    return undefined;
+  }
+  return { storageKey, mimeType: mimeType as PlayerPhotoRef['mimeType'], updatedAt };
 }
 
 export function matchFromCloud(row: JsonRecord): Match {

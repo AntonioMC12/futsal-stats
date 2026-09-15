@@ -6,6 +6,7 @@ import {
   MATCH_EVENT_REPOSITORY as MatchEventRepository,
   MATCH_REPOSITORY as MatchRepository,
   PLAYER_PROFILE_REPOSITORY as PlayerProfileRepository,
+  PLAYER_PHOTO_REPOSITORY as PlayerPhotoRepository,
   PLAYER_REPOSITORY as PlayerRepository,
 } from '../../../core/persistence/persistence.tokens';
 import { PlayerProfilePage } from './player-profile-page';
@@ -48,6 +49,7 @@ describe('PlayerProfilePage', () => {
           },
         },
         { provide: PlayerProfileRepository, useValue: { get: async () => undefined, put } },
+        { provide: PlayerPhotoRepository, useValue: { get: async () => undefined } },
         { provide: MatchRepository, useValue: { listByTeam: async () => [match] } },
         {
           provide: MatchEventRepository,

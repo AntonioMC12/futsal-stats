@@ -8,6 +8,7 @@ import {
   LocalMatchRecord,
   LocalPlayerRecord,
   LocalPlayerProfileRecord,
+  LocalPlayerPhotoRecord,
   LocalTeamRecord,
 } from './local-records';
 
@@ -16,6 +17,7 @@ export class FutsalStatsDb extends Dexie {
   teams!: Table<LocalTeamRecord, string>;
   players!: Table<LocalPlayerRecord, string>;
   playerProfiles!: Table<LocalPlayerProfileRecord, string>;
+  playerPhotos!: Table<LocalPlayerPhotoRecord, string>;
   matches!: Table<LocalMatchRecord, string>;
   events!: Table<LocalMatchEventRecord, string>;
   strategies!: Table<Strategy, string>;
@@ -72,6 +74,17 @@ export class FutsalStatsDb extends Dexie {
       teams: 'id, name, updatedAt, &seedKey, syncStatus',
       players: 'id, teamId, number, active, updatedAt, syncStatus',
       playerProfiles: 'playerId, teamId, updatedAt, syncStatus',
+      matches:
+        'id, teamId, status, date, season, competition, updatedAt, syncStatus, [teamId+updatedAt]',
+      events: 'id, matchId, sequence, type, timestamp, updatedAt, syncStatus, [matchId+sequence]',
+      strategies: 'id, teamId, updatedAt',
+      syncQueue: 'id, &dedupeKey, status, nextAttemptAt, createdAt, [status+nextAttemptAt]',
+    });
+    this.version(8).stores({
+      teams: 'id, name, updatedAt, &seedKey, syncStatus',
+      players: 'id, teamId, number, active, updatedAt, syncStatus',
+      playerProfiles: 'playerId, teamId, updatedAt, syncStatus',
+      playerPhotos: 'storageKey, teamId, playerId, updatedAt',
       matches:
         'id, teamId, status, date, season, competition, updatedAt, syncStatus, [teamId+updatedAt]',
       events: 'id, matchId, sequence, type, timestamp, updatedAt, syncStatus, [matchId+sequence]',

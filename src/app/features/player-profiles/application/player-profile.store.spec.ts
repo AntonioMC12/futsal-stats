@@ -4,6 +4,7 @@ import {
   MATCH_EVENT_REPOSITORY as MatchEventRepository,
   MATCH_REPOSITORY as MatchRepository,
   PLAYER_PROFILE_REPOSITORY as PlayerProfileRepository,
+  PLAYER_PHOTO_REPOSITORY as PlayerPhotoRepository,
   PLAYER_REPOSITORY as PlayerRepository,
 } from '../../../core/persistence/persistence.tokens';
 import { Match } from '../../../shared/models/match';
@@ -79,6 +80,7 @@ describe('PlayerProfileStore', () => {
             }),
           },
         },
+        { provide: PlayerPhotoRepository, useValue: { get: async () => undefined } },
         { provide: MatchRepository, useValue: { listByTeam: async () => [current, previous] } },
         {
           provide: MatchEventRepository,
@@ -110,6 +112,7 @@ describe('PlayerProfileStore', () => {
           },
         },
         { provide: PlayerProfileRepository, useValue: { get: async () => undefined, put } },
+        { provide: PlayerPhotoRepository, useValue: { get: async () => undefined } },
         { provide: MatchRepository, useValue: { listByTeam: async () => [] } },
         { provide: MatchEventRepository, useValue: { listByMatch: vi.fn() } },
       ],
@@ -120,7 +123,6 @@ describe('PlayerProfileStore', () => {
 
     expect(
       await store.save({
-        photoUrl: 'https://example.com/ana.jpg',
         preferredFoot: 'right',
         notes: 'Pívot',
       }),
