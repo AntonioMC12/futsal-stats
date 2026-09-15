@@ -1,104 +1,65 @@
+import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { RAVI_STRATEGY } from '../data/ravi.strategy';
+import { APAGA_TEAM_ID } from '../../../core/initialization/built-in-teams';
+import { LocalStrategyRepository } from '../data/local-strategy.repository';
 import { StrategyRepository } from '../domain/strategy';
 import { StrategyPlaybackStore } from './strategy-playback.store';
-
 describe('StrategyPlaybackStore', () => {
   afterEach(() => {
-    vi.useRealTimers();
+    vi.unstubAllGlobals();
     TestBed.resetTestingModule();
   });
-
-  function createStore(repository: Partial<StrategyRepository> = {}): StrategyPlaybackStore {
+  function store(): StrategyPlaybackStore {
     TestBed.configureTestingModule({
       providers: [
+        provideZonelessChangeDetection(),
         StrategyPlaybackStore,
-        {
-          provide: StrategyRepository,
-          useValue: {
-            list: async () => [RAVI_STRATEGY],
-            get: async () => RAVI_STRATEGY,
-            ...repository,
-          },
-        },
+        { provide: StrategyRepository, useClass: LocalStrategyRepository },
       ],
     });
     return TestBed.inject(StrategyPlaybackStore);
   }
-
-  it('loads the strategy at phase zero and keeps manual navigation within bounds', async () => {
-    const store = createStore();
-    await store.load();
-
-    expect(store.selectedStrategy()).toBe(RAVI_STRATEGY);
-    expect(store.phaseIndex()).toBe(0);
-    expect(store.currentPhase()?.title).toBe('Colocación inicial');
-
-    store.previous();
-    expect(store.phaseIndex()).toBe(0);
-    store.next();
-    expect(store.phaseIndex()).toBe(1);
-    store.selectPhase(4);
-    expect(store.phaseIndex()).toBe(4);
-    store.next();
-    expect(store.phaseIndex()).toBe(4);
-    store.selectPhase(10);
-    expect(store.phaseIndex()).toBe(4);
+  it('loads, navigates and edits immutable sequence state', async () => {
+    const subject = store();
+    await subject.load(APAGA_TEAM_ID);
+    const before = subject.currentPhase()!.pieces[0]!.position;
+    subject.updatePiece(subject.currentPhase()!.pieces[0]!.pieceId, { x: 0.1, y: 0.2 });
+    expect(subject.currentPhase()!.pieces[0]!.position).toEqual({ x: 0.1, y: 0.2 });
+    expect(before).not.toEqual({ x: 0.1, y: 0.2 });
+    subject.appendSequence();
+    expect(subject.phaseIndex()).toBe(1);
+    subject.deleteSequence();
+    expect(subject.phaseIndex()).toBe(0);
+    expect(subject.dirty()).toBe(true);
   });
-
-  it('autoplays, pauses, restarts from the last phase and applies speed changes once', async () => {
-    vi.useFakeTimers();
-    const store = createStore();
-    await store.load();
-
-    store.play();
-    expect(store.playing()).toBe(true);
-    await vi.advanceTimersByTimeAsync(1_350);
-    expect(store.phaseIndex()).toBe(1);
-
-    store.setSpeed(650);
-    await vi.advanceTimersByTimeAsync(650);
-    expect(store.phaseIndex()).toBe(2);
-    store.pause();
-    await vi.advanceTimersByTimeAsync(2_000);
-    expect(store.phaseIndex()).toBe(2);
-
-    store.selectPhase(4);
-    store.play();
-    expect(store.phaseIndex()).toBe(0);
-    await vi.advanceTimersByTimeAsync(650);
-    expect(store.phaseIndex()).toBe(1);
-  });
-
-  it('cleans up its playback timer when destroyed', async () => {
-    vi.useFakeTimers();
-    const store = createStore();
-    await store.load();
-    store.setSpeed(650);
-    store.play();
-
-    TestBed.resetTestingModule();
-    await vi.advanceTimersByTimeAsync(2_000);
-
-    expect(store.phaseIndex()).toBe(0);
-    expect(vi.getTimerCount()).toBe(0);
-  });
-
-  it('represents empty and error repository states', async () => {
-    const emptyStore = createStore({ list: async () => [] });
-    await emptyStore.load();
-    expect(emptyStore.loading()).toBe(false);
-    expect(emptyStore.strategies()).toEqual([]);
-    expect(emptyStore.selectedStrategy()).toBeNull();
-
-    TestBed.resetTestingModule();
-    const errorStore = createStore({
-      list: async () => {
-        throw new Error('offline');
-      },
+  it('plays with animation frames without modifying persisted snapshots and supports pause/stop', async () => {
+    let frame: FrameRequestCallback | undefined;
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frame = callback;
+      return 1;
     });
-    await errorStore.load();
-    expect(errorStore.error()).toContain('No se han podido cargar');
-    expect(errorStore.loading()).toBe(false);
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    const subject = store();
+    await subject.load(APAGA_TEAM_ID);
+    const original = subject.currentPhase()!.pieces[0]!.position;
+    subject.play();
+    expect(subject.status()).toBe('playing');
+    frame?.(performance.now() + 500);
+    expect(subject.renderedPieces()[0]!.position).not.toBe(original);
+    subject.pause();
+    expect(subject.status()).toBe('paused');
+    subject.play();
+    subject.stop();
+    expect(subject.status()).toBe('idle');
+    expect(subject.playbackPositions()).toBeNull();
+    expect(subject.selectedStrategy()!.phases[0]!.pieces[0]!.position).toEqual(original);
+  });
+  it('saves behind the repository contract', async () => {
+    const subject = store();
+    await subject.load(APAGA_TEAM_ID);
+    subject.updateMetadata('name', 'Ensayo');
+    await subject.save();
+    expect(subject.dirty()).toBe(false);
+    expect(subject.saveState()).toBe('saved');
   });
 });

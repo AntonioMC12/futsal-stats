@@ -29,6 +29,39 @@ Los componentes Angular no contienen reglas de fútbol sala. Llaman a `LiveMatch
 
 La lógica de partido debe poder testearse con Vitest **sin** `TestBed`.
 
+## Límite de persistencia
+
+Las features consumen contratos TypeScript puros desde `core/persistence/ports` mediante los
+tokens `TEAM_REPOSITORY`, `PLAYER_REPOSITORY`, `MATCH_REPOSITORY` y
+`MATCH_EVENT_REPOSITORY`. Ningún consumidor de UI, aplicación o dominio conoce Dexie ni
+`FutsalStatsDb`.
+
+`provideLocalPersistence()` selecciona los adapters `Dexie*Repository` para pruebas y modo local.
+En modo cloud, `providePersistence()` selecciona adaptadores `Offline*Repository`: IndexedDB sigue
+siendo la fuente operativa y una cola durable envía cambios posteriormente sin cambiar las
+features. Los detalles, estados y recuperación se documentan en
+[`offline-sync.md`](offline-sync.md).
+
+```text
+UI → Application/Stores → Repository ports → Offline adapters → IndexedDB + Sync Queue
+```
+
+Las fronteras transaccionales pertenecen a los contratos orientados al agregado:
+
+- `MatchEventRepository.commit(match, events)` escribe eventos nuevos y snapshot juntos.
+- `MatchRepository.addIfNoActive(match)` comprueba y crea dentro de una transacción.
+- `MatchRepository.delete(matchId)` elimina partido y eventos juntos, sin tocar equipos ni jugadores.
+
+Regla arquitectónica: `features/*/{ui,application,domain}` no debe importar `dexie`,
+`local/futsal-stats.db` ni adapters `Dexie*Repository`.
+
+El modelo sincronizable, la migración Dexie v4 y su correspondencia PostgreSQL se documentan en
+[`architecture/cloud-data-model.md`](architecture/cloud-data-model.md). La decisión de normalizar
+IDs legacy está registrada en [`ADR-001`](adr/001-legacy-local-data-migration.md).
+
+El equipo activo, su onboarding, navegación y fronteras de consulta se documentan en
+[`architecture/team-workspace.md`](architecture/team-workspace.md).
+
 ## Modelo persistido vs agregado
 
 - Tabla `matches`: metadatos + `status` + snapshot del reloj + convocatoria + quinteto inicial.
@@ -45,7 +78,9 @@ Unión discriminada por `type`. Campos comunes: `id`, `matchId`, `type`, `period
 - `timestamp`: reloj de pared (`Date.now()`).
 - `sequence`: entero monótono por partido (orden total si hay empate de timestamps).
 
-Tipos MVP: `MATCH_STARTED`, `CLOCK_STARTED`, `CLOCK_STOPPED`, `CLOCK_RESET`, `PERIOD_STARTED`, `PERIOD_ENDED`, `PLAYER_ENTERED`, `PLAYER_LEFT`, `SUBSTITUTION`, `FOUL`, `GOAL_FOR`, `GOAL_AGAINST`, `EVENT_UNDONE`, `MATCH_FINISHED`.
+Tipos principales: `MATCH_STARTED`, `CLOCK_STARTED`, `CLOCK_STOPPED`, `CLOCK_RESET`, `PERIOD_STARTED`, `PERIOD_ENDED`, `PLAYER_ENTERED`, `PLAYER_LEFT`, `SUBSTITUTION`, `FOUL`, `DISCIPLINE`, `BENCH_DISCIPLINE`, `GOAL_FOR`, `GOAL_AGAINST`, `EVENT_UNDONE`, `MATCH_FINISHED`. `FOUL` clasifica de forma explícita si incrementa las faltas acumuladas; los eventos disciplinarios nunca las incrementan por sí mismos. Véase [Faltas no acumulables y tarjetas](non-accumulated-fouls-and-cards.md).
+
+Las correcciones de amarillas actualizan el evento existente mediante el puerto de persistencia, conservan todos los campos temporales y recalculan las proyecciones. En faltas con tarjeta, `foulPlayerId` mantiene separado al autor de la infracción del `playerId` disciplinario. Véase [Reasignación de tarjetas amarillas](edit-discipline-card-numbers.md).
 
 Los eventos nuevos y el snapshot actualizado del partido se escriben en una única transacción IndexedDB. `CLOCK_RESET` es explícito porque un reinicio cambia la línea temporal necesaria para calcular minutos, aunque el snapshot del reloj siga siendo la fuente para recuperar el tiempo en marcha.
 
@@ -91,9 +126,34 @@ Faltas: por periodo según reglas; acumulado de periodo se deriva. Jugador opcio
 
 Único punto de comandos (`startClock`, `registerGoalFor`, `makeSubstitution`, `undoLastEvent`, …). Persiste vía repositorios. Los computed (`score`, `currentLineup`, `playerPlayingTime`, …) se calculan con funciones puras sobre eventos + proyección de reloj.
 
+El tiempo consecutivo del tramo actual de cada jugador en pista reutiliza la
+proyección de participación y el ticker global del reloj. Véase
+[Tiempo del tramo actual en pista](./on-court-stint-time.md).
+
 ## PWA
 
 Service Worker de Angular en producción. IndexedDB es la fuente local. Al abrir: si hay partido no `finished`, ofrecer **Continuar partido**.
+
+## Estrategias tácticas
+
+El panel de estrategias usa snapshots completos de cada secuencia. Las posiciones de jugadores,
+rivales y balón se guardan normalizadas en el rango `0..1`; el SVG es únicamente la proyección
+responsive de esos datos. Las operaciones de edición son funciones puras del dominio y mantienen
+estable el `pieceId` entre secuencias.
+
+```text
+UI SVG/Pointer Events → StrategyPlaybackStore → StrategyRepository → DexieStrategyRepository
+```
+
+La reproducción interpola snapshots en un estado temporal mediante `requestAnimationFrame`, sin
+modificar las secuencias persistidas. Cada estrategia requiere un `teamId`; la tabla `strategies`
+está indexada por esa frontera y se incorporó en la versión 3 de la base local.
+
+La experiencia se divide en rutas hijas bajo `/strategies`: `designer/:strategyId?` concentra la
+edición en una única pantalla y `library` ofrece búsqueda, filtros, previsualizaciones y un visor de
+solo lectura. Ambas superficies reutilizan `TacticalBoard`, `StrategyControls` y el mismo
+`StrategyPlaybackStore`; no existe un segundo motor de renderizado o reproducción para la
+biblioteca.
 
 ## Qué no haremos aún
 

@@ -9,6 +9,7 @@ export const MATCH_EVENT_TYPES = [
   'PLAYER_LEFT',
   'SUBSTITUTION',
   'FOUL',
+  'DISCIPLINE',
   'BENCH_DISCIPLINE',
   'RED_CARD_REPLACEMENT',
   'GOAL_FOR',
@@ -21,6 +22,8 @@ export type MatchEventType = (typeof MATCH_EVENT_TYPES)[number];
 
 export type FoulTeam = 'home' | 'away';
 export type DisciplinaryAction = 'none' | 'yellow' | 'secondYellow' | 'directRed';
+export type FoulRestart = 'direct-free-kick' | 'penalty' | 'indirect-free-kick' | 'none';
+export type DisciplineReason = 'protest' | 'delayRestart' | 'other';
 export type BenchDisciplineAction = Exclude<DisciplinaryAction, 'none'>;
 export type BenchDisciplineReason = 'protest' | 'other';
 export type BenchDisciplineSubjectKind = 'player' | 'opponentPlayer' | 'staff';
@@ -42,6 +45,7 @@ export interface MatchEventBase {
   timestamp: number;
   sequence: number;
   undone: boolean;
+  relatedEventId?: string;
 }
 
 export interface MatchStartedEvent extends MatchEventBase {
@@ -87,11 +91,28 @@ export interface SubstitutionEvent extends MatchEventBase {
 export interface FoulEvent extends MatchEventBase {
   type: 'FOUL';
   team: FoulTeam;
+  /** Original offender when an embedded card is later reassigned. */
+  foulPlayerId?: string;
+  /** Original rival offender when an embedded card is later reassigned. */
+  foulOpponentPlayerNumber?: number;
   playerId?: string;
   opponentPlayerNumber?: number;
   periodFoulNumber: number;
+  countsAsAccumulatedFoul?: boolean;
+  restart?: FoulRestart;
+  /** @deprecated Read only for historical events. */
   accumulated?: boolean;
   disciplinaryAction?: DisciplinaryAction;
+  matchElapsedMs?: number;
+}
+
+export interface DisciplineEvent extends MatchEventBase {
+  type: 'DISCIPLINE';
+  team: FoulTeam;
+  playerId?: string;
+  opponentPlayerNumber?: number;
+  disciplinaryAction: BenchDisciplineAction;
+  reason: DisciplineReason;
   matchElapsedMs?: number;
 }
 
@@ -162,6 +183,7 @@ export type MatchEvent =
   | PlayerLeftEvent
   | SubstitutionEvent
   | FoulEvent
+  | DisciplineEvent
   | BenchDisciplineEvent
   | RedCardReplacementEvent
   | GoalForEvent

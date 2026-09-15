@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideZonelessChangeDetection } from '@angular/core';
-import { MatchRepository } from '../../../core/persistence/match.repository';
+import { MATCH_REPOSITORY as MatchRepository } from '../../../core/persistence/persistence.tokens';
 import { HomePage } from './home-page';
 
 describe('HomePage', () => {

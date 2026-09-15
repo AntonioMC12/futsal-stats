@@ -1,0 +1,45 @@
+<section class="workspace-dashboard">
+  @if (workspace.activeTeam(); as team) {
+    <header class="workspace-hero">
+      <span class="team-badge">{{ team.shortName }}</span>
+      <div>
+        <p class="eyebrow">Espacio de equipo</p>
+        <h1>{{ team.name }}</h1>
+        <p>Plantilla, partidos y trabajo técnico dentro de un único equipo.</p>
+      </div>
+    </header>
+
+    @if (error(); as message) {
+      <p class="banner banner--warn" role="alert">{{ message }}</p>
+    }
+
+    <div class="summary-grid" [attr.aria-busy]="loading()">
+      <a class="summary-card" routerLink="/players">
+        <span>Plantilla</span><strong>{{ playerCount() }}</strong
+        ><small>jugadores activos</small>
+      </a>
+      <a class="summary-card" routerLink="/matches">
+        <span>Histórico</span><strong>{{ finishedCount() }}</strong
+        ><small>partidos finalizados</small>
+      </a>
+      <a class="summary-card" routerLink="/matches">
+        <span>Partido actual</span>
+        <strong class="summary-card__state">{{ activeMatch() ? 'En curso' : 'Disponible' }}</strong>
+        <small>{{ activeMatch() ? 'Continúa el registro' : 'Puedes crear uno nuevo' }}</small>
+      </a>
+    </div>
+
+    <section class="workspace-actions" aria-labelledby="workspace-actions-title">
+      <h2 id="workspace-actions-title">Acciones rápidas</h2>
+      <div>
+        @if (activeMatch(); as match) {
+          <a class="btn btn--primary" [routerLink]="['/live', match.id]">Continuar partido</a>
+        } @else {
+          <a class="btn btn--primary" routerLink="/matches/new">Nuevo partido</a>
+        }
+        <a class="btn btn--secondary" routerLink="/players">Gestionar plantilla</a>
+        <a class="btn btn--secondary" routerLink="/strategies">Abrir estrategias</a>
+      </div>
+    </section>
+  }
+</section>

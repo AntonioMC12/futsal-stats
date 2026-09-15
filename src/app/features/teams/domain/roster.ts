@@ -18,6 +18,7 @@ export interface PlayerInput {
   number: number | string;
   name: string;
   position?: string;
+  active?: boolean;
 }
 
 export function suggestShortName(name: string): string {
@@ -90,7 +91,7 @@ export function createPlayerRecord(
     number: normalized.value.number,
     name: normalized.value.name,
     position: normalized.value.position,
-    active: true,
+    active: input.active ?? true,
   });
 }
 
@@ -114,7 +115,7 @@ export function updatePlayerRecord(
     number: normalized.value.number,
     name: normalized.value.name,
     position: normalized.value.position,
-    active: true,
+    active: input.active ?? player.active,
   });
 }
 

@@ -36,6 +36,8 @@ export interface PlayerMatchExportRow {
   onCourt: 'Sí' | 'No';
   timesEntered: number;
   fouls: number;
+  accumulatedFouls: number;
+  nonAccumulatedInfringements: number;
   yellowCards: number;
   secondYellowSendOffs: number;
   directRedCards: number;
@@ -57,6 +59,7 @@ export interface MatchStatisticsExport {
   rows: PlayerMatchExportRow[];
   events: Record<string, string | number | boolean>[];
   lineups: Record<string, string | number | boolean>[];
+  metadata: Record<string, string>[];
 }
 
 export function buildMatchStatisticsExport(
@@ -99,6 +102,8 @@ export function buildMatchStatisticsExport(
         goalsAgainstOnCourt: 0,
         plusMinus: 0,
         fouls: 0,
+        accumulatedFouls: 0,
+        nonAccumulatedInfringements: 0,
         yellowCards: 0,
         secondYellowSendOffs: 0,
         directRedCards: 0,
@@ -128,6 +133,8 @@ export function buildMatchStatisticsExport(
         onCourt: playersOnCourt.has(playerId) ? 'Sí' : 'No',
         timesEntered: stats.entries,
         fouls: stats.fouls,
+        accumulatedFouls: stats.accumulatedFouls,
+        nonAccumulatedInfringements: stats.nonAccumulatedInfringements,
         yellowCards: stats.yellowCards,
         secondYellowSendOffs: stats.secondYellowSendOffs,
         directRedCards: stats.directRedCards,
@@ -161,7 +168,9 @@ export function buildMatchStatisticsExport(
                 ? event.playerId
                 : undefined;
         const secondaryPlayerId = event.type === 'SUBSTITUTION' ? event.inPlayerId : undefined;
+        const foulPlayerId = event.type === 'FOUL' ? event.foulPlayerId : undefined;
         const player = playerId ? playersById.get(playerId) : undefined;
+        const foulPlayer = foulPlayerId ? playersById.get(foulPlayerId) : undefined;
         const secondary = secondaryPlayerId ? playersById.get(secondaryPlayerId) : undefined;
         return {
           eventId: event.id,
@@ -183,6 +192,11 @@ export function buildMatchStatisticsExport(
             player?.number ??
             ('opponentPlayerNumber' in event ? (event.opponentPlayerNumber ?? '') : ''),
           playerName: player?.name ?? '',
+          foulPlayerId: foulPlayerId ?? '',
+          foulPlayerNumber: foulPlayer?.number ?? '',
+          foulPlayerName: foulPlayer?.name ?? '',
+          foulOpponentPlayerNumber:
+            event.type === 'FOUL' ? (event.foulOpponentPlayerNumber ?? '') : '',
           secondaryPlayerId: secondaryPlayerId ?? '',
           secondaryPlayerNumber: secondary?.number ?? '',
           secondaryPlayerName: secondary?.name ?? '',
@@ -192,6 +206,20 @@ export function buildMatchStatisticsExport(
             Object.fromEntries(players.map((p) => [p.id, p.number])),
             discipline.goalReleaseEventIds.has(event.id),
           ),
+          countsAsAccumulatedFoul:
+            event.type === 'FOUL'
+              ? (event.countsAsAccumulatedFoul ?? event.accumulated !== false)
+              : false,
+          restartType: event.type === 'FOUL' ? (event.restart ?? '') : '',
+          disciplinaryAction:
+            event.type === 'FOUL' ||
+            event.type === 'DISCIPLINE' ||
+            event.type === 'BENCH_DISCIPLINE'
+              ? (event.disciplinaryAction ?? 'none')
+              : '',
+          relatedEventId: event.relatedEventId ?? '',
+          reason:
+            event.type === 'DISCIPLINE' || event.type === 'BENCH_DISCIPLINE' ? event.reason : '',
           metadata: JSON.stringify(event),
           createdAt: event.timestamp,
           undone: event.undone || !state.activeEvents.some((active) => active.id === event.id),
@@ -217,6 +245,14 @@ export function buildMatchStatisticsExport(
       goalsAgainst: lineup.goalsAgainst,
       plusMinus: lineup.plusMinus,
     })),
+    metadata: [
+      {
+        schemaVersion: 'futsal-stats-csv/2',
+        matchId: match.id,
+        opponentShortName: match.awayTeam.shortName,
+        description: match.description,
+      },
+    ],
   };
 }
 

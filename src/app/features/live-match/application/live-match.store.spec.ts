@@ -1,8 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { createMatchClock, DEFAULT_PERIOD_DURATION_MS } from '../../../core/clock/match-clock';
-import { MatchEventRepository } from '../../../core/persistence/match-event.repository';
-import { MatchRepository } from '../../../core/persistence/match.repository';
-import { PlayerRepository } from '../../../core/persistence/player.repository';
+import {
+  MATCH_EVENT_REPOSITORY as MatchEventRepository,
+  MATCH_REPOSITORY as MatchRepository,
+  PLAYER_REPOSITORY as PlayerRepository,
+} from '../../../core/persistence/persistence.tokens';
 import { Match } from '../../../shared/models/match';
 import { MatchEvent } from '../../../shared/models/match-event';
 import { DeleteMatchService } from '../../matches/application/delete-match.service';
@@ -11,6 +13,7 @@ import { LiveMatchStore } from './live-match.store';
 function readyMatch(): Match {
   return {
     id: 'match-1',
+    teamId: 'team-1',
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: 'Rival', shortName: 'RIV' },
     date: 1,
@@ -446,6 +449,8 @@ describe('LiveMatchStore', () => {
     });
     expect(store.playerPlayingTimes()['p1']?.playedMs).toBe(5_000);
     expect(store.playerPlayingTimes()['p6']?.playedMs).toBe(0);
+    expect(store.currentStintDuration('p2')).toBe(5_000);
+    expect(store.currentStintDuration('p6')).toBe(0);
 
     vi.setSystemTime(16_000);
     expect(await store.registerGoalFor('p6')).toBe(true);
@@ -459,6 +464,7 @@ describe('LiveMatchStore', () => {
     expect(store.statistics().players['p1']?.goalsForOnCourt).toBe(0);
     expect(store.statistics().players['p6']?.goalsForOnCourt).toBe(1);
     expect(store.statistics().players['p6']?.goals).toBe(1);
+    expect(store.currentStintDuration('p6')).toBe(1_000);
     expect(store.lineupStatistics().find((lineup) => lineup.id === 'p2|p3|p4|p5|p6')).toMatchObject(
       { playedMs: 1_000, goalsFor: 1, goalsAgainst: 0, plusMinus: 1 },
     );
@@ -530,7 +536,7 @@ describe('LiveMatchStore', () => {
         'protest',
       ),
     ).toBe(true);
-    expect(store.currentPeriodFouls().home).toBe(6);
+    expect(store.currentPeriodFouls().home).toBe(4);
     expect(store.disciplinaryState().reductions).toHaveLength(0);
     expect(
       await store.registerBenchDiscipline(
@@ -541,7 +547,7 @@ describe('LiveMatchStore', () => {
       ),
     ).toBe(true);
 
-    expect(store.currentPeriodFouls().home).toBe(6);
+    expect(store.currentPeriodFouls().home).toBe(4);
     expect(store.disciplinaryState().staffMembers[0]).toMatchObject({
       role: 'headCoach',
       directRedCards: 1,
@@ -554,11 +560,11 @@ describe('LiveMatchStore', () => {
 
     await store.load(persistedMatch.id);
     expect(await store.registerTeamFoul('p1')).toBe(true);
-    expect(store.currentPeriodFouls().home).toBe(7);
-    expect(persistedEvents.at(-1)).toMatchObject({ type: 'FOUL', periodFoulNumber: 7 });
+    expect(store.currentPeriodFouls().home).toBe(5);
+    expect(persistedEvents.at(-1)).toMatchObject({ type: 'FOUL', periodFoulNumber: 5 });
 
     await store.load(persistedMatch.id);
-    expect(store.currentPeriodFouls().home).toBe(7);
+    expect(store.currentPeriodFouls().home).toBe(5);
     expect(store.disciplinaryState().staffMembers).toHaveLength(1);
     expect(store.disciplinaryState().sentOffPlayerIds).toContain('p6');
     expect(store.timeline().filter((item) => item.type === 'BENCH_DISCIPLINE')).toHaveLength(3);
@@ -588,7 +594,7 @@ describe('LiveMatchStore', () => {
       'directRed',
       'protest',
     );
-    expect(store.currentPeriodFouls().home).toBe(1);
+    expect(store.currentPeriodFouls().home).toBe(0);
     expect(store.disciplinaryState().staffMembers[0]?.sentOff).toBe(true);
 
     expect(await store.undoLastEvent()).toBe(true);

@@ -1,0 +1,113 @@
+<section class="import-page">
+  <header class="import-header">
+    <a routerLink="/matches" class="back-link">← Partidos</a>
+    <p class="eyebrow">Copia portable</p>
+    <h1>Importar partido</h1>
+    <p>Revisa el contenido y la vinculación de jugadores antes de guardar nada.</p>
+  </header>
+
+  @if (error(); as message) {
+    <div class="banner banner--warn" role="alert">
+      <strong>{{ message }}</strong>
+      @if (duplicateMatchId(); as matchId) {
+        <a class="btn btn--secondary" [routerLink]="['/matches', matchId]">Ver partido existente</a>
+      }
+    </div>
+  }
+
+  @if (result(); as summary) {
+    <article class="panel result" aria-live="polite">
+      <span class="result__check" aria-hidden="true">✓</span>
+      <h2>Partido importado correctamente</h2>
+      <p>{{ importedMatch()?.match?.opponent }} · {{ importedMatch()?.match?.date }}</p>
+      <dl class="metrics">
+        <div><dt>Jugadores</dt><dd>{{ summary.playersCreated + summary.playersLinked }}</dd></div>
+        <div><dt>Eventos</dt><dd>{{ summary.eventCount }}</dd></div>
+        <div><dt>Sustituciones</dt><dd>{{ summary.substitutionCount }}</dd></div>
+        <div><dt>Quintetos</dt><dd>{{ summary.lineupCount }}</dd></div>
+      </dl>
+      <p>{{ summary.playersCreated }} creados · {{ summary.playersLinked }} vinculados</p>
+      @if (summary.issues.length) {
+        <details><summary>{{ summary.issues.length }} avisos de importación</summary>
+          <ul>@for (issue of summary.issues; track issue.code + issue.message) { <li>{{ issue.message }}</li> }</ul>
+        </details>
+      }
+      <div class="actions">
+        <a class="btn btn--primary" [routerLink]="['/matches', summary.matchId]">Ver partido</a>
+        <a class="btn btn--secondary" routerLink="/matches">Volver a partidos</a>
+      </div>
+    </article>
+  } @else if (!importedMatch()) {
+    <article class="panel">
+      <h2>1. Selecciona el archivo</h2>
+      <label
+        class="drop-zone"
+        [class.drop-zone--active]="dragging()"
+        (dragover)="dragOver($event)"
+        (dragleave)="dragLeave()"
+        (drop)="dropFile($event)"
+      >
+        <input type="file" accept=".csv,text/csv" (change)="fileSelected($event)" />
+        <span class="drop-zone__title">Arrastra un CSV aquí</span>
+        <span>o pulsa para seleccionar el archivo</span>
+      </label>
+      <p class="hint">Formato Futsal Stats CSV · máximo 5 MB</p>
+      @if (processing()) { <p role="status">Analizando {{ fileName() }}…</p> }
+    </article>
+  } @else if (importedMatch(); as preview) {
+    <article class="panel">
+      <div class="panel-heading">
+        <div><p class="eyebrow">2. Validación y vista previa</p><h2>{{ preview.match.opponent }}</h2></div>
+        <button class="text-action" type="button" (click)="reset()">Elegir otro CSV</button>
+      </div>
+      <dl class="match-data">
+        <div><dt>Archivo</dt><dd>{{ preview.source.fileName }}</dd></div>
+        <div><dt>Fecha</dt><dd>{{ preview.match.date }}</dd></div>
+        <div><dt>Resultado CSV</dt><dd>{{ preview.match.homeScore ?? '—' }} - {{ preview.match.awayScore ?? '—' }}</dd></div>
+        <div><dt>Estado</dt><dd>Finalizado</dd></div>
+      </dl>
+      <dl class="metrics">
+        <div><dt>Jugadores</dt><dd>{{ preview.players.length }}</dd></div>
+        <div><dt>Eventos</dt><dd>{{ preview.events.length }}</dd></div>
+        <div><dt>Sustituciones</dt><dd>{{ substitutionCount() }}</dd></div>
+        <div><dt>Quintetos</dt><dd>{{ preview.lineups.length }}</dd></div>
+      </dl>
+      @if (blockingIssues().length) {
+        <div class="issues issues--blocking" role="alert"><strong>No se puede importar</strong><ul>
+          @for (issue of blockingIssues(); track issue.code + issue.message) { <li>{{ issue.message }}</li> }
+        </ul></div>
+      }
+      @if (warnings().length) {
+        <details class="issues"><summary>{{ warnings().length }} advertencias</summary><ul>
+          @for (issue of warnings(); track issue.code + issue.message) { <li>{{ issue.message }}</li> }
+        </ul></details>
+      }
+    </article>
+
+    <article class="panel">
+      <p class="eyebrow">3. Jugadores</p>
+      <h2>Revisa las vinculaciones</h2>
+      <div class="resolution-list">
+        @for (item of resolutions(); track item.csvPlayer.importKey) {
+          <label class="resolution-row">
+            <span><strong>#{{ item.csvPlayer.number }} {{ item.csvPlayer.name }}</strong>
+              @if (item.csvPlayer.startingLineup) { <small>Titular</small> }
+            </span>
+            <select [value]="resolutionValue(item)" (change)="setResolution(item.csvPlayer.importKey, $any($event.target).value)">
+              <option value="__create__">Crear jugador</option>
+              @for (player of currentPlayers(); track player.id) {
+                <option [value]="player.id">Vincular con #{{ player.number }} {{ player.name }}</option>
+              }
+            </select>
+          </label>
+        }
+      </div>
+      <div class="actions">
+        <button class="btn btn--primary" type="button" [disabled]="!canImport()" (click)="confirmImport()">
+          {{ importing() ? 'Importando…' : 'Importar partido' }}
+        </button>
+        <a class="btn btn--secondary" routerLink="/matches">Cancelar</a>
+      </div>
+    </article>
+  }
+</section>

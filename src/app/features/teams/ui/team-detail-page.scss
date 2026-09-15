@@ -1,26 +1,9 @@
-.page-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
+.squad-page {
+  width: min(100%, 80rem);
+  margin: auto;
+  display: grid;
+  gap: var(--ds-space-5);
 }
-
-h1,
-h2 {
-  margin: 0;
-}
-
-h2 {
-  font-size: 1.1rem;
-}
-
-.eyebrow {
-  margin: 0 0 0.2rem;
-  color: var(--color-accent);
-  font-weight: 800;
-  letter-spacing: 0.04em;
-}
-
 .back {
   color: var(--color-text-muted);
   text-decoration: none;
@@ -28,92 +11,257 @@ h2 {
   min-height: 2.75rem;
   display: inline-flex;
   align-items: center;
+  width: fit-content;
 }
-
-.roster {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.page-head {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.roster__item {
-  position: relative;
-  width: 100%;
-  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 0.85rem;
-  min-height: 3.25rem;
-  padding: 0.6rem 0.9rem;
-  border-radius: var(--ds-radius-md);
+  gap: 1rem;
+}
+.page-head h1,
+.page-head p,
+h2 {
+  margin: 0;
+}
+.eyebrow {
+  color: var(--color-accent);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+.summary article {
   border: 1px solid var(--color-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--color-surface);
+  padding: 1rem;
+  display: grid;
+}
+.summary span,
+.toolbar span,
+.metric small,
+.identity small {
+  color: var(--color-text-muted);
+  font-size: var(--ds-font-xs);
+}
+.summary strong {
+  font-size: 1.7rem;
+}
+.toolbar {
+  display: grid;
+  grid-template-columns: 2fr repeat(4, 1fr);
+  gap: 0.65rem;
+}
+.toolbar label {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: 700;
+}
+.toolbar input,
+.toolbar select {
+  min-height: var(--ds-touch-min);
+  border: 1px solid var(--color-border);
+  border-radius: var(--ds-radius-md);
   background: var(--color-surface);
   color: inherit;
-  text-align: left;
-  font: inherit;
+  padding: 0 0.7rem;
 }
-
-.roster__item.is-selected {
-  border-color: var(--color-accent);
-  background: var(--ds-primary-soft);
+.squad-list {
+  border: 1px solid var(--color-border);
+  border-radius: var(--ds-radius-lg);
+  overflow: hidden;
+  background: var(--color-surface);
 }
-
-.dorsal {
+.table-head,
+.player-card {
+  display: grid;
+  grid-template-columns: minmax(14rem, 2fr) 0.75fr repeat(6, 0.55fr) minmax(11rem, 1fr);
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 1rem;
+}
+.table-head {
+  background: var(--ds-surface-secondary);
+  color: var(--color-text-muted);
+  font-size: var(--ds-font-xs);
   font-weight: 800;
-  min-width: 2.75rem;
-  min-height: 2rem;
-  border-radius: var(--ds-radius-control);
-  background: var(--ds-surface-raised);
-  color: var(--ds-primary);
+}
+.player-card {
+  border-top: 1px solid var(--ds-border-subtle);
+}
+.player-main {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+}
+.avatar {
+  width: 2.8rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
   display: grid;
   place-items: center;
-}
-
-.roster__item.is-selected::after {
-  margin-left: auto;
+  background: var(--ds-primary-soft);
   color: var(--ds-primary);
-  content: '✓';
   font-weight: 900;
+  flex: none;
 }
-
-.roster__item em {
-  display: block;
-  font-style: normal;
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
-
+.identity {
+  display: grid;
+  min-width: 0;
+}
+.identity strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.status {
+  color: var(--ds-success);
+  font-size: var(--ds-font-xs);
+  font-weight: 800;
+}
+.status--inactive {
+  color: var(--color-danger);
+}
+.metric {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.metric small {
+  display: none;
+}
+.balance--positive {
+  color: var(--ds-success);
+}
+.balance--negative {
+  color: var(--color-danger);
+}
+.card-actions {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+.card-actions .btn {
+  padding-inline: 0.65rem;
+}
 .panel {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
   padding: 1rem;
+  border: 1px solid var(--color-border);
   border-radius: var(--ds-radius-lg);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  scroll-margin-top: 1rem;
 }
-
-@media (hover: hover) {
-  .roster__item:hover {
-    border-color: var(--ds-border-strong);
-    background: var(--ds-surface-secondary);
-  }
-}
-
 .row {
   display: grid;
   grid-template-columns: 5.5rem 1fr;
   gap: 0.75rem;
 }
-
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
 }
-
-.actions .btn {
-  flex: 1 1 8rem;
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+}
+.error-state {
+  display: grid;
+  gap: 1rem;
+  justify-items: start;
+}
+.empty {
+  padding: 2rem;
+  text-align: center;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--ds-radius-lg);
+}
+@media (max-width: 1000px) {
+  .toolbar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .search {
+    grid-column: 1/-1;
+  }
+  .table-head {
+    display: none;
+  }
+  .squad-list {
+    border: 0;
+    background: transparent;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+  .player-card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--ds-radius-lg);
+    grid-template-columns: 1fr repeat(3, auto);
+    padding: 1rem;
+  }
+  .player-main {
+    grid-column: 1/-2;
+  }
+  .status {
+    justify-self: end;
+  }
+  .metric {
+    display: grid;
+  }
+  .metric small {
+    display: block;
+  }
+  .metric.secondary {
+    display: none;
+  }
+  .card-actions {
+    grid-column: 1/-1;
+  }
+  .card-actions .btn {
+    flex: 1;
+  }
+}
+@media (max-width: 600px) {
+  .page-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+  .search {
+    grid-column: auto;
+  }
+  .squad-list {
+    grid-template-columns: 1fr;
+  }
+  .player-card {
+    grid-template-columns: 1fr repeat(3, auto);
+  }
+  .row {
+    grid-template-columns: 1fr;
+  }
+  .actions .btn {
+    flex: 1 1 8rem;
+  }
 }

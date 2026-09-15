@@ -1,6 +1,6 @@
 import { createMatchClock } from '../clock/match-clock';
 import { Match } from '../../shared/models/match';
-import { normalizeMatch } from './match.repository';
+import { normalizeMatch } from './local/dexie-match.repository';
 
 describe('match persistence compatibility', () => {
   it('normalizes missing legacy metadata without inventing an abbreviation', () => {

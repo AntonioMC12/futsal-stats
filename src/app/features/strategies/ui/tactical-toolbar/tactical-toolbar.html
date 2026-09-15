@@ -1,0 +1,42 @@
+<div
+  class="toolbar"
+  [class.toolbar--vertical]="vertical()"
+  role="toolbar"
+  aria-label="Herramientas de la pizarra"
+>
+  <button
+    type="button"
+    [disabled]="disabled()"
+    [class.is-active]="tool() === 'select'"
+    [attr.aria-pressed]="tool() === 'select'"
+    (click)="toolSelected.emit('select')"
+  >
+    ↖ <span>Seleccionar</span>
+  </button>
+  <button
+    type="button"
+    [disabled]="disabled()"
+    [class.is-active]="tool() === 'movement'"
+    [attr.aria-pressed]="tool() === 'movement'"
+    (click)="toolSelected.emit('movement')"
+  >
+    ⇢ <span>Movimiento</span>
+  </button>
+  <button
+    type="button"
+    [disabled]="disabled()"
+    [class.is-active]="tool() === 'pass'"
+    [attr.aria-pressed]="tool() === 'pass'"
+    (click)="toolSelected.emit('pass')"
+  >
+    ➜ <span>Pase</span>
+  </button>
+  <button
+    class="toolbar__delete"
+    type="button"
+    [disabled]="disabled() || !canDelete()"
+    (click)="deleteRequested.emit()"
+  >
+    ⌫ <span>Eliminar flecha</span>
+  </button>
+</div>

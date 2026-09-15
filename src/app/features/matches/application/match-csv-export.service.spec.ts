@@ -1,8 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { createMatchClock } from '../../../core/clock/match-clock';
-import { MatchEventRepository } from '../../../core/persistence/match-event.repository';
-import { MatchRepository } from '../../../core/persistence/match.repository';
-import { PlayerRepository } from '../../../core/persistence/player.repository';
+import {
+  MATCH_EVENT_REPOSITORY as MatchEventRepository,
+  MATCH_REPOSITORY as MatchRepository,
+  PLAYER_REPOSITORY as PlayerRepository,
+} from '../../../core/persistence/persistence.tokens';
 import { Match } from '../../../shared/models/match';
 import { CsvFileDownloader } from './csv-file-downloader';
 import { MatchCsvExportService } from './match-csv-export.service';
@@ -11,6 +13,7 @@ import { SystemNotificationService } from '../../../core/notifications/system-no
 function match(status: Match['status']): Match {
   return {
     id: 'match-1',
+    teamId: 'team-1',
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: 'Rival', shortName: 'RIV' },
     date: new Date(2026, 7, 28, 12).getTime(),

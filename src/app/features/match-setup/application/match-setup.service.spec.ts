@@ -1,7 +1,9 @@
 import { TestBed } from '@angular/core/testing';
-import { MatchRepository } from '../../../core/persistence/match.repository';
-import { PlayerRepository } from '../../../core/persistence/player.repository';
-import { TeamRepository } from '../../../core/persistence/team.repository';
+import {
+  MATCH_REPOSITORY as MatchRepository,
+  PLAYER_REPOSITORY as PlayerRepository,
+  TEAM_REPOSITORY as TeamRepository,
+} from '../../../core/persistence/persistence.tokens';
 import { Player } from '../../../shared/models/player';
 import { Team } from '../../../shared/models/team';
 import { MatchSetupService } from './match-setup.service';

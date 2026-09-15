@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { MatchRepository } from '../../../core/persistence/match.repository';
+import { MATCH_REPOSITORY as MatchRepository } from '../../../core/persistence/persistence.tokens';
 import { noActiveMatchGuard } from './no-active-match.guard';
 
 describe('noActiveMatchGuard', () => {

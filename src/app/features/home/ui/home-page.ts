@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { MatchRepository } from '../../../core/persistence/match.repository';
+import { MATCH_REPOSITORY } from '../../../core/persistence/persistence.tokens';
 import { Match } from '../../../shared/models/match';
 
 @Component({
@@ -10,7 +10,7 @@ import { Match } from '../../../shared/models/match';
   styleUrl: './home-page.scss',
 })
 export class HomePage {
-  private readonly matches = inject(MatchRepository);
+  private readonly matches = inject(MATCH_REPOSITORY);
 
   protected readonly activeMatch = signal<Match | null>(null);
   protected readonly loading = signal(true);

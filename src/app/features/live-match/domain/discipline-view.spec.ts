@@ -100,9 +100,16 @@ describe('discipline view projection', () => {
       expect.objectContaining({ number: 7, fouls: 1, ordinaryYellowCards: 1 }),
     ]);
     expect(view.away.unattributedFouls).toBe(2);
+    expect(view.editableYellowCards).toEqual([
+      expect.objectContaining({
+        team: 'away',
+        opponentPlayerNumber: 7,
+        number: 7,
+      }),
+    ]);
   });
 
-  it('shows bench discipline separately while adding protest cards to current-period totals', () => {
+  it('shows bench discipline separately without adding protest cards to current-period totals', () => {
     const benchCard: MatchEvent = {
       id: 'bench-card',
       matchId: 'match-1',
@@ -113,7 +120,7 @@ describe('discipline view projection', () => {
       disciplinaryAction: 'yellow',
       reason: 'protest',
       context: 'bench',
-      countsAsAccumulatedFoul: true,
+      countsAsAccumulatedFoul: false,
       createsDirectFreeKickWithoutWall: false,
       periodFoulNumber: 1,
       period: 1,
@@ -124,13 +131,13 @@ describe('discipline view projection', () => {
     };
     const view = project([benchCard]);
 
-    expect(view.home.totals).toMatchObject({ fouls: 1, yellowCards: 1 });
+    expect(view.home.totals).toMatchObject({ fouls: 0, yellowCards: 1 });
     expect(view.home.participants[0]).toMatchObject({ name: 'MARA', yellowCards: 1, fouls: 0 });
     expect(view.bench.home).toEqual([
       expect.objectContaining({
         label: '#7 MARA',
         reason: 'protest',
-        countsAsAccumulatedFoul: true,
+        countsAsAccumulatedFoul: false,
       }),
     ]);
   });

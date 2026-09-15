@@ -106,7 +106,7 @@ describe('match timeline', () => {
         periodFoulNumber: 4,
       },
     ];
-    expect(createMatchTimeline(events)[0]?.label).toBe('Falta propia · 4ª');
+    expect(createMatchTimeline(events)[0]?.label).toBe('Falta propia · Acumulativa');
   });
 
   it('includes the rival jersey number in card events', () => {
@@ -126,10 +126,10 @@ describe('match timeline', () => {
         periodFoulNumber: 3,
       },
     ];
-    expect(createMatchTimeline(events)[0]?.label).toBe('🟨 Amarilla rival #7 · 3ª');
+    expect(createMatchTimeline(events)[0]?.label).toBe('🟨 Amarilla rival #7 · Acumulativa');
   });
 
-  it('describes bench context, reason and accumulated-foul effect', () => {
+  it('describes bench context and keeps the card non-accumulated', () => {
     const event: MatchEvent = {
       id: 'bench-card',
       matchId: 'match-1',
@@ -142,7 +142,7 @@ describe('match timeline', () => {
       disciplinaryAction: 'directRed',
       reason: 'protest',
       context: 'bench',
-      countsAsAccumulatedFoul: true,
+      countsAsAccumulatedFoul: false,
       createsDirectFreeKickWithoutWall: false,
       periodFoulNumber: 5,
       period: 1,
@@ -153,7 +153,7 @@ describe('match timeline', () => {
     };
 
     expect(createMatchTimeline([event])[0]?.label).toBe(
-      '🟥 Banquillo rival · Fisioterapeuta · Ana · Protesta / desobediencia · +1 falta rival',
+      '🟥 Banquillo rival · Fisioterapeuta · Ana · Protesta / desobediencia · No acumulativa',
     );
   });
 

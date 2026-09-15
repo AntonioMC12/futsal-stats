@@ -48,9 +48,63 @@
   padding: 0 var(--ds-space-2);
   border-bottom: 1px solid var(--ds-border);
   display: grid;
-  grid-template-columns: var(--ds-touch-min) minmax(0, 1fr);
+  grid-template-columns: var(--ds-touch-min) minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--ds-space-2);
+}
+
+.sync-state {
+  min-height: 2rem;
+  max-width: min(42vw, 18rem);
+  padding: 0 var(--ds-space-2);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-surface-raised);
+  color: var(--ds-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  font: inherit;
+  font-size: var(--ds-font-xs);
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.sync-state i {
+  width: 0.55rem;
+  height: 0.55rem;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ds-success);
+}
+
+.sync-state span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sync-state strong {
+  color: var(--ds-danger);
+  font-size: inherit;
+}
+
+.sync-state--offline i {
+  background: var(--ds-warning);
+}
+
+.sync-state--failed {
+  border-color: color-mix(in srgb, var(--ds-danger) 55%, var(--ds-border));
+  background: var(--ds-danger-soft);
+}
+
+.sync-state--failed i {
+  background: var(--ds-danger);
+}
+
+.sync-state--syncing i {
+  background: var(--ds-primary);
+  animation: sync-pulse 1s ease-in-out infinite;
 }
 
 .back {
@@ -436,6 +490,14 @@
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.court-player .court-player-stint {
+  color: var(--ds-text);
+  font-size: clamp(0.68rem, 2.6vw, 0.82rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .court-player:disabled {
@@ -830,12 +892,117 @@
   box-shadow: none;
 }
 .bench-discipline-toggle .is-selected,
+.record-mode-options .is-selected,
 .staff-role-options .is-selected,
 .disciplinary-options .is-selected,
 .bench-reason-options .is-selected {
   border-color: var(--ds-primary);
   background: var(--ds-primary-soft);
   color: var(--ds-primary);
+}
+
+.record-mode-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ds-space-2);
+  margin-bottom: var(--ds-space-4);
+}
+
+.edit-yellow-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+}
+
+.yellow-card-edit-line {
+  width: 100%;
+  padding-top: var(--ds-space-2);
+  border-top: 1px solid var(--ds-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+}
+
+.yellow-card-edit-line__context {
+  min-width: 0;
+  display: grid;
+  gap: var(--ds-space-1);
+  color: var(--ds-text);
+  text-align: left;
+}
+
+.yellow-card-edit-line__context small {
+  color: var(--ds-text-muted);
+  font-weight: 600;
+}
+
+.yellow-card-edit-line .edit-yellow-card {
+  flex: 0 0 auto;
+  min-width: 5.5rem;
+  min-height: 2.75rem;
+}
+
+.edit-yellow-card-sheet {
+  max-width: 38rem;
+}
+
+.edit-yellow-card-current {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ds-space-3);
+  margin: var(--ds-space-4) 0;
+}
+
+.edit-yellow-card-current div,
+.edit-yellow-card-search {
+  display: grid;
+  gap: var(--ds-space-1);
+}
+
+.edit-yellow-card-current dt,
+.edit-yellow-card-search {
+  color: var(--ds-text-muted);
+  font-size: 0.875rem;
+}
+
+.edit-yellow-card-current dd {
+  margin: 0;
+  color: var(--ds-text);
+  font-weight: 700;
+}
+
+.edit-yellow-card-search input {
+  min-height: 2.75rem;
+}
+
+.edit-yellow-card-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ds-space-2);
+  max-height: min(45vh, 24rem);
+  margin: var(--ds-space-3) 0;
+  overflow-y: auto;
+}
+
+.edit-yellow-card-actions {
+  position: sticky;
+  bottom: 0;
+  padding-top: var(--ds-space-3);
+  background: var(--ds-surface);
+}
+
+.edit-yellow-card-actions .btn {
+  flex: 1;
+  min-height: 3rem;
+}
+
+@media (max-width: 560px) {
+  .edit-yellow-card-current,
+  .edit-yellow-card-options {
+    grid-template-columns: 1fr;
+  }
 }
 .bench-discipline-subjects {
   margin-top: var(--ds-space-3);
@@ -1588,6 +1755,21 @@
 }
 
 @media (max-width: 639px) {
+  .sync-state {
+    width: 2rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .sync-state span,
+  .sync-state strong {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
   .opponent-name-full {
     display: none;
   }
@@ -1956,5 +2138,11 @@
   from {
     opacity: 0;
     transform: translateX(1rem);
+  }
+}
+
+@keyframes sync-pulse {
+  50% {
+    opacity: 0.35;
   }
 }

@@ -16,6 +16,8 @@ export interface PlayerMatchStatistics extends PlayerPlayingTime {
   goalsAgainstOnCourt: number;
   plusMinus: number;
   fouls: number;
+  accumulatedFouls: number;
+  nonAccumulatedInfringements: number;
   yellowCards: number;
   secondYellowSendOffs: number;
   directRedCards: number;
@@ -60,6 +62,8 @@ export function createMatchStatisticsProjection(
         goalsAgainstOnCourt: 0,
         plusMinus: 0,
         fouls: 0,
+        accumulatedFouls: 0,
+        nonAccumulatedInfringements: 0,
         yellowCards: 0,
         secondYellowSendOffs: 0,
         directRedCards: 0,

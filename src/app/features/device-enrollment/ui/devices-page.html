@@ -1,0 +1,131 @@
+<section class="devices-page stack">
+  <a class="back" routerLink="/settings">← Ajustes</a>
+  <header class="page-head">
+    <div>
+      <p class="eyebrow">Acceso al equipo</p>
+      <h1>Dispositivos</h1>
+      <p class="lede">Comparte {{ activeTeam()?.name }} sin cuentas personales.</p>
+    </div>
+  </header>
+
+  @if (cloudConfig.mode !== 'cloud') {
+    <p class="banner banner--warn" role="status">
+      La incorporación de dispositivos necesita que el modo cloud esté configurado.
+    </p>
+  } @else {
+    @if (error(); as message) {
+      <p class="banner banner--warn" role="alert">{{ message }}</p>
+    }
+    @if (notice(); as message) {
+      <p class="banner banner--ok" role="status">{{ message }}</p>
+    }
+
+    <section class="panel stack" aria-labelledby="invite-title">
+      <div>
+        <h2 id="invite-title">Añadir dispositivo</h2>
+        <p class="meta">La invitación solo se puede usar una vez y caduca automáticamente.</p>
+      </div>
+      <form class="invite-form" [formGroup]="inviteForm" (ngSubmit)="createInvitation()">
+        <label class="field">
+          Rol
+          <select formControlName="role">
+            <option value="editor">EDITOR · puede registrar y modificar</option>
+            <option value="viewer">VIEWER · solo consulta</option>
+            <option value="owner">OWNER · administra accesos</option>
+          </select>
+        </label>
+        <label class="field">
+          Caducidad
+          <select formControlName="ttlMinutes">
+            <option [ngValue]="5">5 minutos</option>
+            <option [ngValue]="15">15 minutos</option>
+            <option [ngValue]="30">30 minutos</option>
+            <option [ngValue]="60">60 minutos</option>
+          </select>
+        </label>
+        <button class="btn btn--primary" type="submit" [disabled]="loading()">
+          Crear invitación
+        </button>
+      </form>
+
+      @if (invitation(); as invite) {
+        <div class="invitation" role="status">
+          @if (qrDataUrl(); as qr) {
+            <img [src]="qr" alt="Código QR de invitación al equipo" width="280" height="280" />
+          }
+          <div class="invitation__details">
+            <strong>Código manual</strong>
+            <code>{{ invitationCode() }}</code>
+            <p>Rol {{ roleLabel(invite.role) }} · caduca {{ invite.expiresAt | date: 'short' }}</p>
+            <div class="actions">
+              <button class="btn btn--secondary" type="button" (click)="copyCode()">
+                Copiar código
+              </button>
+              <button class="btn btn--tertiary" type="button" (click)="closeInvitation()">
+                Ocultar
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    </section>
+
+    <section class="panel stack" aria-labelledby="devices-title">
+      <div>
+        <h2 id="devices-title">Con acceso</h2>
+        <p class="meta">Los cambios de rol y las revocaciones se aplican en el servidor.</p>
+      </div>
+      @if (!loading() && devices().length === 0) {
+        <p class="empty">No hay dispositivos disponibles o no tienes permisos OWNER.</p>
+      }
+      <div class="device-list">
+        @for (device of devices(); track device.authUserId) {
+          <article class="device-card">
+            <div class="device-card__head">
+              <div>
+                <strong>{{ device.deviceName || 'Dispositivo sin nombre' }}</strong>
+                @if (device.isCurrent) {
+                  <span class="current">Este dispositivo</span>
+                }
+              </div>
+              <span class="role-badge">{{ roleLabel(device.role) }}</span>
+            </div>
+            <p>Última actividad: {{ device.lastSeenAt | date: 'short' }}</p>
+            <div class="device-fields">
+              <label class="field">
+                Nombre
+                <input #deviceName type="text" maxlength="80" [value]="device.deviceName" />
+              </label>
+              <label class="field">
+                Rol
+                <select #deviceRole [value]="device.role" [disabled]="device.isCurrent">
+                  <option value="owner">OWNER</option>
+                  <option value="editor">EDITOR</option>
+                  <option value="viewer">VIEWER</option>
+                </select>
+              </label>
+            </div>
+            <div class="actions">
+              <button
+                class="btn btn--secondary"
+                type="button"
+                [disabled]="busyUserId() === device.authUserId"
+                (click)="saveDevice(device, deviceName.value, deviceRole.value)"
+              >
+                Guardar
+              </button>
+              <button
+                class="btn btn--danger"
+                type="button"
+                [disabled]="device.isCurrent || busyUserId() === device.authUserId"
+                (click)="revokeDevice(device)"
+              >
+                Revocar
+              </button>
+            </div>
+          </article>
+        }
+      </div>
+    </section>
+  }
+</section>

@@ -1,78 +1,205 @@
-<section class="stack">
-  <a class="back" routerLink="/teams">← Equipos</a>
-
-  @if (loadFailed()) {
-    <p class="banner banner--warn" role="alert">No se ha podido cargar el equipo.</p>
+<section class="squad-page">
+  <a class="back" [routerLink]="backLink()">← {{ workspaceMode() ? 'Dashboard' : 'Equipos' }}</a>
+  @if (loading() && !overview()) {
+    <p class="empty" role="status">Cargando plantilla…</p>
+  } @else if (loadFailed()) {
+    <div class="error-state">
+      <p class="banner banner--warn" role="alert">
+        No se ha podido cargar la plantilla ni sus estadísticas.
+      </p>
+      <button class="btn btn--secondary" type="button" (click)="retry()">Reintentar</button>
+    </div>
   } @else if (missing()) {
     <p class="banner banner--warn">Este equipo no existe.</p>
   } @else if (team(); as current) {
-    <div class="page-head">
+    <header class="page-head">
       <div>
-        <p class="eyebrow">{{ current.shortName }}</p>
+        <p class="eyebrow">
+          {{ current.shortName }} · {{ overview()?.activePlayers }} activos de
+          {{ overview()?.totalPlayers }}
+        </p>
         <h1>{{ current.name }}</h1>
       </div>
-      <a class="btn btn--secondary" [routerLink]="['/teams', current.id, 'edit']">Editar</a>
-    </div>
-
-    <h2>Plantilla</h2>
-
-    @if (roster().length === 0) {
-      <p class="empty">Añade al menos 5 jugadores para poder alinear un quinteto.</p>
-    } @else {
-      <ul class="roster">
-        @for (player of roster(); track player.id) {
-          <li>
-            <button
-              type="button"
-              class="roster__item"
-              [class.is-selected]="selectedPlayerId() === player.id"
-              (click)="selectPlayer(player)"
-            >
-              <span class="dorsal">#{{ player.number }}</span>
-              <span>
-                <strong>{{ player.name }}</strong>
-                @if (player.position) {
-                  <em>{{ player.position }}</em>
+      @if (access.canWrite()) {
+        <button class="btn btn--primary" type="button" (click)="addPlayer()">Añadir jugador</button>
+      }
+    </header>
+    @if (overview(); as data) {
+      <section class="summary" aria-label="Resumen de la plantilla">
+        <article>
+          <span>Activos</span><strong>{{ data.activePlayers }}</strong>
+        </article>
+        <article>
+          <span>Partidos</span><strong>{{ data.matches }}</strong>
+        </article>
+        <article>
+          <span>Minutos</span><strong>{{ minutes(data.playedMs) }}</strong>
+        </article>
+        <article>
+          <span>Goles</span><strong>{{ data.goals }}</strong>
+        </article>
+      </section>
+      <section class="toolbar" aria-label="Filtros de plantilla">
+        <label class="search"
+          ><span>Buscar</span
+          ><input
+            type="search"
+            placeholder="Nombre o dorsal"
+            [value]="filters.search()"
+            (input)="filters.search.set($any($event.target).value)"
+        /></label>
+        <label
+          ><span>Estado</span
+          ><select
+            [value]="filters.status()"
+            (change)="filters.status.set($any($event.target).value)"
+          >
+            <option value="active">Activos</option>
+            <option value="inactive">Inactivos</option>
+            <option value="all">Todos</option>
+          </select></label
+        >
+        <label
+          ><span>Posición</span
+          ><select
+            [value]="filters.position()"
+            (change)="filters.position.set($any($event.target).value)"
+          >
+            <option value="">Todas</option>
+            @for (position of positions(); track position) {
+              <option [value]="position">{{ position }}</option>
+            }
+          </select></label
+        >
+        <label
+          ><span>Temporada</span
+          ><select
+            [value]="filters.season()"
+            (change)="filters.season.set($any($event.target).value)"
+          >
+            <option value="all">Todas</option>
+            @for (season of data.seasons; track season) {
+              <option [value]="season">{{ season }}</option>
+            }
+          </select></label
+        >
+        <label
+          ><span>Ordenar</span
+          ><select [value]="filters.sort()" (change)="filters.sort.set($any($event.target).value)">
+            <option value="number">Dorsal</option>
+            <option value="name">Nombre</option>
+            <option value="minutes">Minutos</option>
+            <option value="matches">Partidos</option>
+            <option value="goals">Goles</option>
+          </select></label
+        >
+      </section>
+      @if (data.players.length === 0) {
+        <p class="empty">Todavía no hay jugadores en la plantilla.</p>
+      } @else if (filteredPlayers().length === 0) {
+        <p class="empty">No hay jugadores que coincidan con los filtros.</p>
+      } @else {
+        <div class="squad-list" role="list">
+          <div class="table-head" aria-hidden="true">
+            <span>Jugador</span><span>Estado</span><span>PJ</span><span>Tit.</span><span>Min.</span
+            ><span>Goles</span><span>Balance</span><span>Media</span><span>Acciones</span>
+          </div>
+          @for (player of filteredPlayers(); track player.playerId) {
+            <article class="player-card" role="listitem">
+              <a class="player-main" [routerLink]="['/players', player.playerId]">
+                <span class="avatar">
+                  @if (photoUrls().get(player.playerId); as url) {
+                    <img [src]="url" [alt]="'Foto de ' + player.name" />
+                  } @else if (player.legacyPhotoUrl) {
+                    <img [src]="player.legacyPhotoUrl" [alt]="'Foto de ' + player.name" />
+                  } @else {
+                    {{ initials(player.name) }}
+                  }
+                </span>
+                <span class="identity"
+                  ><strong>#{{ player.number }} {{ player.name }}</strong
+                  ><small>{{ player.position || 'Sin posición' }}</small></span
+                >
+              </a>
+              <span class="status" [class.status--inactive]="!player.active">{{
+                player.active ? 'Activo' : 'Inactivo'
+              }}</span>
+              <span class="metric"><small>PJ</small>{{ player.matchesPlayed }}</span
+              ><span class="metric secondary"><small>Tit.</small>{{ player.starts }}</span
+              ><span class="metric"><small>Min.</small>{{ minutes(player.playedMs) }}</span
+              ><span class="metric"><small>Goles</small>{{ player.goals }}</span
+              ><span
+                class="metric secondary balance"
+                [class.balance--positive]="player.plusMinus > 0"
+                [class.balance--negative]="player.plusMinus < 0"
+                ><small>Balance</small>{{ player.plusMinus > 0 ? '+' : ''
+                }}{{ player.plusMinus }}</span
+              ><span class="metric secondary"
+                ><small>Media</small>{{ decimal(player.averageMinutesPerMatch) }}'</span
+              >
+              <span class="card-actions"
+                ><a class="btn btn--secondary" [routerLink]="['/players', player.playerId]"
+                  >Ver perfil</a
+                >
+                @if (access.canWrite()) {
+                  <button
+                    class="btn btn--secondary"
+                    type="button"
+                    (click)="selectPlayer(player.playerId)"
+                  >
+                    Editar
+                  </button>
                 }
               </span>
-            </button>
-          </li>
-        }
-      </ul>
-    }
-
-    <form class="panel" [formGroup]="playerForm" (ngSubmit)="savePlayer()">
-      <h2>{{ editing() ? 'Editar jugador' : 'Añadir jugador' }}</h2>
-      <div class="row">
-        <label class="field field--narrow">
-          Dorsal
-          <input formControlName="number" inputmode="numeric" maxlength="2" autocomplete="off" />
-        </label>
-        <label class="field">
-          Nombre
-          <input formControlName="name" type="text" maxlength="40" autocomplete="off" />
-        </label>
-      </div>
-      <label class="field">
-        Posición (opcional)
-        <input formControlName="position" type="text" maxlength="20" autocomplete="off" />
-      </label>
-
-      @if (error(); as message) {
-        <p class="banner banner--warn" role="alert">{{ message }}</p>
+            </article>
+          }
+        </div>
       }
-
-      <div class="actions">
-        <button class="btn btn--primary" type="submit" [disabled]="saving()">
-          {{ editing() ? 'Guardar' : 'Añadir' }}
-        </button>
+    }
+    @if (access.canWrite()) {
+      <form id="player-editor" class="panel" [formGroup]="playerForm" (ngSubmit)="savePlayer()">
+        <h2>{{ editing() ? 'Editar jugador' : 'Añadir jugador' }}</h2>
+        <div class="row">
+          <label class="field field--narrow"
+            >Dorsal<input
+              formControlName="number"
+              inputmode="numeric"
+              maxlength="2"
+              autocomplete="off" /></label
+          ><label class="field"
+            >Nombre<input formControlName="name" maxlength="40" autocomplete="off"
+          /></label>
+        </div>
+        <label class="field"
+          >Posición (opcional)<input formControlName="position" maxlength="20" autocomplete="off"
+        /></label>
         @if (editing()) {
-          <button class="btn btn--secondary" type="button" (click)="cancelEdit()">Cancelar</button>
-          <button class="btn btn--danger" type="button" (click)="removePlayer()" [disabled]="saving()">
-            Quitar
-          </button>
+          <label class="check"
+            ><input type="checkbox" formControlName="active" /> Jugador activo</label
+          >
         }
-      </div>
-    </form>
+        @if (error(); as message) {
+          <p class="banner banner--warn" role="alert">{{ message }}</p>
+        }
+        <div class="actions">
+          <button class="btn btn--primary" type="submit" [disabled]="saving()">
+            {{ saving() ? 'Guardando…' : editing() ? 'Guardar' : 'Añadir' }}
+          </button>
+          @if (editing()) {
+            <button class="btn btn--secondary" type="button" (click)="cancelEdit()">Cancelar</button
+            ><button
+              class="btn btn--danger"
+              type="button"
+              (click)="removePlayer()"
+              [disabled]="saving()"
+            >
+              Quitar
+            </button>
+          }
+        </div>
+      </form>
+    } @else {
+      <p class="banner" role="status">Acceso de solo lectura.</p>
+    }
   }
 </section>

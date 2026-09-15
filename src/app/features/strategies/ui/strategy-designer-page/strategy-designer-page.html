@@ -1,0 +1,152 @@
+@if (context.ready()) {
+  @if (notFound()) {
+    <section class="designer-state">
+      <h1>No se ha encontrado la jugada</h1>
+      <p>Puede haberse eliminado o pertenecer a otro equipo.</p>
+      <a class="btn btn--primary" routerLink="/strategies/library">Volver a Biblioteca</a>
+    </section>
+  } @else if (store.selectedStrategy(); as strategy) {
+    @if (store.currentPhase(); as phase) {
+      <section class="designer" aria-label="Diseñador táctico">
+        <header class="designer-header">
+          <div class="designer-title">
+            <span>Estrategias / Diseñador</span
+            ><label
+              ><span class="sr-only">Nombre de la jugada</span
+              ><input
+                maxlength="80"
+                [class.is-invalid]="!strategy.name.trim()"
+                [value]="strategy.name"
+                [disabled]="store.editingLocked()"
+                (input)="store.updateMetadata('name', text($event))"
+            /></label>
+            @if (!strategy.name.trim()) {
+              <small>El nombre es obligatorio</small>
+            }
+          </div>
+          <div class="header-actions">
+            <span
+              class="save-status"
+              [class.has-error]="store.saveState() === 'error'"
+              role="status"
+              >{{
+                store.saveState() === 'saving'
+                  ? 'Guardando…'
+                  : store.saveState() === 'saved'
+                    ? 'Guardado'
+                    : store.saveState() === 'error'
+                      ? 'Revisa el nombre o reintenta'
+                      : store.dirty()
+                        ? 'Cambios sin guardar'
+                        : 'Guardado'
+              }}</span
+            ><button
+              class="inspector-toggle"
+              type="button"
+              [attr.aria-expanded]="inspectorOpen()"
+              (click)="inspectorOpen.set(!inspectorOpen())"
+            >
+              Propiedades</button
+            ><button
+              class="btn btn--primary"
+              type="button"
+              [disabled]="!store.dirty() || store.saveState() === 'saving'"
+              (click)="store.save()"
+            >
+              Guardar</button
+            ><button
+              class="icon-action"
+              type="button"
+              aria-label="Crear nueva jugada"
+              title="Nueva jugada"
+              (click)="createNew()"
+            >
+              ＋
+            </button>
+          </div>
+        </header>
+        <aside class="tools-panel">
+          <app-tactical-toolbar
+            [vertical]="true"
+            [tool]="store.activeTool()"
+            [disabled]="store.editingLocked()"
+            [canDelete]="store.selectedArrowId() !== null"
+            (toolSelected)="store.setTool($event)"
+            (deleteRequested)="store.deleteSelectedArrow()"
+          />
+          <div class="shortcut-help">
+            <strong>Atajos</strong><span><kbd>V</kbd> Seleccionar</span
+            ><span><kbd>M</kbd> Movimiento</span><span><kbd>P</kbd> Pase</span>
+          </div>
+        </aside>
+        <div class="board-stage">
+          <app-tactical-board
+            [strategy]="strategy"
+            [phase]="phase"
+            [pieces]="store.renderedPieces()"
+            [tool]="store.activeTool()"
+            [locked]="store.editingLocked()"
+            [selectedArrowId]="store.selectedArrowId()"
+            [selectedPieceId]="store.selectedPieceId()"
+            (pieceSelected)="store.selectPiece($event)"
+            (pieceMoved)="store.updatePiece($event.pieceId, $event.position)"
+            (arrowCreated)="store.createArrow($event)"
+            (arrowSelected)="store.selectArrow($event)"
+            (arrowEndpointMoved)="
+              store.moveArrowEndpoint($event.arrowId, $event.endpoint, $event.position)
+            "
+            (deleteRequested)="store.deleteSelectedArrow()"
+          />
+        </div>
+        @if (inspectorOpen()) {
+          <button
+            class="inspector-backdrop"
+            type="button"
+            aria-label="Cerrar propiedades"
+            (click)="inspectorOpen.set(false)"
+          ></button>
+        }
+        <div class="inspector-panel" [class.is-open]="inspectorOpen()">
+          <button
+            class="inspector-close"
+            type="button"
+            aria-label="Cerrar propiedades"
+            (click)="inspectorOpen.set(false)"
+          >
+            ×
+          </button>
+          <app-tactical-inspector
+            [strategy]="strategy"
+            [phase]="phase"
+            [selectedPieceId]="store.selectedPieceId()"
+            [selectedArrowId]="store.selectedArrowId()"
+            [disabled]="store.editingLocked()"
+            (durationChanged)="store.setDuration($event)"
+            (arrowDeleted)="store.deleteSelectedArrow()"
+          />
+        </div>
+        <footer class="designer-footer">
+          <app-strategy-controls
+            [phases]="strategy.phases"
+            [phaseIndex]="store.phaseIndex()"
+            [status]="store.status()"
+            [playbackRate]="store.playbackRate()"
+            [speeds]="speeds"
+            (playbackToggled)="store.togglePlayback()"
+            (stopped)="store.stop()"
+            (restarted)="store.restart()"
+            (previousRequested)="store.previous()"
+            (nextRequested)="store.next()"
+            (phaseSelected)="store.selectPhase($event)"
+            (speedSelected)="store.setSpeed($event)"
+            (sequenceAdded)="store.appendSequence()"
+            (sequenceDuplicated)="store.cloneSequence()"
+            (sequenceDeleted)="store.deleteSequence()"
+          />
+        </footer>
+      </section>
+    }
+  }
+} @else {
+  <div class="designer-state" role="status">Cargando diseñador…</div>
+}

@@ -1,6 +1,11 @@
 import { DomainResult, fail, ok } from '../../../core/utils/result';
 import { Match } from '../../../shared/models/match';
-import { DisciplinaryAction, FoulEvent, FoulTeam } from '../../../shared/models/match-event';
+import {
+  DisciplinaryAction,
+  FoulEvent,
+  FoulRestart,
+  FoulTeam,
+} from '../../../shared/models/match-event';
 
 export interface RegisterFoulInput {
   match: Match;
@@ -14,6 +19,8 @@ export interface RegisterFoulInput {
   sentOffPlayerIds?: readonly string[];
   playerYellowCards?: number;
   disciplinaryAction?: DisciplinaryAction;
+  countsAsAccumulatedFoul?: boolean;
+  restart?: FoulRestart;
   matchElapsedMs?: number;
   gameClockMs: number;
   timestamp: number;
@@ -78,6 +85,12 @@ export function registerFoul(input: RegisterFoulInput): DomainResult<RegisterFou
     }
   }
 
+  const accumulated = input.countsAsAccumulatedFoul ?? true;
+  const restart = input.restart ?? (accumulated ? 'direct-free-kick' : 'indirect-free-kick');
+  if (accumulated !== (restart === 'direct-free-kick' || restart === 'penalty')) {
+    return fail('El tipo de reanudación no coincide con la clasificación de la falta.');
+  }
+
   return ok({
     match: { ...input.match, updatedAt: input.timestamp },
     event: {
@@ -92,8 +105,10 @@ export function registerFoul(input: RegisterFoulInput): DomainResult<RegisterFou
       team: input.team,
       playerId: input.playerId,
       opponentPlayerNumber: input.opponentPlayerNumber,
-      periodFoulNumber: input.currentPeriodFoulCount + 1,
-      accumulated: true,
+      periodFoulNumber: input.currentPeriodFoulCount + (accumulated ? 1 : 0),
+      countsAsAccumulatedFoul: accumulated,
+      restart,
+      accumulated,
       disciplinaryAction: action,
       matchElapsedMs: input.matchElapsedMs ?? 0,
     },

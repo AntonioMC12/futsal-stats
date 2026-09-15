@@ -1,7 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { formatGameClock, projectRemaining } from '../../../core/clock/match-clock';
-import { MatchEventRepository } from '../../../core/persistence/match-event.repository';
-import { MatchRepository } from '../../../core/persistence/match.repository';
+import {
+  MATCH_EVENT_REPOSITORY,
+  MATCH_REPOSITORY,
+} from '../../../core/persistence/persistence.tokens';
 import { Match } from '../../../shared/models/match';
 import { MatchEvent } from '../../../shared/models/match-event';
 import { deriveDisciplinaryState } from '../../live-match/domain/discipline';
@@ -10,8 +12,8 @@ import { RfefMatchContext } from '../domain/rfef-assistant';
 
 @Injectable({ providedIn: 'root' })
 export class RfefMatchContextService {
-  private readonly matches = inject(MatchRepository);
-  private readonly events = inject(MatchEventRepository);
+  private readonly matches = inject(MATCH_REPOSITORY);
+  private readonly events = inject(MATCH_EVENT_REPOSITORY);
 
   async load(matchId?: string | null): Promise<RfefMatchContext | null> {
     const match = matchId ? await this.matches.get(matchId) : await this.matches.findActive();

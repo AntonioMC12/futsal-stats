@@ -1,10 +1,15 @@
 import { createMatchClock } from '../../../core/clock/match-clock';
 import { Match } from '../../../shared/models/match';
 import { MatchEvent, MatchEventBase } from '../../../shared/models/match-event';
-import { deriveParticipation, derivePlayerPlayingTimes } from './player-playing-time';
+import {
+  currentOnCourtStintDuration,
+  deriveParticipation,
+  derivePlayerPlayingTimes,
+} from './player-playing-time';
 
 const match: Match = {
   id: 'match-1',
+  teamId: 'team-1',
   homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
   awayTeam: { name: 'Rival', shortName: 'RIV' },
   date: 1,
@@ -220,5 +225,90 @@ describe('player playing time', () => {
     const times = derivePlayerPlayingTimes(match, events, 600_000);
     expect(times['a']?.playedMs).toBe(600_000);
     expect(times['f']?.playedMs).toBe(0);
+  });
+
+  it('derives 02:25 for a starter from the shared effective clock', () => {
+    const events: MatchEvent[] = [
+      ...initialLineup(),
+      { ...base('clock', 6, 1_200_000), type: 'CLOCK_STARTED' },
+    ];
+    const participation = deriveParticipation(match, events, 1_055_000);
+
+    expect(currentOnCourtStintDuration(participation.playerStints['a'], 1)).toBe(145_000);
+  });
+
+  it('freezes the current stint while paused', () => {
+    const events: MatchEvent[] = [
+      ...initialLineup(),
+      { ...base('clock', 6, 1_200_000), type: 'CLOCK_STARTED' },
+      { ...base('stop', 7, 995_000), type: 'CLOCK_STOPPED' },
+    ];
+
+    const first = deriveParticipation(match, events, 700_000);
+    const later = deriveParticipation(match, events, 100_000);
+    expect(currentOnCourtStintDuration(first.playerStints['a'], 1)).toBe(205_000);
+    expect(currentOnCourtStintDuration(later.playerStints['a'], 1)).toBe(205_000);
+  });
+
+  it('resets only the visible stint after a player leaves and re-enters', () => {
+    const events: MatchEvent[] = [
+      ...initialLineup(),
+      { ...base('clock', 6, 1_200_000), type: 'CLOCK_STARTED' },
+      {
+        ...base('out', 7, 1_020_000),
+        type: 'SUBSTITUTION',
+        outPlayerId: 'a',
+        inPlayerId: 'f',
+      },
+      {
+        ...base('back', 8, 780_000),
+        type: 'SUBSTITUTION',
+        outPlayerId: 'f',
+        inPlayerId: 'a',
+      },
+    ];
+    const participation = deriveParticipation(match, events, 720_000);
+
+    expect(participation.playerStints['a']).toEqual([
+      expect.objectContaining({ durationMs: 180_000, open: false }),
+      expect.objectContaining({ durationMs: 60_000, open: true }),
+    ]);
+    expect(currentOnCourtStintDuration(participation.playerStints['a'], 1)).toBe(60_000);
+    expect(participation.players['a']?.playedMs).toBe(240_000);
+  });
+
+  it('starts a fresh stint in each period without mixing totals', () => {
+    const events: MatchEvent[] = [
+      ...initialLineup(),
+      { ...base('clock-1', 6, 1_200_000), type: 'CLOCK_STARTED' },
+      { ...base('end-1', 7, 1_100_000), type: 'PERIOD_ENDED' },
+      { ...base('period-2', 8, 1_200_000, 2), type: 'PERIOD_STARTED' },
+      { ...base('clock-2', 9, 1_200_000, 2), type: 'CLOCK_STARTED' },
+    ];
+    const participation = deriveParticipation(match, events, 1_140_000);
+
+    expect(participation.playerStints['a']).toEqual([
+      expect.objectContaining({ period: 1, durationMs: 100_000, open: false }),
+      expect.objectContaining({ period: 2, durationMs: 60_000, open: true }),
+    ]);
+    expect(currentOnCourtStintDuration(participation.playerStints['a'], 2)).toBe(60_000);
+    expect(participation.players['a']?.playedMs).toBe(160_000);
+  });
+
+  it('opens a zero-duration stint when the stopped period clock is reset', () => {
+    const events: MatchEvent[] = [
+      ...initialLineup(),
+      { ...base('clock', 6, 1_200_000), type: 'CLOCK_STARTED' },
+      { ...base('stop', 7, 900_000), type: 'CLOCK_STOPPED' },
+      { ...base('reset', 8, 1_200_000), type: 'CLOCK_RESET' },
+    ];
+    const participation = deriveParticipation(match, events, 1_200_000);
+
+    expect(participation.playerStints['a']).toEqual([
+      expect.objectContaining({ endGameClockMs: 900_000, durationMs: 300_000, open: false }),
+      expect.objectContaining({ startGameClockMs: 1_200_000, durationMs: 0, open: true }),
+    ]);
+    expect(currentOnCourtStintDuration(participation.playerStints['a'], 1)).toBe(0);
+    expect(participation.players['a']?.playedMs).toBe(300_000);
   });
 });

@@ -5,6 +5,7 @@ import { RegisterFoulInput, registerFoul } from './foul';
 function match(status: MatchStatus = 'firstHalf'): Match {
   return {
     id: 'match-1',
+    teamId: 'team-1',
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: 'Rival', shortName: 'RIV' },
     date: 1,
@@ -50,7 +51,10 @@ describe('foul domain', () => {
       undone: false,
       team: 'home',
       playerId: 'p4',
+      opponentPlayerNumber: undefined,
       periodFoulNumber: 4,
+      countsAsAccumulatedFoul: true,
+      restart: 'direct-free-kick',
       accumulated: true,
       disciplinaryAction: 'none',
       matchElapsedMs: 0,
@@ -70,6 +74,36 @@ describe('foul domain', () => {
       periodFoulNumber: 1,
     });
   });
+
+  it('registers a non-accumulated indirect-free-kick infringement without advancing the count', () => {
+    const result = registerFoul(
+      input({
+        playerId: 'p4',
+        countsAsAccumulatedFoul: false,
+        restart: 'indirect-free-kick',
+      }),
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        event: {
+          countsAsAccumulatedFoul: false,
+          restart: 'indirect-free-kick',
+          periodFoulNumber: 3,
+        },
+      },
+    });
+  });
+
+  it.each(['direct-free-kick', 'penalty'] as const)(
+    'counts a foul restarted with %s',
+    (restart) => {
+      const result = registerFoul(
+        input({ playerId: 'p4', countsAsAccumulatedFoul: true, restart }),
+      );
+      expect(result.ok && result.value.event.periodFoulNumber).toBe(4);
+    },
+  );
 
   it.each<MatchStatus>(['ready', 'halftime', 'finished'])(
     'rejects fouls when match is %s',

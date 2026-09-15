@@ -64,7 +64,12 @@ export class PlayerMatchDetailComponent {
             label: 'Diferencia en pista',
             value: stats.plusMinus > 0 ? `+${stats.plusMinus}` : stats.plusMinus,
           },
-          { label: 'Faltas', value: stats.fouls },
+          { label: 'Faltas / infracciones', value: stats.fouls },
+          { label: 'Faltas acumulables', value: stats.accumulatedFouls },
+          {
+            label: 'Infracciones no acumulables',
+            value: stats.nonAccumulatedInfringements,
+          },
           { label: 'Amarillas', value: stats.yellowCards },
           { label: 'Segunda amarilla', value: stats.secondYellowSendOffs },
           { label: 'Rojas directas', value: stats.directRedCards },

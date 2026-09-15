@@ -1,13 +1,16 @@
 import { inject, Injectable } from '@angular/core';
-import { MatchRepository } from '../../../core/persistence/match.repository';
-import { PlayerRepository } from '../../../core/persistence/player.repository';
-import { TeamRepository } from '../../../core/persistence/team.repository';
+import {
+  MATCH_REPOSITORY,
+  PLAYER_REPOSITORY,
+  TEAM_REPOSITORY,
+} from '../../../core/persistence/persistence.tokens';
 import { createId } from '../../../core/utils/id';
 import { DomainResult, fail } from '../../../core/utils/result';
 import { Match } from '../../../shared/models/match';
 import { Player } from '../../../shared/models/player';
 import { Team } from '../../../shared/models/team';
 import { createMatchRecord } from '../domain/match-setup';
+import { TeamWorkspaceContext } from '../../../core/team-workspace/team-workspace.context';
 
 export interface MatchSetupTeam {
   team: Team;
@@ -19,18 +22,25 @@ export interface SaveMatchSetupInput {
   awayTeamShortName: string;
   awayTeamName: string;
   matchDate: string;
+  season?: string;
+  competition?: string;
   description: string;
   squadPlayerIds: readonly string[];
 }
 
 @Injectable({ providedIn: 'root' })
 export class MatchSetupService {
-  private readonly teams = inject(TeamRepository);
-  private readonly players = inject(PlayerRepository);
-  private readonly matches = inject(MatchRepository);
+  private readonly teams = inject(TEAM_REPOSITORY);
+  private readonly players = inject(PLAYER_REPOSITORY);
+  private readonly matches = inject(MATCH_REPOSITORY);
+  private readonly workspace = inject(TeamWorkspaceContext, { optional: true });
 
   async listTeams(): Promise<MatchSetupTeam[]> {
-    const teams = await this.teams.list();
+    const availableTeams = await this.teams.list();
+    const activeTeamId = this.workspace?.activeTeamId();
+    const teams = activeTeamId
+      ? availableTeams.filter(({ id }) => id === activeTeamId)
+      : availableTeams;
     const counts = await this.players.countActiveByTeamIds(teams.map((team) => team.id));
     return teams.map((team) => ({ team, playerCount: counts.get(team.id) ?? 0 }));
   }
@@ -40,6 +50,10 @@ export class MatchSetupService {
   }
 
   async createMatch(input: SaveMatchSetupInput): Promise<DomainResult<Match>> {
+    const activeTeamId = this.workspace?.activeTeamId();
+    if (activeTeamId && input.teamId !== activeTeamId) {
+      return fail('El partido debe pertenecer al equipo activo.');
+    }
     if (await this.matches.findActive()) {
       return fail('Ya hay un partido en curso. Termínalo antes de crear otro.');
     }

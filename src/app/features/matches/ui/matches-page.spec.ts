@@ -2,8 +2,10 @@ import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { createMatchClock } from '../../../core/clock/match-clock';
-import { MatchEventRepository } from '../../../core/persistence/match-event.repository';
-import { MatchRepository } from '../../../core/persistence/match.repository';
+import {
+  MATCH_EVENT_REPOSITORY as MatchEventRepository,
+  MATCH_REPOSITORY as MatchRepository,
+} from '../../../core/persistence/persistence.tokens';
 import { Match } from '../../../shared/models/match';
 import { DeleteMatchService } from '../application/delete-match.service';
 import { MatchCsvExportService } from '../application/match-csv-export.service';
@@ -12,6 +14,7 @@ import { MatchesPage } from './matches-page';
 function match(id: string, status: Match['status'], date: number): Match {
   return {
     id,
+    teamId: 'team-1',
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: 'Rival', shortName: 'RIV' },
     date,
@@ -58,10 +61,11 @@ describe('MatchesPage', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Partido en curso');
     expect(fixture.nativeElement.textContent).toContain('Continuar partido');
-    expect(fixture.nativeElement.textContent).toContain('Finalizados');
+    expect(fixture.nativeElement.textContent).toContain('Historial');
+    expect(fixture.nativeElement.querySelector('.import-match')?.getAttribute('href')).toBe('/matches/import');
     const finishedLink = fixture.nativeElement.querySelector('.history-actions > a');
-    expect(finishedLink.textContent).toContain('Ver partido');
-    expect(finishedLink.getAttribute('href')).toBe('/live/finished');
+    expect(finishedLink.textContent).toContain('Ver detalle');
+    expect(finishedLink.getAttribute('href')).toBe('/matches/finished');
     expect(fixture.nativeElement.querySelector('.history-item')?.textContent).toContain(
       'Partido amistoso finished',
     );

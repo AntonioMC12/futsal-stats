@@ -1,0 +1,43 @@
+<section class="join-page stack">
+  <a class="back" routerLink="/dashboard">← Inicio</a>
+  <div>
+    <p class="eyebrow">Acceso sin cuenta</p>
+    <h1>Unir este dispositivo</h1>
+    <p class="lede">
+      Escanea el QR en este dispositivo o introduce el código que muestra el OWNER.
+    </p>
+  </div>
+
+  @if (cloudConfig.mode !== 'cloud') {
+    <p class="banner banner--warn">Esta instalación no tiene configurado el modo cloud.</p>
+  } @else {
+    <form class="stack" [formGroup]="form" (ngSubmit)="join()">
+      <label class="field">
+        Código de invitación
+        <input
+          formControlName="code"
+          type="text"
+          autocomplete="one-time-code"
+          placeholder="XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX"
+          [attr.aria-invalid]="form.controls.code.invalid && form.controls.code.touched"
+        />
+      </label>
+      <label class="field">
+        Nombre de este dispositivo <span class="optional">(opcional)</span>
+        <input
+          formControlName="deviceName"
+          type="text"
+          maxlength="80"
+          placeholder="Tablet del banquillo"
+          autocomplete="off"
+        />
+      </label>
+      @if (error(); as message) {
+        <p class="banner banner--warn" role="alert">{{ message }}</p>
+      }
+      <button class="btn btn--primary" type="submit" [disabled]="joining()">
+        {{ joining() ? 'Uniendo…' : 'Unirse al equipo' }}
+      </button>
+    </form>
+  }
+</section>

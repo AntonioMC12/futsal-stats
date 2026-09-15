@@ -23,7 +23,7 @@
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
-            "allowedCommonJsDependencies": ["eruda"],
+            "allowedCommonJsDependencies": ["eruda", "qrcode"],
             "assets": [
               {
                 "glob": "**/*",
@@ -70,7 +70,10 @@
           "defaultConfiguration": "development"
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "isolate": true
+          }
         }
       }
     }

@@ -7,6 +7,7 @@ import { deriveDisciplinaryState } from './discipline';
 
 const match: Match = {
   id: 'match-1',
+  teamId: 'team-1',
   homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
   awayTeam: { name: 'Rival', shortName: 'RIV' },
   date: 1,
@@ -59,7 +60,7 @@ function benchEvent(
     disciplinaryAction: 'yellow',
     reason: 'protest',
     context: 'bench',
-    countsAsAccumulatedFoul: true,
+    countsAsAccumulatedFoul: false,
     createsDirectFreeKickWithoutWall: false,
     periodFoulNumber: sequence,
     period: 1,
@@ -86,7 +87,7 @@ function lineupEvents(): MatchEvent[] {
 }
 
 describe('bench discipline domain', () => {
-  it('registers one accumulated foul for a protest card without creating a special restart', () => {
+  it('registers a protest card without creating an accumulated foul', () => {
     const result = registerBenchDiscipline(input());
     expect(result).toMatchObject({
       ok: true,
@@ -94,8 +95,8 @@ describe('bench discipline domain', () => {
         event: {
           type: 'BENCH_DISCIPLINE',
           playerId: 'p6',
-          periodFoulNumber: 4,
-          countsAsAccumulatedFoul: true,
+          periodFoulNumber: 3,
+          countsAsAccumulatedFoul: false,
           createsDirectFreeKickWithoutWall: false,
         },
       },
@@ -126,13 +127,13 @@ describe('bench discipline domain', () => {
           team: 'away',
           subjectKind: 'opponentPlayer',
           opponentPlayerNumber: 7,
-          countsAsAccumulatedFoul: true,
+          countsAsAccumulatedFoul: false,
         },
       },
     });
     if (!result.ok) return;
     const discipline = deriveDisciplinaryState([result.value.event], 0);
-    expect(discipline.teams.away).toMatchObject({ fouls: 1, yellowCards: 1 });
+    expect(discipline.teams.away).toMatchObject({ fouls: 0, yellowCards: 1 });
     expect(discipline.opponentPlayers[0]).toMatchObject({ jerseyNumber: 7, yellowCards: 1 });
     expect(discipline.reductions).toHaveLength(0);
   });
@@ -172,7 +173,7 @@ describe('bench discipline domain', () => {
   });
 
   it.each([
-    { reason: 'protest' as const, expectedFouls: 5, counts: true },
+    { reason: 'protest' as const, expectedFouls: 4, counts: false },
     { reason: 'other' as const, expectedFouls: 4, counts: false },
   ])(
     'handles a physiotherapist card with reason $reason without assuming every card is a foul',
@@ -228,7 +229,7 @@ describe('bench discipline domain', () => {
     expect(discipline.reductions).toHaveLength(0);
   });
 
-  it('projects the RFEF example from four to six fouls without numerical reductions', () => {
+  it('keeps bench cards out of an existing four-foul count', () => {
     const normalFouls: MatchEvent[] = Array.from({ length: 4 }, (_, index) => ({
       id: `foul-${index}`,
       matchId: match.id,
@@ -256,11 +257,11 @@ describe('bench discipline domain', () => {
       }),
     ];
 
-    expect(deriveMatchState(match, events).foulsByPeriod[1]?.home).toBe(6);
+    expect(deriveMatchState(match, events).foulsByPeriod[1]?.home).toBe(4);
     expect(deriveDisciplinaryState(events, 0).reductions).toHaveLength(0);
   });
 
-  it('keeps the accumulated foul in its period while preserving the personal card', () => {
+  it('keeps card-only bench events out of every period foul count', () => {
     const firstPeriod = benchEvent('first-period-card', 1, {
       subjectKind: 'player',
       playerId: 'p6',
@@ -277,8 +278,8 @@ describe('bench discipline domain', () => {
     });
     const derived = deriveMatchState(match, [firstPeriod, secondPeriod]);
     const discipline = deriveDisciplinaryState([firstPeriod, secondPeriod], 0);
-    expect(derived.foulsByPeriod[1]).toEqual({ home: 1, away: 0 });
-    expect(derived.foulsByPeriod[2]).toEqual({ home: 0, away: 1 });
+    expect(derived.foulsByPeriod[1]).toBeUndefined();
+    expect(derived.foulsByPeriod[2]).toBeUndefined();
     expect(discipline.players['p6']?.yellowCards).toBe(1);
     expect(discipline.opponentPlayers[0]?.yellowCards).toBe(1);
   });
@@ -398,13 +399,13 @@ describe('bench discipline domain', () => {
     expect(discipline.players['p5']).toMatchObject({ yellowCards: 2, sendOffs: 1 });
     expect(discipline.sentOffPlayerIds).toContain('p5');
     expect(discipline.reductions).toHaveLength(0);
-    expect(discipline.teams.home.fouls).toBe(2);
+    expect(discipline.teams.home.fouls).toBe(1);
   });
 
-  it('sends off staff for a protest with one foul and no numerical reduction', () => {
+  it('sends off staff for a protest without a foul or numerical reduction', () => {
     const event = benchEvent('staff-red', 1, { disciplinaryAction: 'directRed' });
     const discipline = deriveDisciplinaryState([event], 0);
-    expect(discipline.teams.home).toMatchObject({ fouls: 1, directRedCards: 1, sendOffs: 1 });
+    expect(discipline.teams.home).toMatchObject({ fouls: 0, directRedCards: 1, sendOffs: 1 });
     expect(discipline.staffMembers[0]).toMatchObject({
       role: 'headCoach',
       sentOff: true,

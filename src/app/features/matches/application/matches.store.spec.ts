@@ -1,15 +1,19 @@
 import { TestBed } from '@angular/core/testing';
 import { createMatchClock } from '../../../core/clock/match-clock';
-import { MatchEventRepository } from '../../../core/persistence/match-event.repository';
-import { MatchRepository } from '../../../core/persistence/match.repository';
+import {
+  MATCH_EVENT_REPOSITORY as MatchEventRepository,
+  MATCH_REPOSITORY as MatchRepository,
+} from '../../../core/persistence/persistence.tokens';
 import { Match, MatchDate } from '../../../shared/models/match';
 import { MatchEvent } from '../../../shared/models/match-event';
 import { DeleteMatchService } from './delete-match.service';
 import { MatchesStore } from './matches.store';
+import { TeamWorkspaceContext } from '../../../core/team-workspace/team-workspace.context';
 
 function match(id: string, status: Match['status'], date: MatchDate): Match {
   return {
     id,
+    teamId: 'team-1',
     homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
     awayTeam: { name: `Rival ${id}`, shortName: `R${id}` },
     date,
@@ -137,5 +141,67 @@ describe('MatchesStore', () => {
 
     expect(store.activeMatch()?.match.id).toBe('active');
     expect(store.error()).toContain('siguen guardados');
+  });
+
+  it('loads matches only from the active team workspace', async () => {
+    vi.useFakeTimers();
+    const teamMatch = match('team-match', 'finished', 20);
+    const listByTeam = vi.fn(async () => [teamMatch]);
+    TestBed.configureTestingModule({
+      providers: [
+        MatchesStore,
+        { provide: TeamWorkspaceContext, useValue: { activeTeamId: () => 'team-1' } },
+        {
+          provide: MatchRepository,
+          useValue: { list: vi.fn(), listByTeam },
+        },
+        { provide: MatchEventRepository, useValue: { listByMatch: async () => [] } },
+        { provide: DeleteMatchService, useValue: { execute: async () => undefined } },
+      ],
+    });
+
+    const store = TestBed.inject(MatchesStore);
+    await store.load();
+
+    expect(listByTeam).toHaveBeenCalledWith('team-1');
+    expect(store.matches().map(({ match }) => match.id)).toEqual(['team-match']);
+  });
+
+  it('filters persisted matches by season, competition and status', async () => {
+    vi.useFakeTimers();
+    const league = {
+      ...match('league', 'finished', '2026-09-07'),
+      season: '2026/27',
+      competition: 'Liga',
+    };
+    const cup = {
+      ...match('cup', 'finished', '2025-05-02'),
+      season: '2024/25',
+      competition: 'Copa',
+    };
+    const active = {
+      ...match('active', 'firstHalf', '2026-09-08'),
+      season: '2026/27',
+      competition: 'Liga',
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        MatchesStore,
+        { provide: MatchRepository, useValue: { list: async () => [league, cup, active] } },
+        { provide: MatchEventRepository, useValue: { listByMatch: async () => [] } },
+        { provide: DeleteMatchService, useValue: { execute: async () => undefined } },
+      ],
+    });
+
+    const store = TestBed.inject(MatchesStore);
+    await store.load();
+    expect(store.filteredMatches().map(({ match }) => match.id)).toEqual(['league', 'cup']);
+
+    store.seasonFilter.set('2026/27');
+    store.competitionFilter.set('Liga');
+    expect(store.filteredMatches().map(({ match }) => match.id)).toEqual(['league']);
+
+    store.statusFilter.set('all');
+    expect(store.filteredMatches().map(({ match }) => match.id)).toEqual(['active', 'league']);
   });
 });

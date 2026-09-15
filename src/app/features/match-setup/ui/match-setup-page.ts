@@ -2,7 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Player } from '../../../shared/models/player';
-import { localDateString } from '../../../shared/models/match';
+import { localDateString, seasonForDate } from '../../../shared/models/match';
 import { MatchSetupService, MatchSetupTeam } from '../application/match-setup.service';
 import { STARTING_LINEUP_SIZE } from '../domain/match-setup';
 
@@ -26,6 +26,7 @@ export class MatchSetupPage {
   protected readonly error = signal<string | null>(null);
   protected readonly selectedCount = computed(() => this.squadIds().size);
 
+  private readonly initialDate = localDateString();
   protected readonly form = this.formBuilder.nonNullable.group({
     teamId: ['', Validators.required],
     awayTeamShortName: [
@@ -33,7 +34,9 @@ export class MatchSetupPage {
       [Validators.required, Validators.minLength(2), Validators.maxLength(6)],
     ],
     awayTeamName: ['', [Validators.required, Validators.maxLength(60)]],
-    matchDate: [localDateString(), Validators.required],
+    matchDate: [this.initialDate, Validators.required],
+    season: [seasonForDate(this.initialDate), [Validators.required, Validators.maxLength(20)]],
+    competition: ['', [Validators.required, Validators.maxLength(80)]],
     description: ['', [Validators.required, Validators.maxLength(500)]],
   });
   protected readonly availablePlayers = computed(() => {
@@ -101,6 +104,11 @@ export class MatchSetupPage {
     control.setValue(control.value.trim().toUpperCase());
   }
 
+  protected updateSuggestedSeason(): void {
+    const date = this.form.controls.matchDate.value;
+    if (date) this.form.controls.season.setValue(seasonForDate(date));
+  }
+
   protected async save(): Promise<void> {
     if (this.saving()) {
       return;
@@ -133,7 +141,12 @@ export class MatchSetupPage {
 
   private async loadTeams(): Promise<void> {
     try {
-      this.teams.set(await this.setup.listTeams());
+      const teams = await this.setup.listTeams();
+      this.teams.set(teams);
+      if (teams.length === 1) {
+        this.form.controls.teamId.setValue(teams[0]!.team.id);
+        await this.selectTeam();
+      }
     } catch {
       this.loadFailed.set(true);
     }

@@ -1,6 +1,7 @@
 import { Match } from '../../../shared/models/match';
 import { MatchEvent, ScoreSnapshot } from '../../../shared/models/match-event';
 import { MatchStatus } from '../../../shared/models/match';
+import { countsAsAccumulatedFoul } from './futsal-rules';
 
 export interface PeriodFouls {
   home: number;
@@ -71,7 +72,7 @@ export function deriveMatchState(match: Match, events: readonly MatchEvent[]): D
         break;
       }
       case 'FOUL': {
-        if (event.accumulated !== false) {
+        if (countsAsAccumulatedFoul(event)) {
           const fouls = foulsByPeriod[event.period] ?? { home: 0, away: 0 };
           foulsByPeriod[event.period] = {
             ...fouls,
@@ -87,14 +88,17 @@ export function deriveMatchState(match: Match, events: readonly MatchEvent[]): D
         }
         break;
       }
-      case 'BENCH_DISCIPLINE': {
-        if (event.countsAsAccumulatedFoul) {
-          const fouls = foulsByPeriod[event.period] ?? { home: 0, away: 0 };
-          foulsByPeriod[event.period] = {
-            ...fouls,
-            [event.team]: fouls[event.team] + 1,
-          };
+      case 'DISCIPLINE': {
+        if (
+          event.team === 'home' &&
+          event.playerId &&
+          (event.disciplinaryAction === 'secondYellow' || event.disciplinaryAction === 'directRed')
+        ) {
+          removePlayer(lineup, event.playerId);
         }
+        break;
+      }
+      case 'BENCH_DISCIPLINE': {
         break;
       }
       case 'RED_CARD_REPLACEMENT':

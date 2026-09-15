@@ -5,6 +5,7 @@ import { deriveMatchState, selectActiveEvents } from './derived-match-state';
 
 const match: Match = {
   id: 'match-1',
+  teamId: 'team-1',
   homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
   awayTeam: { name: 'Rival', shortName: 'RIV' },
   date: 1,

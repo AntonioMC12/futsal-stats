@@ -5,15 +5,18 @@ import {
   formatGameClock,
   projectRemaining,
 } from '../../../core/clock/match-clock';
-import { MatchEventRepository } from '../../../core/persistence/match-event.repository';
-import { MatchRepository } from '../../../core/persistence/match.repository';
-import { PlayerRepository } from '../../../core/persistence/player.repository';
+import {
+  MATCH_EVENT_REPOSITORY,
+  MATCH_REPOSITORY,
+  PLAYER_REPOSITORY,
+} from '../../../core/persistence/persistence.tokens';
 import { createId } from '../../../core/utils/id';
 import { DomainResult } from '../../../core/utils/result';
 import { Match } from '../../../shared/models/match';
 import {
   BenchDisciplineAction,
   BenchDisciplineReason,
+  DisciplineReason,
   DisciplinaryAction,
   FoulTeam,
   MatchEvent,
@@ -23,6 +26,7 @@ import { deriveMatchState } from '../domain/derived-match-state';
 import { deriveDisciplinaryState, registerRedCardReplacement } from '../domain/discipline';
 import { createDisciplineView } from '../domain/discipline-view';
 import { registerFoul as createFoul } from '../domain/foul';
+import { registerDisciplinarySanction as createDisciplinarySanction } from '../domain/disciplinary-sanction';
 import { GoalSide, registerGoal as createGoal } from '../domain/goal';
 import {
   finishPeriod,
@@ -37,7 +41,7 @@ import {
 import { createEventsForTransition, MatchClockCommand } from '../domain/match-transition-events';
 import { createMatchStatisticsProjection, MatchStatistics } from '../domain/match-statistics';
 import { createMatchTimeline } from '../domain/match-timeline';
-import { PlayerPlayingTimes } from '../domain/player-playing-time';
+import { currentOnCourtStintDuration, PlayerPlayingTimes } from '../domain/player-playing-time';
 import { makeSubstitution as createSubstitution } from '../domain/substitution';
 import { findLastUndoableEvent, undoLastEvent as createUndoLastEvent } from '../domain/undo';
 import { configureStartingLineup, hasValidStartingLineup } from '../domain/starting-lineup';
@@ -47,13 +51,22 @@ import {
   createStaffIdentityKey,
   registerBenchDiscipline as createBenchDiscipline,
 } from '../domain/bench-discipline';
+import {
+  DisciplineUpdateError,
+  EditYellowCardUseCase,
+  InvalidDisciplinaryPlayerError,
+  MatchReadonlyError,
+  PlayerNotInMatchError,
+  YellowCardNotFoundError,
+} from './edit-yellow-card.use-case';
 
 @Injectable()
 export class LiveMatchStore {
-  private readonly matches = inject(MatchRepository);
-  private readonly eventStore = inject(MatchEventRepository);
-  private readonly playerRepository = inject(PlayerRepository);
+  private readonly matches = inject(MATCH_REPOSITORY);
+  private readonly eventStore = inject(MATCH_EVENT_REPOSITORY);
+  private readonly playerRepository = inject(PLAYER_REPOSITORY);
   private readonly deleteMatchService = inject(DeleteMatchService);
+  private readonly editYellowCardUseCase = inject(EditYellowCardUseCase);
   private readonly destroyRef = inject(DestroyRef);
   private readonly now = signal(Date.now());
   private commandInProgress = false;
@@ -163,6 +176,16 @@ export class LiveMatchStore {
   );
   readonly playerPlayingTimes = computed<PlayerPlayingTimes>(() => this.statistics().players);
   readonly lineupStatistics = computed(() => this.statistics().lineups);
+  readonly currentStintDurations = computed<Readonly<Record<string, number>>>(() => {
+    const period = this.match()?.currentPeriod ?? 1;
+    const stints = this.statistics().playerStints;
+    return Object.fromEntries(
+      this.lineupPlayerIds().map((playerId) => [
+        playerId,
+        currentOnCourtStintDuration(stints[playerId], period),
+      ]),
+    );
+  });
   readonly canSubstitute = computed(() => {
     const status = this.match()?.status;
     return status === 'firstHalf' || status === 'halftime' || status === 'secondHalf';
@@ -223,6 +246,10 @@ export class LiveMatchStore {
 
   opponentYellowCardsByNumber(number: number): number {
     return this.opponentDiscipline(number)?.yellowCards ?? 0;
+  }
+
+  currentStintDuration(playerId: string): number {
+    return this.currentStintDurations()[playerId] ?? 0;
   }
 
   opponentDirectRedsByNumber(number: number): number {
@@ -408,15 +435,139 @@ export class LiveMatchStore {
   registerTeamFoul(
     playerId?: string,
     disciplinaryAction: DisciplinaryAction = 'none',
+    countsAsAccumulatedFoul = true,
   ): Promise<boolean> {
-    return this.registerFoul('home', disciplinaryAction, playerId);
+    return this.registerFoul(
+      'home',
+      disciplinaryAction,
+      playerId,
+      undefined,
+      countsAsAccumulatedFoul,
+    );
   }
 
   registerOpponentFoul(
     disciplinaryAction: DisciplinaryAction = 'none',
     opponentPlayerNumber?: number,
+    countsAsAccumulatedFoul = true,
   ): Promise<boolean> {
-    return this.registerFoul('away', disciplinaryAction, undefined, opponentPlayerNumber);
+    return this.registerFoul(
+      'away',
+      disciplinaryAction,
+      undefined,
+      opponentPlayerNumber,
+      countsAsAccumulatedFoul,
+    );
+  }
+
+  async registerStandaloneDiscipline(
+    team: FoulTeam,
+    disciplinaryAction: BenchDisciplineAction,
+    reason: DisciplineReason,
+    playerId?: string,
+    opponentPlayerNumber?: number,
+  ): Promise<boolean> {
+    const match = this.match();
+    if (!match || this.commandInProgress) return false;
+    const homeSubject = this.disciplinaryState().players[playerId ?? ''];
+    const awaySubject = this.disciplinaryState().opponentPlayers.find(
+      (player) => player.jerseyNumber === opponentPlayerNumber,
+    );
+    this.commandInProgress = true;
+    this.saving.set(true);
+    this.error.set(null);
+    const timestamp = Date.now();
+    try {
+      const result = createDisciplinarySanction({
+        match,
+        team,
+        playerId,
+        opponentPlayerNumber,
+        disciplinaryAction,
+        reason,
+        currentLineupPlayerIds: this.lineupPlayerIds(),
+        currentYellowCards:
+          team === 'home' ? (homeSubject?.yellowCards ?? 0) : (awaySubject?.yellowCards ?? 0),
+        subjectSentOff:
+          team === 'home' ? (homeSubject?.sendOffs ?? 0) > 0 : (awaySubject?.sentOff ?? false),
+        gameClockMs: projectRemaining(match.clock, timestamp),
+        matchElapsedMs: this.matchElapsedAt(timestamp),
+        timestamp,
+        sequence: this.nextSequence(this.events()),
+        eventId: createId(),
+      });
+      if (!result.ok) {
+        this.error.set(result.error);
+        return false;
+      }
+      await this.eventStore.commit(result.value.match, [result.value.event]);
+      this.now.set(timestamp);
+      this.match.set(result.value.match);
+      this.events.update((events) => [...events, result.value.event]);
+      return true;
+    } catch {
+      this.error.set('No se ha podido guardar la tarjeta.');
+      return false;
+    } finally {
+      this.commandInProgress = false;
+      this.saving.set(false);
+    }
+  }
+
+  async editYellowCard(eventId: string, newPlayerId: string): Promise<boolean> {
+    const match = this.match();
+    if (!match || this.commandInProgress) return false;
+    this.commandInProgress = true;
+    this.saving.set(true);
+    this.error.set(null);
+    this.notice.set(null);
+    try {
+      const result = await this.editYellowCardUseCase.execute({
+        matchId: match.id,
+        eventId,
+        newPlayerId,
+      });
+      this.match.set(result.match);
+      this.events.update((events) =>
+        events.map((event) => (event.id === result.event.id ? result.event : event)),
+      );
+      this.notice.set('Tarjeta amarilla actualizada.');
+      return true;
+    } catch (error) {
+      this.error.set(editYellowCardErrorMessage(error));
+      return false;
+    } finally {
+      this.commandInProgress = false;
+      this.saving.set(false);
+    }
+  }
+
+  async editOpponentYellowCard(eventId: string, newOpponentPlayerNumber: number): Promise<boolean> {
+    const match = this.match();
+    if (!match || this.commandInProgress) return false;
+    this.commandInProgress = true;
+    this.saving.set(true);
+    this.error.set(null);
+    this.notice.set(null);
+    try {
+      const result = await this.editYellowCardUseCase.execute({
+        matchId: match.id,
+        eventId,
+        newOpponentPlayerNumber,
+      });
+      this.match.set(result.match);
+      this.events.update((events) =>
+        events.map((event) => (event.id === result.event.id ? result.event : event)),
+      );
+      this.notice.set('Dorsal de la tarjeta rival actualizado.');
+      return true;
+    } catch (error) {
+      this.error.set(editYellowCardErrorMessage(error));
+      return false;
+    } finally {
+      this.commandInProgress = false;
+      this.saving.set(false);
+    }
   }
 
   async registerBenchDiscipline(
@@ -663,6 +814,7 @@ export class LiveMatchStore {
     disciplinaryAction: DisciplinaryAction,
     playerId?: string,
     opponentPlayerNumber?: number,
+    countsAsAccumulatedFoul = true,
   ): Promise<boolean> {
     const match = this.match();
     if (!match || this.commandInProgress) {
@@ -694,6 +846,7 @@ export class LiveMatchStore {
           ? (this.disciplinaryState().players[playerId]?.yellowCards ?? 0)
           : 0,
         disciplinaryAction,
+        countsAsAccumulatedFoul,
         matchElapsedMs: this.matchElapsedAt(timestamp),
         gameClockMs: projectRemaining(match.clock, timestamp),
         timestamp,
@@ -866,4 +1019,17 @@ function labelFor(match: Match | null): string {
     default:
       return '';
   }
+}
+
+function editYellowCardErrorMessage(error: unknown): string {
+  if (
+    error instanceof YellowCardNotFoundError ||
+    error instanceof InvalidDisciplinaryPlayerError ||
+    error instanceof PlayerNotInMatchError ||
+    error instanceof MatchReadonlyError ||
+    error instanceof DisciplineUpdateError
+  ) {
+    return error.message;
+  }
+  return 'No se ha podido actualizar la tarjeta.';
 }

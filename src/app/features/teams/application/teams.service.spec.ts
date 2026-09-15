@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
-import { PlayerRepository } from '../../../core/persistence/player.repository';
-import { TeamRepository } from '../../../core/persistence/team.repository';
+import {
+  PLAYER_REPOSITORY as PlayerRepository,
+  TEAM_REPOSITORY as TeamRepository,
+} from '../../../core/persistence/persistence.tokens';
 import { TeamsService } from './teams.service';
 
 describe('TeamsService', () => {

@@ -1,34 +1,45 @@
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { formatGameClock, projectRemaining } from '../../../core/clock/match-clock';
-import { MatchEventRepository } from '../../../core/persistence/match-event.repository';
-import { MatchRepository } from '../../../core/persistence/match.repository';
+import {
+  MATCH_EVENT_REPOSITORY,
+  MATCH_REPOSITORY,
+} from '../../../core/persistence/persistence.tokens';
 import {
   isMatchActive,
   isMatchFinished,
   Match,
+  matchCompetition,
   matchDateTimestamp,
+  matchSeason,
 } from '../../../shared/models/match';
 import { ScoreSnapshot } from '../../../shared/models/match-event';
 import { deriveMatchState } from '../../live-match/domain/derived-match-state';
 import { DeleteMatchService } from './delete-match.service';
+import { TeamWorkspaceContext } from '../../../core/team-workspace/team-workspace.context';
 
 export interface MatchSummary {
   match: Match;
   score: ScoreSnapshot;
 }
 
+export type MatchHistoryStatusFilter = 'all' | 'active' | 'finished';
+
 @Injectable()
 export class MatchesStore {
-  private readonly matchesRepository = inject(MatchRepository);
-  private readonly eventsRepository = inject(MatchEventRepository);
+  private readonly matchesRepository = inject(MATCH_REPOSITORY);
+  private readonly eventsRepository = inject(MATCH_EVENT_REPOSITORY);
   private readonly deleteMatchService = inject(DeleteMatchService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly workspace = inject(TeamWorkspaceContext, { optional: true });
   private readonly now = signal(Date.now());
 
   readonly matches = signal<MatchSummary[]>([]);
   readonly loading = signal(true);
   readonly deletingId = signal<string | null>(null);
   readonly error = signal<string | null>(null);
+  readonly seasonFilter = signal('all');
+  readonly competitionFilter = signal('all');
+  readonly statusFilter = signal<MatchHistoryStatusFilter>('finished');
   readonly activeMatch = computed(
     () => this.matches().find(({ match }) => isMatchActive(match)) ?? null,
   );
@@ -39,6 +50,32 @@ export class MatchesStore {
         (left, right) => matchDateTimestamp(right.match.date) - matchDateTimestamp(left.match.date),
       ),
   );
+  readonly seasons = computed(() =>
+    [...new Set(this.matches().map(({ match }) => matchSeason(match)))].sort((a, b) =>
+      b.localeCompare(a, 'es'),
+    ),
+  );
+  readonly competitions = computed(() =>
+    [...new Set(this.matches().map(({ match }) => matchCompetition(match)))].sort((a, b) =>
+      a.localeCompare(b, 'es'),
+    ),
+  );
+  readonly filteredMatches = computed(() => {
+    const season = this.seasonFilter();
+    const competition = this.competitionFilter();
+    const status = this.statusFilter();
+    return this.matches()
+      .filter(({ match }) => season === 'all' || matchSeason(match) === season)
+      .filter(({ match }) => competition === 'all' || matchCompetition(match) === competition)
+      .filter(({ match }) => {
+        if (status === 'active') return isMatchActive(match);
+        if (status === 'finished') return isMatchFinished(match);
+        return true;
+      })
+      .sort(
+        (left, right) => matchDateTimestamp(right.match.date) - matchDateTimestamp(left.match.date),
+      );
+  });
   readonly activeClock = computed(() => {
     const active = this.activeMatch()?.match;
     return formatGameClock(active ? projectRemaining(active.clock, this.now()) : 0);
@@ -54,7 +91,10 @@ export class MatchesStore {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const matches = await this.matchesRepository.list();
+      const teamId = this.workspace?.activeTeamId();
+      const matches = teamId
+        ? await this.matchesRepository.listByTeam(teamId)
+        : await this.matchesRepository.list();
       const summaries = await Promise.all(
         matches.map(async (match): Promise<MatchSummary> => {
           const events = await this.eventsRepository.listByMatch(match.id);

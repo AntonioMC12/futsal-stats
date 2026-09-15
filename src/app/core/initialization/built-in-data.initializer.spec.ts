@@ -1,13 +1,18 @@
 import 'fake-indexeddb/auto';
 import { TestBed } from '@angular/core/testing';
 import Dexie from 'dexie';
-import { MatchRepository } from '../persistence/match.repository';
-import { PlayerRepository } from '../persistence/player.repository';
-import { TeamRepository } from '../persistence/team.repository';
-import { FutsalStatsDb } from '../persistence/futsal-stats.db';
+import { DexiePlayerRepository } from '../persistence/local/dexie-player.repository';
+import { DexieTeamRepository } from '../persistence/local/dexie-team.repository';
+import { FutsalStatsDb } from '../persistence/local/futsal-stats.db';
+import { toLocalTeamRecord } from '../persistence/local/local-record-mappers';
+import {
+  MATCH_REPOSITORY,
+  PLAYER_REPOSITORY,
+  TEAM_REPOSITORY,
+} from '../persistence/persistence.tokens';
 import { MatchSetupService } from '../../features/match-setup/application/match-setup.service';
 import { BuiltInDataInitializer } from './built-in-data.initializer';
-import { APAGA_ROSTER, APAGA_SEED_KEY, APAGA_TEAM_ID } from './built-in-teams';
+import { APAGA_PLAYER_IDS, APAGA_ROSTER, APAGA_SEED_KEY, APAGA_TEAM_ID } from './built-in-teams';
 
 describe('BuiltInDataInitializer', () => {
   let db: FutsalStatsDb;
@@ -60,18 +65,18 @@ describe('BuiltInDataInitializer', () => {
       createdAt: 1,
       updatedAt: 1,
     };
-    await db.teams.put(userTeam);
+    await db.teams.put(toLocalTeamRecord(userTeam));
     await initializer.ensureBuiltInTeams();
     const apaga = await db.teams.get(APAGA_TEAM_ID);
     await db.teams.put({ ...apaga!, name: 'Apaga editado', updatedAt: 10 });
-    const firstPlayer = await db.players.get('built-in-player-apaga-01');
+    const firstPlayer = await db.players.get(APAGA_PLAYER_IDS[0]);
     await db.players.put({ ...firstPlayer!, name: 'MELLI EDITADO' });
 
     await initializer.ensureBuiltInTeams();
 
-    expect(await db.teams.get('user-team')).toEqual(userTeam);
+    expect(await db.teams.get('user-team')).toMatchObject(userTeam);
     expect((await db.teams.get(APAGA_TEAM_ID))?.name).toBe('Apaga editado');
-    expect((await db.players.get('built-in-player-apaga-01'))?.name).toBe('MELLI EDITADO');
+    expect((await db.players.get(APAGA_PLAYER_IDS[0]))?.name).toBe('MELLI EDITADO');
     expect(await db.players.where('teamId').equals(APAGA_TEAM_ID).count()).toBe(16);
   });
 
@@ -98,7 +103,12 @@ describe('BuiltInDataInitializer', () => {
     configureTestingModule();
     await initializer.ensureBuiltInTeams();
 
-    expect(await db.teams.get('legacy-team')).toEqual(legacyTeam);
+    expect(await db.teams.where('name').equals(legacyTeam.name).first()).toMatchObject({
+      ...legacyTeam,
+      id: expect.not.stringContaining('legacy-team'),
+      revision: 1,
+      syncStatus: 'pending',
+    });
     expect(await db.teams.where('seedKey').equals(APAGA_SEED_KEY).count()).toBe(1);
     expect(await db.players.where('teamId').equals(APAGA_TEAM_ID).count()).toBe(16);
   });
@@ -141,10 +151,12 @@ describe('BuiltInDataInitializer', () => {
       providers: [
         FutsalStatsDb,
         BuiltInDataInitializer,
-        TeamRepository,
-        PlayerRepository,
+        DexieTeamRepository,
+        DexiePlayerRepository,
+        { provide: TEAM_REPOSITORY, useExisting: DexieTeamRepository },
+        { provide: PLAYER_REPOSITORY, useExisting: DexiePlayerRepository },
         MatchSetupService,
-        { provide: MatchRepository, useValue: {} },
+        { provide: MATCH_REPOSITORY, useValue: {} },
       ],
     });
     db = TestBed.inject(FutsalStatsDb);

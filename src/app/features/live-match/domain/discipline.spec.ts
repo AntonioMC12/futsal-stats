@@ -10,6 +10,7 @@ import {
 
 const match: Match = {
   id: 'match-1',
+  teamId: 'team-1',
   homeTeam: { id: 'team-1', name: 'Inter', shortName: 'INT' },
   awayTeam: { name: 'Rival', shortName: 'RIV' },
   date: 1,
@@ -81,6 +82,8 @@ describe('futsal discipline and numerical reductions', () => {
 
     expect(state.players['p1']).toEqual({
       fouls: 2,
+      accumulatedFouls: 2,
+      nonAccumulatedInfringements: 0,
       yellowCards: 2,
       secondYellowSendOffs: 1,
       directRedCards: 0,
