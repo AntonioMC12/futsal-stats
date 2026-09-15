@@ -63,6 +63,17 @@ Flujo contextual para seleccionar al jugador que comete la falta y, cuando corre
 
 ![Registro de falta](docs/screenshots/04-registrar-falta.png)
 
+### Detalle del tiempo en pista
+
+El detalle de jugador reconstruye entradas, salidas y tramos efectivos en pista, incluyendo el
+tiempo del tramo actual y el reparto por periodos.
+
+![Detalle del tiempo en pista en escritorio](docs/screenshots/player-detail-desktop.png)
+
+| Tablet                                                                              | Móvil                                                                              |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| ![Detalle del tiempo en pista en tablet](docs/screenshots/player-detail-tablet.png) | ![Detalle del tiempo en pista en móvil](docs/screenshots/player-detail-mobile.png) |
+
 ---
 
 # Funcionalidades disponibles
@@ -72,9 +83,17 @@ Flujo contextual para seleccionar al jugador que comete la falta y, cuando corre
 - Creación y edición de equipos.
 - Equipo **Apaga** preconfigurado con 16 jugadores, disponible automáticamente en cada instalación.
 - Gestión de dorsales, nombres, posiciones y estado de los jugadores.
+- Vista de Plantilla con resumen global, jugadores activos e inactivos y selector de temporada.
+- Estadísticas por jugador en la Plantilla: partidos, titularidades, minutos, goles, balance `+/−` y
+  media de minutos.
+- Búsqueda por nombre o dorsal, filtros por estado y posición, y ordenación por las métricas
+  principales.
 - Selección de convocatoria y elección del quinteto inicial desde la pista antes de iniciar.
-- Perfil deportivo persistente con foto, pierna dominante y notas.
+- Perfil deportivo editable con dorsal, nombre, posición, estado, pierna dominante y notas.
+- Fotografías seleccionadas desde archivo JPEG, PNG o WebP, con previsualización, sustitución,
+  eliminación y validación de contenido y tamaño.
 - Histórico individual y métricas separadas por temporada.
+- Roles `OWNER` y `EDITOR` con edición; rol `VIEWER` con acceso de solo lectura en Plantilla y Perfil.
 
 ## Gestión de partidos
 
@@ -95,8 +114,12 @@ Flujo contextual para seleccionar al jugador que comete la falta y, cuando corre
 - Registro de goles a favor y en contra.
 - Selección opcional del goleador entre los jugadores en pista, con goles individuales derivados del historial.
 - Registro de faltas propias y del rival por periodo.
+- Registro diferenciado de faltas acumulativas e infracciones disciplinarias que no incrementan el
+  contador de faltas del periodo.
 - Tarjetas, expulsiones e inferioridades de dos minutos de tiempo efectivo con reposición manual.
 - Identificación rápida por dorsal de jugadores rivales sancionados, reutilizable durante el partido.
+- Panel de disciplina con edición del jugador asociado a una amarilla propia y del dorsal de una
+  amarilla rival, sin alterar el instante ni la falta original.
 - Marcador y cronología de eventos actualizados inmediatamente.
 - Deshacer goles, faltas y sustituciones sin eliminar el historial original.
 - Acciones rápidas para los eventos más habituales del partido.
@@ -104,6 +127,7 @@ Flujo contextual para seleccionar al jugador que comete la falta y, cuando corre
 ## Estadísticas derivadas
 
 - Minutos jugados y porcentaje de participación.
+- Detalle por jugador de entradas, salidas, tramos en pista y duración del tramo actual.
 - Goles a favor y en contra con cada jugador en pista.
 - Plus/minus por jugador.
 - Tiempo, goles y plus/minus por quinteto.
@@ -141,6 +165,15 @@ Desde **Plantilla**, pulsa **Ver perfil** en un jugador. El perfil permite guard
 dominante y notas deportivas, consultar sus partidos terminados y cambiar entre la vista de carrera
 y cada temporada. Las métricas se recalculan desde los eventos de partido y no se almacenan como
 totales duplicados.
+
+La propia Plantilla muestra un resumen recalculado por temporada. Puedes buscar por nombre o dorsal,
+filtrar jugadores activos/inactivos y posiciones, y ordenar por dorsal, nombre, minutos, partidos o
+goles. El balance `+/−` indica la diferencia entre goles a favor y en contra mientras el jugador
+estaba en pista.
+
+Las fotografías se eligen desde un archivo local; no se introducen URLs manualmente. Se admiten
+JPEG, PNG y WebP de hasta 5 MB, con previsualización antes de guardar. En modo cloud, las acciones de
+edición solo aparecen para dispositivos `OWNER` o `EDITOR`.
 
 ---
 
@@ -235,6 +268,10 @@ Después:
 
 El evento queda incorporado al historial y actualiza las estadísticas derivadas.
 
+Cuando la acción disciplinaria no deba contar como falta acumulativa, el flujo permite registrarla
+como infracción que **no suma falta**. La cronología y el panel de disciplina indican explícitamente
+si el evento incrementa o no el contador.
+
 ---
 
 ## 8. Registrar una falta rival
@@ -244,6 +281,10 @@ Pulsa **Falta rival**.
 Las faltas del rival se contabilizan por periodo y se reflejan en el estado del partido.
 
 Cuando sea necesario identificar a un rival sancionado, la aplicación permite reutilizar su dorsal durante el encuentro.
+
+Desde el panel **Disciplina** se puede corregir posteriormente el dorsal asociado a una amarilla
+rival. Las amarillas propias permiten reasignar el jugador. La corrección mantiene el evento en su
+instante original y no mueve ni duplica la falta relacionada.
 
 ---
 
@@ -311,6 +352,9 @@ La vista detallada permite consultar por jugador:
 - expulsiones.
 
 También se muestran los quintetos utilizados durante el partido y sus estadísticas derivadas.
+
+Al pulsar sobre un jugador se abre su detalle de participación: tiempo total y por periodo, estado
+actual, última sustitución, duración del tramo activo y cronología completa de entradas y salidas.
 
 ---
 
@@ -636,11 +680,12 @@ mediante tokens de inyección. `provideLocalPersistence()` conecta los contratos
 Dexie para pruebas y modo local; en modo cloud, `providePersistence()` selecciona adaptadores
 offline-first que escriben en IndexedDB y encolan la mutación remota.
 
-La base de datos local contiene siete tablas:
+La base de datos local contiene ocho tablas:
 
 - `teams`
 - `players`
 - `playerProfiles`
+- `playerPhotos`
 - `matches`
 - `events`
 - `strategies`
@@ -649,8 +694,9 @@ La base de datos local contiene siete tablas:
 El seed integrado de Apaga es infraestructura local, transaccional e idempotente. Sus IDs
 son UUIDs fijos para garantizar esa idempotencia; el resto de altas continúa usando
 `createId()`/`crypto.randomUUID()`. Dexie v4 migró los IDs históricos y sus referencias; las
-versiones posteriores añadieron histórico, perfiles y, en Dexie v7, la cola durable sin borrar la
-base local. Consulta [`cloud-data-model.md`](docs/architecture/cloud-data-model.md) y
+versiones posteriores añadieron histórico, perfiles y, en Dexie v7, la cola durable. Dexie v8
+incorpora los assets binarios de fotografías separados de las entidades principales, sin guardar
+imágenes base64 en los perfiles. Consulta [`cloud-data-model.md`](docs/architecture/cloud-data-model.md) y
 [`offline-sync.md`](docs/offline-sync.md).
 
 ## Sincronización offline-first
