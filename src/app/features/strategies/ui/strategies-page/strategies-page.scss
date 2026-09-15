@@ -61,14 +61,17 @@
   min-width: 0;
   min-height: 0;
 }
+.strategies-shell--designer .strategies-view {
+  overflow: hidden;
+}
 @media (max-width: 1099px) {
-  :host {
+  :host:not(.designer-active) {
     height: auto;
   }
-  .strategies-shell {
+  .strategies-shell:not(.strategies-shell--designer) {
     height: auto;
   }
-  .strategies-view {
+  .strategies-shell:not(.strategies-shell--designer) .strategies-view {
     overflow: visible;
   }
 }

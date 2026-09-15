@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { StrategyPlaybackStore } from '../../application/strategy-playback.store';
 import { StrategyWorkspaceContext } from '../../application/strategy-workspace.context';
 
@@ -9,10 +9,16 @@ import { StrategyWorkspaceContext } from '../../application/strategy-workspace.c
   providers: [StrategyPlaybackStore, StrategyWorkspaceContext],
   templateUrl: './strategies-page.html',
   styleUrl: './strategies-page.scss',
+  host: { '[class.designer-active]': 'designerActive' },
 })
 export class StrategiesPage {
   protected readonly store = inject(StrategyPlaybackStore);
   protected readonly context = inject(StrategyWorkspaceContext);
+  private readonly router = inject(Router);
+
+  protected get designerActive(): boolean {
+    return this.router.url.startsWith('/strategies/designer');
+  }
   constructor() {
     void this.context.initialize();
   }

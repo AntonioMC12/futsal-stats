@@ -163,6 +163,18 @@
   display: none;
 }
 
+.shell--strategy-designer {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+.shell--strategy-designer .shell__main {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 @media (min-width: 1100px) {
   .shell:not(.shell--live-match) {
     display: grid;

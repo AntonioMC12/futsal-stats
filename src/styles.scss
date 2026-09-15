@@ -43,6 +43,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+body.strategy-dragging {
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
 button,
 a,
 summary,

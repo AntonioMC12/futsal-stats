@@ -1,8 +1,10 @@
-import { Component, input, output, signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { Component, HostListener, inject, input, OnDestroy, output, signal } from '@angular/core';
 import {
   Strategy,
   StrategyPhase,
   TacticalArrow,
+  TacticalPieceType,
   TacticalPieceState,
   TacticalPoint,
   TacticalTool,
@@ -15,9 +17,27 @@ interface ArrowEndpoint {
 
 const BOARD_WIDTH = 1000;
 const BOARD_HEIGHT = 600;
+const PITCH_INSET = 18;
+const PLAYER_RADIUS = 32;
+const BALL_RADIUS = 18;
 
 function clampNormalized(value: number): number {
   return Math.max(0, Math.min(1, value));
+}
+
+export function clampPiecePosition(
+  point: TacticalPoint,
+  pieceType: TacticalPieceType,
+): TacticalPoint {
+  const radius = pieceType === 'ball' ? BALL_RADIUS : PLAYER_RADIUS;
+  const minX = (PITCH_INSET + radius) / BOARD_WIDTH;
+  const maxX = 1 - minX;
+  const minY = (PITCH_INSET + radius) / BOARD_HEIGHT;
+  const maxY = 1 - minY;
+  return {
+    x: Math.max(minX, Math.min(maxX, point.x)),
+    y: Math.max(minY, Math.min(maxY, point.y)),
+  };
 }
 
 export function pointerToBoardPoint(
@@ -25,7 +45,7 @@ export function pointerToBoardPoint(
   clientX: number,
   clientY: number,
 ): TacticalPoint {
-  const matrix = svg.getScreenCTM();
+  const matrix = svg.getScreenCTM?.();
   if (matrix) {
     const pointer = svg.createSVGPoint();
     pointer.x = clientX;
@@ -57,7 +77,7 @@ export function pointerToBoardPoint(
   templateUrl: './tactical-board.html',
   styleUrl: './tactical-board.scss',
 })
-export class TacticalBoard {
+export class TacticalBoard implements OnDestroy {
   readonly strategy = input.required<Strategy>();
   readonly phase = input.required<StrategyPhase>();
   readonly pieces = input.required<readonly TacticalPieceState[]>();
@@ -77,9 +97,11 @@ export class TacticalBoard {
     position: TacticalPoint;
   }>();
   protected readonly draftStart = signal<ArrowEndpoint | null>(null);
+  private readonly document = inject(DOCUMENT);
   private drag: {
     pointerId: number;
     pieceId: string;
+    pieceType: TacticalPieceType;
     svg: SVGSVGElement;
     grabOffset: TacticalPoint;
   } | null = null;
@@ -128,6 +150,7 @@ export class TacticalBoard {
     this.drag = {
       pointerId: event.pointerId,
       pieceId: piece.pieceId,
+      pieceType: piece.type,
       svg,
       grabOffset: {
         x: pointer.x - piece.position.x,
@@ -137,6 +160,7 @@ export class TacticalBoard {
     (
       event.currentTarget as Element & { setPointerCapture?: (id: number) => void }
     ).setPointerCapture?.(event.pointerId);
+    this.setDraggingState(true);
   }
   protected piecePointerMove(event: PointerEvent): void {
     if (!this.drag || event.pointerId !== this.drag.pointerId) return;
@@ -144,18 +168,20 @@ export class TacticalBoard {
     const pointer = this.toPoint(event, this.drag.svg);
     this.pieceMoved.emit({
       pieceId: this.drag.pieceId,
-      position: {
-        x: clampNormalized(pointer.x - this.drag.grabOffset.x),
-        y: clampNormalized(pointer.y - this.drag.grabOffset.y),
-      },
+      position: clampPiecePosition(
+        {
+          x: clampNormalized(pointer.x - this.drag.grabOffset.x),
+          y: clampNormalized(pointer.y - this.drag.grabOffset.y),
+        },
+        this.drag.pieceType,
+      ),
     });
   }
   protected piecePointerEnd(event: PointerEvent): void {
     if (!this.drag || event.pointerId !== this.drag.pointerId) return;
-    (
-      event.currentTarget as Element & { releasePointerCapture?: (id: number) => void }
-    ).releasePointerCapture?.(event.pointerId);
     this.drag = null;
+    this.releasePointer(event.currentTarget, event.pointerId);
+    this.updateDraggingState();
   }
   protected pieceKeydown(event: KeyboardEvent, piece: TacticalPieceState): void {
     if (this.locked() || this.tool() !== 'select') return;
@@ -191,6 +217,7 @@ export class TacticalBoard {
     (
       event.currentTarget as Element & { setPointerCapture?: (id: number) => void }
     ).setPointerCapture?.(event.pointerId);
+    this.setDraggingState(true);
   }
   protected arrowHandleMove(event: PointerEvent): void {
     if (!this.arrowDrag || event.pointerId !== this.arrowDrag.pointerId) return;
@@ -203,10 +230,22 @@ export class TacticalBoard {
   }
   protected arrowHandleEnd(event: PointerEvent): void {
     if (!this.arrowDrag || event.pointerId !== this.arrowDrag.pointerId) return;
-    (
-      event.currentTarget as Element & { releasePointerCapture?: (id: number) => void }
-    ).releasePointerCapture?.(event.pointerId);
     this.arrowDrag = null;
+    this.releasePointer(event.currentTarget, event.pointerId);
+    this.updateDraggingState();
+  }
+  @HostListener('window:blur')
+  protected cancelPointerInteractions(): void {
+    this.drag = null;
+    this.arrowDrag = null;
+    this.setDraggingState(false);
+  }
+  @HostListener('document:visibilitychange')
+  protected cancelPointerInteractionsWhenHidden(): void {
+    if (this.document.hidden) this.cancelPointerInteractions();
+  }
+  ngOnDestroy(): void {
+    this.cancelPointerInteractions();
   }
   protected keydown(event: KeyboardEvent): void {
     if ((event.key === 'Delete' || event.key === 'Backspace') && this.selectedArrowId()) {
@@ -239,5 +278,21 @@ export class TacticalBoard {
       (event.currentTarget as SVGSVGElement),
   ): TacticalPoint {
     return pointerToBoardPoint(svg, event.clientX, event.clientY);
+  }
+  private releasePointer(target: EventTarget | null, pointerId: number): void {
+    const element = target as Element & {
+      hasPointerCapture?: (id: number) => boolean;
+      releasePointerCapture?: (id: number) => void;
+    };
+    if (!element?.releasePointerCapture) return;
+    if (!element.hasPointerCapture || element.hasPointerCapture(pointerId)) {
+      element.releasePointerCapture(pointerId);
+    }
+  }
+  private updateDraggingState(): void {
+    this.setDraggingState(this.drag !== null || this.arrowDrag !== null);
+  }
+  private setDraggingState(active: boolean): void {
+    this.document.body.classList.toggle('strategy-dragging', active);
   }
 }
