@@ -1,0 +1,49 @@
+<section class="access-page stack">
+  <p class="eyebrow">Futsal Stats Cloud</p>
+  <h1>Accede a tu equipo</h1>
+  @if (config.mode === 'cloud' && !auth.authenticated()) {
+    <p class="banner banner--warn" role="alert">
+      {{ auth.error() || 'Preparando este dispositivo…' }}
+    </p>
+    @if (auth.status() === 'error') {
+      <button class="btn btn--secondary" type="button" (click)="retry()">Reintentar</button>
+    }
+  } @else {
+    <a class="btn btn--primary" routerLink="/teams/new">Crear un equipo</a>
+    @if (config.mode === 'cloud') {
+      <section class="panel stack">
+        <h2>¿Ya tienes un equipo?</h2>
+        <p>Introduce el código generado desde un dispositivo autorizado.</p>
+        <a class="btn btn--secondary" routerLink="/join">Acceder con código de invitación</a>
+      </section>
+      <section class="panel stack">
+        <h2>Recuperar acceso</h2>
+        <p>
+          Si perdiste los datos de esta PWA, introduce la clave de recuperación que guardaste al
+          crear el equipo.
+        </p>
+        <form class="stack" [formGroup]="form" (ngSubmit)="recover()">
+          <label class="field"
+            >Clave de recuperación
+            <input formControlName="key" type="text" autocomplete="off" placeholder="FS-…" />
+          </label>
+          <label class="field"
+            >Nombre del dispositivo (opcional)
+            <input
+              formControlName="deviceName"
+              type="text"
+              maxlength="80"
+              placeholder="iPad banquillo"
+            />
+          </label>
+          @if (error(); as message) {
+            <p class="banner banner--warn" role="alert">{{ message }}</p>
+          }
+          <button class="btn btn--secondary" type="submit" [disabled]="busy()">
+            Recuperar equipo
+          </button>
+        </form>
+      </section>
+    }
+  }
+</section>

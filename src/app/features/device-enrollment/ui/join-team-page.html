@@ -2,7 +2,7 @@
   <a class="back" routerLink="/dashboard">← Inicio</a>
   <div>
     <p class="eyebrow">Invitación de equipo</p>
-    <h1>Unirse al equipo</h1>
+    <h1>Acceder al equipo</h1>
     <p class="lede">Abre el QR o introduce el código que comparte el OWNER.</p>
   </div>
 
@@ -21,12 +21,12 @@
         />
       </label>
       <label class="field">
-        Alias visible <span class="optional">(opcional)</span>
+        Nombre del dispositivo <span class="optional">(opcional)</span>
         <input
           formControlName="deviceName"
           type="text"
           maxlength="80"
-          placeholder="Entrenador, analista…"
+          placeholder="iPad banquillo"
           autocomplete="off"
         />
       </label>
@@ -34,7 +34,7 @@
         <p class="banner banner--warn" role="alert">{{ message }}</p>
       }
       <button class="btn btn--primary" type="submit" [disabled]="joining()">
-        {{ joining() ? 'Uniendo…' : 'Unirse al equipo' }}
+        {{ joining() ? 'Uniendo…' : 'Acceder al equipo' }}
       </button>
     </form>
   }

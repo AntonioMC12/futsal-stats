@@ -5,6 +5,7 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import * as QRCode from 'qrcode';
 import { CLOUD_CONFIG } from '../../../core/cloud/cloud.config';
 import { TeamWorkspaceContext } from '../../../core/team-workspace/team-workspace.context';
+import { TeamRecoveryService } from '../../../core/team-workspace/team-recovery.service';
 import {
   DeviceEnrollmentService,
   formatInviteCode,
@@ -21,6 +22,7 @@ import {
 })
 export class DevicesPage {
   private readonly enrollment = inject(DeviceEnrollmentService);
+  private readonly recovery = inject(TeamRecoveryService);
   private readonly workspace = inject(TeamWorkspaceContext);
   private readonly formBuilder = inject(FormBuilder);
   protected readonly cloudConfig = inject(CLOUD_CONFIG);
@@ -32,6 +34,8 @@ export class DevicesPage {
   protected readonly notice = signal<string | null>(null);
   protected readonly invitation = signal<TeamInvitation | null>(null);
   protected readonly qrDataUrl = signal<string | null>(null);
+  protected readonly recoveryConfigured = signal<boolean | null>(null);
+  protected readonly newRecoveryKey = signal<string | null>(null);
   protected readonly activeTeam = this.workspace.activeTeam;
   protected readonly invitationCode = computed(() => {
     const token = this.invitation()?.token;
@@ -98,6 +102,36 @@ export class DevicesPage {
     }
   }
 
+  protected async rotateRecoveryKey(): Promise<void> {
+    const teamId = this.activeTeam()?.id;
+    if (!teamId || this.loading()) return;
+    if (
+      !globalThis.confirm(
+        'La clave anterior dejará de funcionar. ¿Generar una nueva clave de recuperación?',
+      )
+    )
+      return;
+    this.loading.set(true);
+    this.error.set(null);
+    try {
+      this.newRecoveryKey.set(await this.recovery.rotate(teamId));
+      this.recoveryConfigured.set(true);
+    } catch (error) {
+      this.error.set(errorMessage(error));
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  protected async copyRecoveryKey(key: string): Promise<void> {
+    try {
+      await globalThis.navigator.clipboard.writeText(key);
+      this.notice.set('Clave copiada. Guárdala fuera de la aplicación.');
+    } catch {
+      this.error.set('Selecciona y copia la clave manualmente.');
+    }
+  }
+
   protected async saveDevice(device: TeamDevice, name: string, roleValue: string): Promise<void> {
     const teamId = this.activeTeam()?.id;
     if (!teamId || this.busyUserId()) return;
@@ -141,6 +175,7 @@ export class DevicesPage {
     this.error.set(null);
     try {
       this.devices.set(await this.enrollment.listDevices(teamId));
+      this.recoveryConfigured.set(await this.recovery.hasKey(teamId));
     } catch (error) {
       this.error.set(errorMessage(error));
     } finally {

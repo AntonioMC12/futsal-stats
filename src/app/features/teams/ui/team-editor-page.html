@@ -6,7 +6,35 @@
     {{ workspaceMode() ? 'Ajustes del equipo' : isEdit() ? 'Editar equipo' : 'Nuevo equipo' }}
   </h1>
 
-  @if (missing()) {
+  @if (recoveryKey(); as key) {
+    <section class="panel stack" aria-labelledby="recovery-title">
+      <h2 id="recovery-title">Guarda la clave de recuperación</h2>
+      <p>
+        Esta clave permite recuperar el equipo si este dispositivo pierde sus datos. Guárdala fuera
+        de la aplicación. No volverá a mostrarse.
+      </p>
+      <code>{{ key }}</code>
+      <button class="btn btn--secondary" type="button" (click)="copyRecoveryKey(key)">
+        Copiar clave
+      </button>
+      <label
+        ><input
+          type="checkbox"
+          [checked]="recoverySaved()"
+          (change)="recoverySaved.set($any($event.target).checked)"
+        />
+        He guardado la clave en un lugar seguro</label
+      >
+      <button
+        class="btn btn--primary"
+        type="button"
+        [disabled]="!recoverySaved()"
+        (click)="finishCreation()"
+      >
+        Ir al equipo
+      </button>
+    </section>
+  } @else if (missing()) {
     <p class="banner banner--warn">Este equipo no existe.</p>
   } @else {
     <form class="stack" [formGroup]="form" (ngSubmit)="save()">

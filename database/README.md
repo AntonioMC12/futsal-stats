@@ -15,6 +15,14 @@ Angular no las ejecuta; en modo cloud utiliza el proyecto configurado por despli
 - `0007_current_team_role.sql`: consulta del rol actual del Team.
 - `0008_passwordless_identity.sql`: identidad recuperable por email.
 - `0009_team_shared_assets.sql`: estrategias Team y bucket privado de fotos con RLS.
+- `0010_anonymous_device_identity.sql`: clave de recuperación por Team, auditoría y RPC de creación,
+  rotación y recuperación. No transforma ni elimina identidades existentes.
+
+Antes de usar el modo cloud, activar **Authentication > Providers / Sign In > Anonymous Sign-Ins**
+en Supabase. Aplicar `0010` después de `0009`. El proveedor email no es necesario para dispositivos
+nuevos. En un despliegue público se recomienda CAPTCHA/protección antiabuso para altas anónimas.
+Los OWNER de Teams existentes creados con email conservan acceso mientras su sesión persista y
+pueden generar una clave desde **Ajustes > Dispositivos > Recuperación del equipo**.
 
 Cada migración se aplica en una transacción. Ante un fallo, PostgreSQL revierte ese bloque.
 No se debe descartar una base con datos para recuperar una migración fallida ni editar una

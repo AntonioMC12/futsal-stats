@@ -17,8 +17,8 @@ export const routes: Routes = [
     redirectTo: 'dashboard',
   },
   {
-    path: 'login',
-    loadComponent: () => import('./features/auth/ui/login-page').then((m) => m.LoginPage),
+    path: 'access',
+    loadComponent: () => import('./features/auth/ui/team-access-page').then((m) => m.TeamAccessPage),
   },
   {
     path: 'dashboard',

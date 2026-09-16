@@ -10,7 +10,7 @@ export const teamWorkspaceGuard: CanActivateFn = async () => {
   await workspace.initialize();
   return workspace.activeTeam()
     ? true
-    : router.createUrlTree(['/teams/new'], { queryParams: { onboarding: 'true' } });
+    : router.createUrlTree(['/access']);
 };
 
 export const matchTeamWorkspaceGuard: CanActivateFn = async (route) => {

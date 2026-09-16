@@ -82,11 +82,6 @@ export class AppShell {
     if (this.cloud.status() === 'connected') await this.workspace?.refresh();
   }
 
-  protected async signOut(): Promise<void> {
-    await this.auth.signOut();
-    await this.router.navigate(['/login']);
-  }
-
   protected async retrySync(): Promise<void> {
     await this.sync?.retryFailed();
   }

@@ -8,7 +8,7 @@ export class SupabaseClientService {
   readonly client: SupabaseClient | null =
     this.config.mode === 'cloud'
       ? createClient(this.config.supabaseUrl, this.config.publishableKey, {
-          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
         })
       : null;
 

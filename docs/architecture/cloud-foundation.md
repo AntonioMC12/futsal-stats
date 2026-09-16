@@ -1,54 +1,42 @@
-# Cloud foundation (iteration 4)
+# Cloud foundation
 
-The selected infrastructure is Supabase: PostgreSQL, passwordless email Auth and Row Level
-Security. Cloud mode is deliberately opt-in; without valid runtime configuration the application
-continues to use IndexedDB.
+Cloud mode uses Supabase PostgreSQL, Anonymous Auth and Row Level Security. Without a valid
+runtime cloud configuration the application continues in local mode with IndexedDB.
 
 ## Provisioning
 
-1. Create separate Supabase projects for development and production.
-2. Enable email OTP in **Authentication > Providers**. In **Authentication > Email Templates**, set
-   the email sign-in template to display `{{ .Token }}` instead of `{{ .ConfirmationURL }}`. The
-   application does not use a Magic Link redirect for this flow. Configure SMTP and abuse
-   protection before a public production deployment. Verify the received email contains a code.
-3. Apply every file in `database/migrations` in numeric order, including
-   `0009_team_shared_assets.sql`, through the Supabase migration workflow. Keep the
-   `player-photos` Storage bucket private.
-4. Copy `public/cloud-config.js` per deployment and set:
+1. Create separate development and production Supabase projects.
+2. Enable **Authentication > Providers / Sign In > Anonymous Sign-Ins**. For a publicly accessible
+   app, configure CAPTCHA or equivalent abuse protection for anonymous signups.
+3. Apply every file in `database/migrations` in numeric order through `0010_anonymous_device_identity.sql`.
+   Keep the `player-photos` Storage bucket private.
+4. Configure `public/cloud-config.js` with `mode: 'cloud'`, the HTTPS Supabase URL and the
+   publishable key. Never include a `service_role` key in browser assets.
 
-```js
-globalThis.__FUTSAL_STATS_CLOUD__ = {
-  mode: 'cloud',
-  supabaseUrl: 'https://YOUR_PROJECT.supabase.co',
-  publishableKey: 'YOUR_PUBLISHABLE_KEY',
-};
-```
+## Identity and storage
 
-Only the publishable (or legacy `anon`) key belongs in browser configuration. A `service_role`
-key bypasses RLS and must never be included in this repository, deployment assets or Angular
-environment files.
+`AuthService` waits for Supabase to restore its session from the SDK's persistent browser storage.
+It calls `signInAnonymously()` only when `getSession()` returns no session. The Supabase client keeps
+`persistSession` and `autoRefreshToken` enabled and uses the SDK's unchanged default storage key.
+No service worker update clears Auth storage or IndexedDB. The outbox is flushed before a cloud pull;
+voluntary PWA activation waits while a match or pending/failed outbox item exists.
 
-## Security and data ownership
+`team_memberships` links an Auth UUID to its Teams. Supabase anonymous users have the PostgreSQL
+`authenticated` role. RLS checks membership for sports data, strategies and private photos;
+OWNER and EDITOR can write, VIEWER can read. Team creation calls
+`create_team_with_recovery_key`, which creates Team, OWNER membership and hashed recovery key in
+one transaction. Device invites and recovery run through server RPCs.
 
-Each person gets a stable Supabase Auth user recoverable through email. `team_memberships` links
-that identity to its teams. The first call to `upsert_team_workspace` creates the team and owner membership atomically;
-all later writes require owner/editor membership. RLS follows the team relationship through
-players, matches, match players, events and lineup snapshots. Anonymous PostgreSQL access is
-revoked; only the `authenticated` role receives explicit grants.
+An existing email Auth session remains valid and keeps its memberships. Its OWNER should generate
+a recovery key before deleting the session. There is no automatic identity reassignment. Clearing
+all browser storage discards any unsynced local operations; synced Team data is recovered from
+Supabase with the saved key.
 
-## Runtime behaviour
+## Manual acceptance
 
-At startup `AuthService` restores the persistent session. Private routes redirect to `/login` when
-it is absent. Once authenticated, `CloudFoundationService` performs a minimal RLS-protected health
-check and the offline sync service pushes its durable outbox before pulling the authorized snapshot.
-Repository tokens select local-first adapters in cloud mode. Strategies and photos use the
-same Team boundary and durable sync queue; see [Team data ownership](team-data-ownership.md).
-
-## Manual acceptance check
-
-- In browser A, sign in by email, create a team and a player, then reload and verify both can be read.
-- In a clean browser profile B, sign in with the same email and verify the team is restored.
-- Sign in as an account without membership and verify the first team's UUID cannot be read.
-- Inspect the built JavaScript and deployed `cloud-config.js`; verify no `service_role` key exists.
-- Disable connectivity in cloud mode and verify the operation reports an error rather than
-  silently claiming persistence.
+On device A, create a Team and save the key. Add a player, profile, photo, strategy and match;
+wait for `Sincronizado`. Reload and confirm the Auth UUID and Team remain the same. Generate an
+EDITOR invite and consume it on device B; verify the same data can be read and edited. A device
+without membership must fail to read the Team by UUID. Revoke B and verify a new pull removes
+its access. Clear storage on a separate test device, enter the recovery key and verify the full
+cloud snapshot is restored. Repeat after deploying a new service worker version on iPad Safari PWA.
