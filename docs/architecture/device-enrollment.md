@@ -30,6 +30,10 @@ revocada falla inmediatamente por RLS aunque su sesión siga siendo válida. Cre
 de invitaciones, cambios de rol y revocaciones dejan un registro en `team_access_audit` sin guardar
 el token en claro. Cada arranque cloud actualiza `last_seen_at` de las memberships del dispositivo.
 
+Tras el siguiente pull cloud, un Team revocado se oculta del workspace local y se borra su rol
+guardado. Los datos deportivos pendientes permanecen en IndexedDB para revisión, sin acceso desde
+las rutas del Team. La membership sigue siendo la autoridad de acceso a tablas y Storage.
+
 ## Comprobación manual
 
 1. Aplicar todas las migraciones y habilitar configuración cloud y login por email.

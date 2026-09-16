@@ -37,12 +37,18 @@ Al arrancar en modo cloud:
 
 1. se recuperan cambios locales `pending` antiguos que aun no tengan outbox;
 2. se envia la cola en orden de creacion;
-3. se descarga una instantanea autorizada de equipos, jugadores, perfiles, partidos y eventos;
+3. se descarga una instantanea autorizada de equipos, jugadores, perfiles, partidos, eventos y estrategias;
 4. se actualiza la cache sin sobrescribir registros locales `pending` o `failed`.
 
 Sin conectividad, el workspace y el partido se abren desde la cache. La politica inicial de
 conflictos mantiene un solo controlador del live match. La creacion remota de un segundo partido
 activo queda como error visible y accionable; no se intenta mezclar dos lineas de eventos.
+
+Las estrategias existentes en Dexie se encolan al arrancar, conservando sus UUIDs y secuencias.
+Las fotos locales se suben al bucket privado `player-photos`; otros dispositivos las descargan bajo
+demanda y conservan una copia en Dexie. Un pull continúa aunque una operación del outbox falle, sin
+sobrescribir cambios locales pendientes. Si un Team antes sincronizado desaparece del snapshot
+autorizado, se oculta del workspace y se invalida el rol local.
 
 ## Migracion y recuperacion
 

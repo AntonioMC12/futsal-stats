@@ -13,8 +13,9 @@ export class DexiePlayerPhotoRepository implements PlayerPhotoRepository {
     blob: Blob,
     mimeType: PlayerPhotoRef['mimeType'],
   ): Promise<PlayerPhotoRef> {
-    const updatedAt = Date.now();
     const storageKey = `teams/${teamId}/players/${playerId}/profile`;
+    const previous = await this.db.playerPhotos.get(storageKey);
+    const updatedAt = Math.max(Date.now(), (previous?.updatedAt ?? 0) + 1);
     await this.db.playerPhotos.put({
       storageKey,
       teamId,
@@ -22,20 +23,26 @@ export class DexiePlayerPhotoRepository implements PlayerPhotoRepository {
       data: await blob.arrayBuffer(),
       mimeType,
       updatedAt,
+      syncStatus: 'pending',
     });
     return { storageKey, mimeType, updatedAt };
   }
 
   async get(ref: PlayerPhotoRef): Promise<Blob | undefined> {
     const record = await this.db.playerPhotos.get(ref.storageKey);
-    return record ? new Blob([record.data], { type: record.mimeType }) : undefined;
+    return record && record.updatedAt === ref.updatedAt
+      ? new Blob([record.data], { type: record.mimeType })
+      : undefined;
   }
 
   async getMany(refs: readonly PlayerPhotoRef[]): Promise<Map<string, Blob>> {
     const records = await this.db.playerPhotos.bulkGet(refs.map(({ storageKey }) => storageKey));
     return new Map(
       records
-        .filter((record) => record !== undefined)
+        .filter(
+          (record, index): record is NonNullable<typeof record> =>
+            record !== undefined && record.updatedAt === refs[index]?.updatedAt,
+        )
         .map((record) => [record.storageKey, new Blob([record.data], { type: record.mimeType })]),
     );
   }

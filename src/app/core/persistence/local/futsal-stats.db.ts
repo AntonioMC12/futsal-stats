@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
-import { Strategy } from '../../../features/strategies/domain/strategy';
 import { migrateToCloudDataModel } from './cloud-data-model.migration';
 import { SyncQueueRecord } from '../../sync/sync-operation';
 import {
@@ -10,6 +9,7 @@ import {
   LocalPlayerProfileRecord,
   LocalPlayerPhotoRecord,
   LocalTeamRecord,
+  LocalStrategyRecord,
 } from './local-records';
 
 @Injectable()
@@ -20,7 +20,7 @@ export class FutsalStatsDb extends Dexie {
   playerPhotos!: Table<LocalPlayerPhotoRecord, string>;
   matches!: Table<LocalMatchRecord, string>;
   events!: Table<LocalMatchEventRecord, string>;
-  strategies!: Table<Strategy, string>;
+  strategies!: Table<LocalStrategyRecord, string>;
   syncQueue!: Table<SyncQueueRecord, string>;
 
   constructor() {

@@ -15,6 +15,7 @@ describe('StrategyLibraryPage', () => {
       ready: signal(true),
       teams: signal([team]),
       teamId: signal(APAGA_TEAM_ID),
+      canWrite: signal(true),
       createStrategy: vi.fn(() => 'new-id'),
     };
     await TestBed.configureTestingModule({

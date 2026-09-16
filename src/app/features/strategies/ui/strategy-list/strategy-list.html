@@ -2,6 +2,7 @@
   @for (strategy of strategies(); track strategy.id) {
     <app-strategy-card
       [strategy]="strategy"
+      [canEdit]="canEdit()"
       (played)="strategyPlayed.emit($event)"
       (edited)="strategyEdited.emit($event)"
     />

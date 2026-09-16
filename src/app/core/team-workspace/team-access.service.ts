@@ -66,6 +66,22 @@ export class TeamAccessService {
     this.applyRole(this.config.mode === 'local' ? 'owner' : 'viewer');
   }
 
+  invalidate(): void {
+    this.loadedScope = null;
+  }
+
+  revoke(teamId: string): void {
+    const userId = this.auth.user()?.id;
+    if (userId) {
+      try {
+        globalThis.localStorage?.removeItem(roleStorageKey(userId, teamId));
+      } catch {
+        /* Storage optional. */
+      }
+    }
+    if (this.loadedScope === `${userId}:${teamId}`) this.reset();
+  }
+
   private applyRole(role: WorkspaceRole): void {
     this.role.set(role);
     this.canWrite.set(role !== 'viewer');
