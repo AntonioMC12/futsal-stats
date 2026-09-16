@@ -45,6 +45,49 @@ describe('cloud record mappers', () => {
     expect(matchFromCloud(row)).toEqual(match);
   });
 
+  it('round-trips partial legacy import metadata through cloud JSON', () => {
+    const match: Match = {
+      id: 'legacy-1',
+      teamId: 'team-1',
+      homeTeam: { id: 'team-1', name: 'Apaga', shortName: 'APA' },
+      awayTeam: { name: 'MNG', shortName: '' },
+      date: '2026-08-28',
+      description: '',
+      status: 'finished',
+      currentPeriod: 1,
+      periodCount: 2,
+      clock: {
+        periodDurationMs: 1_200_000,
+        remainingMs: 0,
+        running: false,
+        startedAtEpochMs: null,
+      },
+      squadPlayerIds: ['p1'],
+      startingLineupPlayerIds: ['p1'],
+      createdAt: 1,
+      updatedAt: 2,
+      source: 'csv-import',
+      importMetadata: {
+        fileName: 'legacy.csv',
+        importedAt: '2026-09-16T00:00:00Z',
+        fingerprint: 'fingerprint',
+        legacySnapshot: {
+          importFormat: 'legacy-player-snapshot',
+          reconstructionVersion: 1,
+          observedTeamName: 'Apaga',
+          observedScore: { home: 1, away: 0 },
+          players: [{ playerId: 'p1', secondsPlayed: 41 }],
+          missingData: ['eventTimeline', 'substitutionTimeline', 'lineupHistory'],
+        },
+      },
+    };
+    const row = matchToCloud(match);
+    row['match_players'] = [{ player_id: 'p1', in_squad: true, is_starter: true }];
+    expect(matchFromCloud(row).importMetadata?.legacySnapshot).toEqual(
+      match.importMetadata?.legacySnapshot,
+    );
+  });
+
   it('stores event-specific data in metadata and restores ordered goal lineups', () => {
     const event: GoalForEvent = {
       id: 'event-1',

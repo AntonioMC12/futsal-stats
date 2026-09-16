@@ -1,5 +1,6 @@
 import {
   Match,
+  LegacyPlayerMatchSnapshot,
   isMatchFinished,
   matchDateTimestamp,
   matchSeason,
@@ -11,7 +12,7 @@ import {
 } from '../../live-match/domain/match-statistics';
 import { deriveMatchState } from '../../live-match/domain/derived-match-state';
 
-export type MatchOutcome = 'win' | 'draw' | 'loss';
+export type MatchOutcome = 'win' | 'draw' | 'loss' | 'unknown';
 
 export interface PlayerHistoricalMatch {
   match: Match;
@@ -20,6 +21,7 @@ export interface PlayerHistoricalMatch {
   started: boolean;
   appeared: boolean;
   statistics: PlayerMatchStatistics;
+  legacySnapshot?: LegacyPlayerMatchSnapshot;
 }
 
 export interface PlayerAggregateStatistics {
@@ -76,6 +78,25 @@ export function buildPlayerHistory(
   return records
     .filter(({ match }) => isMatchFinished(match) && match.squadPlayerIds.includes(playerId))
     .map(({ match, events }) => {
+      const legacyMatch = match.importMetadata?.legacySnapshot;
+      if (legacyMatch) {
+        const legacySnapshot = legacyMatch.players.find((item) => item.playerId === playerId);
+        return {
+          match,
+          score: {
+            home: legacyMatch.observedScore?.home ?? 0,
+            away: legacyMatch.observedScore?.away ?? 0,
+          },
+          outcome: 'unknown' as const,
+          started: legacySnapshot?.starter === true,
+          appeared:
+            legacySnapshot?.secondsPlayed !== undefined
+              ? legacySnapshot.secondsPlayed > 0 || legacySnapshot.starter === true
+              : legacySnapshot?.onCourtAtSnapshot === true || legacySnapshot?.starter === true,
+          statistics: EMPTY_MATCH_STATISTICS,
+          legacySnapshot,
+        };
+      }
       const statistics =
         deriveMatchStatistics(match, events, match.clock.remainingMs).players[playerId] ??
         EMPTY_MATCH_STATISTICS;
@@ -100,43 +121,45 @@ export function buildPlayerHistory(
 export function aggregatePlayerHistory(
   history: readonly PlayerHistoricalMatch[],
 ): PlayerAggregateStatistics {
-  const totals = history.reduce(
-    (result, item) => {
-      result.squadSelections += 1;
-      result.appearances += Number(item.appeared);
-      result.starts += Number(item.started);
-      result.playedMs += item.statistics.playedMs;
-      result.goals += item.statistics.goals;
-      result.goalsForOnCourt += item.statistics.goalsForOnCourt;
-      result.goalsAgainstOnCourt += item.statistics.goalsAgainstOnCourt;
-      result.plusMinus += item.statistics.plusMinus;
-      result.fouls += item.statistics.fouls;
-      result.yellowCards += item.statistics.yellowCards;
-      result.sendOffs += item.statistics.sendOffs;
-      result.entries += item.statistics.entries;
-      result.wins += Number(item.outcome === 'win');
-      result.draws += Number(item.outcome === 'draw');
-      result.losses += Number(item.outcome === 'loss');
-      return result;
-    },
-    {
-      squadSelections: 0,
-      appearances: 0,
-      starts: 0,
-      playedMs: 0,
-      goals: 0,
-      goalsForOnCourt: 0,
-      goalsAgainstOnCourt: 0,
-      plusMinus: 0,
-      fouls: 0,
-      yellowCards: 0,
-      sendOffs: 0,
-      entries: 0,
-      wins: 0,
-      draws: 0,
-      losses: 0,
-    },
-  );
+  const totals = history
+    .filter((item) => !item.match.importMetadata?.legacySnapshot)
+    .reduce(
+      (result, item) => {
+        result.squadSelections += 1;
+        result.appearances += Number(item.appeared);
+        result.starts += Number(item.started);
+        result.playedMs += item.statistics.playedMs;
+        result.goals += item.statistics.goals;
+        result.goalsForOnCourt += item.statistics.goalsForOnCourt;
+        result.goalsAgainstOnCourt += item.statistics.goalsAgainstOnCourt;
+        result.plusMinus += item.statistics.plusMinus;
+        result.fouls += item.statistics.fouls;
+        result.yellowCards += item.statistics.yellowCards;
+        result.sendOffs += item.statistics.sendOffs;
+        result.entries += item.statistics.entries;
+        result.wins += Number(item.outcome === 'win');
+        result.draws += Number(item.outcome === 'draw');
+        result.losses += Number(item.outcome === 'loss');
+        return result;
+      },
+      {
+        squadSelections: 0,
+        appearances: 0,
+        starts: 0,
+        playedMs: 0,
+        goals: 0,
+        goalsForOnCourt: 0,
+        goalsAgainstOnCourt: 0,
+        plusMinus: 0,
+        fouls: 0,
+        yellowCards: 0,
+        sendOffs: 0,
+        entries: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+      },
+    );
   const playedMinutes = totals.playedMs / 60_000;
   return {
     ...totals,

@@ -34,3 +34,13 @@ La detección prioriza el ID original y después un fingerprint SHA-256 determin
 El contrato principal es `Match → buildMatchStatisticsExport → serializeMatchCsv → CsvMatchImportParser → ImportMatchFromCsvUseCase`. Los UUID locales pueden cambiar, pero convocatoria, titulares, eventos, sustituciones, marcador y proyecciones estadísticas conservan su significado. Los quintetos se recalculan desde los eventos; la sección exportada se usa como comprobación y resumen, no como segunda fuente de verdad.
 
 Para añadir una versión, implemente otro `CsvImportAdapter` que produzca `ImportedMatchDto` sin acoplar el dominio al CSV. Excel, proveedores externos, merge y overwrite quedan fuera de este formato.
+
+## CSV legacy de jugadores
+
+El importador reconoce también la tabla antigua con `fecha,equipo,rival,dorsal,jugador` y columnas de estado como `estado_partido`, `reloj`, `marcador` o `segundos_jugados`. Cada fila representa un jugador en un instante observado. La vista previa identifica el formato y muestra las limitaciones antes de guardar.
+
+Se crea un registro de partido histórico con `importMetadata.legacySnapshot`: estado, periodo, reloj y marcador observados; tiempo, balance y disciplina por jugador cuando existen; totales de equipo coherentes entre filas; y un quinteto inicial solo si hay exactamente cinco titulares. Se vinculan los jugadores por el flujo normal, pero un dorsal ocupado por otro nombre requiere una elección explícita. Los datos ausentes permanecen ausentes, sin convertirlos en cero. La cronología de eventos, las sustituciones, los goleadores y el resultado final no se reconstruyen.
+
+El partido usa técnicamente el estado `finished` para aparecer en el archivo histórico. La interfaz lo identifica como **snapshot parcial** y los perfiles lo excluyen de los agregados basados en eventos. No se ofrece la exportación CSV actual para estos registros porque ese formato presentaría estadísticas derivadas de una cronología que el fichero antiguo no contiene.
+
+El fingerprint incluye el contenido normalizado del snapshot y se comprueba dentro del equipo activo. El mismo `Match.importMetadata` se conserva en Dexie, en la cola offline y en `matches.import_metadata` de Supabase; no requiere otra tabla. Para ampliar el formato, mantenga explícita la distinción entre valor observado, valor derivado y dato desconocido.

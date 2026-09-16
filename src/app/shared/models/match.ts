@@ -13,6 +13,42 @@ export const MATCH_STATUSES = [
 export type MatchStatus = (typeof MATCH_STATUSES)[number];
 export type MatchDate = string | number;
 
+export interface LegacyPlayerMatchSnapshot {
+  playerId: string;
+  secondsPlayed?: number;
+  goalsForOnCourt?: number;
+  goalsAgainstOnCourt?: number;
+  goalDifference?: number;
+  fouls?: number;
+  yellowCards?: number;
+  secondYellowCards?: number;
+  directRedCards?: number;
+  expulsions?: number;
+  starter?: boolean;
+  onCourtAtSnapshot?: boolean;
+  courtEntries?: number;
+}
+
+export interface LegacyMatchSnapshot {
+  importFormat: 'legacy-player-snapshot';
+  reconstructionVersion: 1;
+  observedTeamName: string;
+  observedState?: string;
+  observedPeriod?: number;
+  observedClock?: string;
+  observedScore?: { home: number; away: number };
+  teamTotals?: {
+    teamFouls?: number;
+    opponentFouls?: number;
+    teamYellowCards?: number;
+    opponentYellowCards?: number;
+    teamExpulsions?: number;
+    opponentExpulsions?: number;
+  };
+  players: LegacyPlayerMatchSnapshot[];
+  missingData: readonly ['eventTimeline', 'substitutionTimeline', 'lineupHistory'];
+}
+
 export interface Match {
   id: string;
   teamId: string;
@@ -38,6 +74,7 @@ export interface Match {
     schemaVersion?: string;
     fingerprint: string;
     originalMatchId?: string;
+    legacySnapshot?: LegacyMatchSnapshot;
   };
 }
 

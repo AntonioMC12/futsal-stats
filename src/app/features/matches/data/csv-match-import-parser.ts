@@ -12,6 +12,7 @@ import {
 } from '../domain/match-import';
 import { createMatchImportFingerprint } from '../domain/match-import-fingerprint';
 import { normalizePlayerName } from '../domain/player-import-resolver';
+import { detectCsvImportFormat, parseLegacyCsv } from './legacy-csv-import-parser';
 
 type CsvRow = string[];
 type CsvRecord = Record<string, string>;
@@ -33,6 +34,11 @@ export class CsvMatchImportParser implements CsvImportAdapter {
 
   async parseText(input: string, fileName: string): Promise<ImportedMatchDto> {
     const rows = parseCsv(input.replace(/^\uFEFF/, ''));
+    const format = detectCsvImportFormat(rows);
+    if (format === 'legacy-player-snapshot') return parseLegacyCsv(rows, fileName);
+    if (format === 'unknown') {
+      throw new InvalidCsvFormatError('El CSV no tiene un formato reconocido de Futsal Stats.');
+    }
     if (!this.supports(rows)) {
       throw new InvalidCsvFormatError('El CSV no tiene las columnas requeridas de Futsal Stats.');
     }
@@ -117,6 +123,7 @@ export class CsvMatchImportParser implements CsvImportAdapter {
     });
 
     return {
+      format: 'native-current',
       schemaVersion,
       source: {
         type: 'futsal-stats-csv',

@@ -2,7 +2,7 @@ import { Player } from '../../../shared/models/player';
 import { ImportedPlayerDto, PlayerImportResolution } from './match-import';
 
 export interface PlayerImportSuggestion extends PlayerImportResolution {
-  confidence: 'exact-id' | 'number-and-name' | 'name-only' | 'none';
+  confidence: 'exact-id' | 'number-and-name' | 'name-only' | 'number-conflict' | 'none';
 }
 
 export function suggestPlayerResolutions(
@@ -21,6 +21,10 @@ export function suggestPlayerResolutions(
         player.number === csvPlayer.number && normalizePlayerName(player.name) === normalizedName,
     );
     if (byNumberAndName) return existing(csvPlayer, byNumberAndName, 'number-and-name');
+
+    if (currentPlayers.some((player) => player.number === csvPlayer.number)) {
+      return { csvPlayer, resolution: 'manual', confidence: 'number-conflict' };
+    }
 
     const sameName = currentPlayers.filter(
       (player) => normalizePlayerName(player.name) === normalizedName,
@@ -54,4 +58,3 @@ function existing(
 ): PlayerImportSuggestion {
   return { csvPlayer, resolution: 'existing', playerId: player.id, confidence };
 }
-

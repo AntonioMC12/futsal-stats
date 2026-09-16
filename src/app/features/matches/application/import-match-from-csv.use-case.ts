@@ -11,6 +11,7 @@ import { Match } from '../../../shared/models/match';
 import { MatchEvent } from '../../../shared/models/match-event';
 import { Player } from '../../../shared/models/player';
 import { deriveMatchState } from '../../live-match/domain/derived-match-state';
+import { normalizePlayerName } from '../domain/player-import-resolver';
 import {
   DuplicateImportedMatchError,
   ImportedMatchDto,
@@ -103,18 +104,23 @@ export class ImportMatchFromCsvUseCase {
       homeTeam: { id: team.id, name: team.name, shortName: team.shortName },
       awayTeam: {
         name: dto.match.opponent,
-        shortName: dto.match.abbreviation || abbreviation(dto.match.opponent),
+        shortName:
+          dto.match.abbreviation ||
+          (dto.format === 'legacy-player-snapshot' ? '' : abbreviation(dto.match.opponent)),
       },
       date: dto.match.date,
       description: dto.match.description ?? '',
       status: 'finished',
-      currentPeriod: dto.match.periodCount,
+      currentPeriod: dto.legacySnapshot?.observedPeriod ?? dto.match.periodCount,
       periodCount: dto.match.periodCount,
       clock: { ...createMatchClock(dto.match.periodDurationMs), remainingMs: 0 },
       squadPlayerIds: dto.players.map((player) => localPlayerIds.get(player.importKey)!),
-      startingLineupPlayerIds: dto.players
-        .filter(({ startingLineup }) => startingLineup)
-        .map((player) => localPlayerIds.get(player.importKey)!),
+      startingLineupPlayerIds:
+        dto.format === 'legacy-player-snapshot'
+          ? (dto.lineups[0]?.playerImportKeys.map((key) => localPlayerIds.get(key)!) ?? [])
+          : dto.players
+              .filter(({ startingLineup }) => startingLineup)
+              .map((player) => localPlayerIds.get(player.importKey)!),
       createdAt: now,
       updatedAt: now,
       source: 'csv-import',
@@ -124,6 +130,17 @@ export class ImportMatchFromCsvUseCase {
         schemaVersion: dto.schemaVersion,
         fingerprint: dto.source.fingerprint,
         originalMatchId: dto.source.originalMatchId,
+        ...(dto.legacySnapshot
+          ? {
+              legacySnapshot: {
+                ...dto.legacySnapshot,
+                players: dto.legacySnapshot.players.map(({ importKey, ...statistics }) => ({
+                  ...statistics,
+                  playerId: localPlayerIds.get(importKey)!,
+                })),
+              },
+            }
+          : {}),
       },
     };
     if (match.startingLineupPlayerIds.length > 5) {
@@ -135,6 +152,17 @@ export class ImportMatchFromCsvUseCase {
     const score = deriveMatchState(match, mappedEvents).score;
     const issues = [...dto.issues];
     if (
+      dto.legacySnapshot &&
+      normalizePlayerName(dto.legacySnapshot.observedTeamName) !== normalizePlayerName(team.name)
+    ) {
+      issues.push({
+        severity: 'warning',
+        code: 'team-name-mismatch',
+        message: `El CSV indica el equipo ${dto.legacySnapshot.observedTeamName}, pero se ha importado en ${team.name}.`,
+      });
+    }
+    if (
+      !dto.legacySnapshot &&
       dto.match.homeScore !== undefined &&
       dto.match.awayScore !== undefined &&
       (dto.match.homeScore !== score.home || dto.match.awayScore !== score.away)

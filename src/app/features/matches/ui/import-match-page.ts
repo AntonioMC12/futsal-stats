@@ -12,7 +12,7 @@ import {
   MAX_MATCH_CSV_BYTES,
   PlayerImportResolution,
 } from '../domain/match-import';
-import { suggestPlayerResolutions } from '../domain/player-import-resolver';
+import { PlayerImportSuggestion, suggestPlayerResolutions } from '../domain/player-import-resolver';
 
 @Component({
   selector: 'app-import-match-page',
@@ -28,7 +28,7 @@ export class ImportMatchPage {
 
   protected readonly importedMatch = signal<ImportedMatchDto | null>(null);
   protected readonly currentPlayers = signal<Player[]>([]);
-  protected readonly resolutions = signal<PlayerImportResolution[]>([]);
+  protected readonly resolutions = signal<PlayerImportSuggestion[]>([]);
   protected readonly result = signal<ImportMatchResult | null>(null);
   protected readonly processing = signal(false);
   protected readonly importing = signal(false);
@@ -46,7 +46,8 @@ export class ImportMatchPage {
     () => this.importedMatch()?.issues.filter(({ severity }) => severity === 'warning') ?? [],
   );
   protected readonly substitutionCount = computed(
-    () => this.importedMatch()?.events.filter(({ event }) => event.type === 'SUBSTITUTION').length ?? 0,
+    () =>
+      this.importedMatch()?.events.filter(({ event }) => event.type === 'SUBSTITUTION').length ?? 0,
   );
   protected readonly canImport = computed(
     () =>
@@ -113,7 +114,9 @@ export class ImportMatchPage {
         this.duplicateMatchId.set(error.existingMatchId);
         this.error.set(error.message);
       } else {
-        this.error.set(error instanceof Error ? error.message : 'No se ha podido importar el partido.');
+        this.error.set(
+          error instanceof Error ? error.message : 'No se ha podido importar el partido.',
+        );
       }
     } finally {
       this.importing.set(false);

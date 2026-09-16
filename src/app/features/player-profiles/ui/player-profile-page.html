@@ -58,6 +58,12 @@
             </select></label
           >
         </section>
+        @if (store.filteredHistory().some((item) => item.match.importMetadata?.legacySnapshot)) {
+          <p class="banner">
+            Los totales incluyen solo partidos con cronología completa. Los snapshots legacy
+            aparecen en el histórico con sus datos parciales.
+          </p>
+        }
         <section class="metrics-grid" aria-label="Métricas del jugador">
           <article>
             <span>Partidos</span><strong>{{ store.statistics().appearances }}</strong
@@ -127,18 +133,31 @@
                   </div>
                   <div class="match-result">
                     <span>{{ item.match.awayTeam.name }}</span
-                    ><strong>{{ item.score.home }} – {{ item.score.away }}</strong>
+                    ><strong>
+                      @if (item.match.importMetadata?.legacySnapshot; as snapshot) {
+                        {{ snapshot.observedScore?.home ?? '—' }} –
+                        {{ snapshot.observedScore?.away ?? '—' }}
+                      } @else {
+                        {{ item.score.home }} – {{ item.score.away }}
+                      }
+                    </strong>
                   </div>
                   <span class="outcome" [class]="'outcome outcome--' + item.outcome">{{
                     outcomeLabel(item.outcome)
                   }}</span>
                   <div class="match-player-stats">
-                    <span>{{ duration(item.statistics.playedMs) }}</span
-                    ><span>{{ item.statistics.goals }} goles</span
-                    ><span
-                      >{{ item.statistics.plusMinus > 0 ? '+' : ''
-                      }}{{ item.statistics.plusMinus }} +/−</span
-                    >
+                    @if (item.match.importMetadata?.legacySnapshot) {
+                      <span>{{ legacyDuration(item.legacySnapshot?.secondsPlayed) }}</span
+                      ><span>Goles: sin dato</span
+                      ><span>{{ legacyMetric(item.legacySnapshot?.goalDifference) }} +/−</span>
+                    } @else {
+                      <span>{{ duration(item.statistics.playedMs) }}</span
+                      ><span>{{ item.statistics.goals }} goles</span
+                      ><span
+                        >{{ item.statistics.plusMinus > 0 ? '+' : ''
+                        }}{{ item.statistics.plusMinus }} +/−</span
+                      >
+                    }
                   </div></a
                 >
               }
