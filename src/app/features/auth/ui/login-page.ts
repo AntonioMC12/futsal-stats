@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -22,16 +22,21 @@ export class LoginPage {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly busy = signal(false);
+  protected readonly busyAction = signal<'send' | 'verify' | 'resend' | null>(null);
   protected readonly error = signal<string | null>(null);
-  protected readonly codeRequested = signal(false);
+  protected readonly step = signal<'email' | 'otp'>('email');
+  protected readonly cooldown = signal(0);
+  private cooldownTimer: ReturnType<typeof setInterval> | null = null;
 
   protected readonly form = this.formBuilder.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
-    code: ['', [Validators.pattern(/^\d{6}$/)]],
+    code: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]],
   });
 
   constructor() {
+    this.destroyRef.onDestroy(() => this.clearCooldown());
     void this.restoreAndContinue();
   }
 
@@ -39,17 +44,18 @@ export class LoginPage {
     this.form.controls.email.markAsTouched();
     if (this.form.controls.email.invalid || this.busy()) return;
     this.busy.set(true);
+    this.busyAction.set('send');
     this.error.set(null);
     try {
-      await this.auth.requestAccess(
-        this.form.controls.email.value,
-        this.route.snapshot.queryParamMap.get('redirect'),
-      );
-      this.codeRequested.set(true);
+      await this.auth.requestEmailOtp(this.form.controls.email.value);
+      this.form.controls.email.setValue(this.form.controls.email.value.trim().toLowerCase());
+      this.step.set('otp');
+      this.startCooldown();
     } catch (error) {
       this.error.set(errorMessage(error));
     } finally {
       this.busy.set(false);
+      this.busyAction.set(null);
     }
   }
 
@@ -57,9 +63,10 @@ export class LoginPage {
     this.form.markAllAsTouched();
     if (this.form.controls.email.invalid || this.form.controls.code.invalid || this.busy()) return;
     this.busy.set(true);
+    this.busyAction.set('verify');
     this.error.set(null);
     try {
-      await this.auth.verifyAccessCode(
+      await this.auth.verifyEmailOtp(
         this.form.controls.email.value,
         this.form.controls.code.value,
       );
@@ -68,7 +75,46 @@ export class LoginPage {
       this.error.set(errorMessage(error));
     } finally {
       this.busy.set(false);
+      this.busyAction.set(null);
     }
+  }
+
+  protected async resendCode(): Promise<void> {
+    if (this.busy() || this.cooldown() > 0 || this.step() !== 'otp') return;
+    this.busy.set(true);
+    this.busyAction.set('resend');
+    this.error.set(null);
+    try {
+      await this.auth.requestEmailOtp(this.form.controls.email.value);
+      this.form.controls.code.setValue('');
+      this.startCooldown();
+    } catch (error) {
+      this.error.set(errorMessage(error));
+    } finally {
+      this.busy.set(false);
+      this.busyAction.set(null);
+    }
+  }
+
+  protected changeEmail(): void {
+    if (this.busy()) return;
+    this.step.set('email');
+    this.form.controls.code.setValue('');
+    this.error.set(null);
+  }
+
+  private startCooldown(): void {
+    this.clearCooldown();
+    this.cooldown.set(60);
+    this.cooldownTimer = setInterval(() => {
+      this.cooldown.update((seconds) => Math.max(0, seconds - 1));
+      if (this.cooldown() === 0) this.clearCooldown();
+    }, 1000);
+  }
+
+  private clearCooldown(): void {
+    if (this.cooldownTimer) clearInterval(this.cooldownTimer);
+    this.cooldownTimer = null;
   }
 
   private async restoreAndContinue(): Promise<void> {

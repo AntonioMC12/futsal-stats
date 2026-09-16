@@ -6,6 +6,7 @@
   min-height: min(38rem, calc(100dvh - 8rem));
   display: grid;
   place-items: center;
+  padding: var(--ds-space-4);
 }
 
 .login-card {
@@ -17,7 +18,12 @@
   box-shadow: var(--ds-shadow-md);
 }
 
-.code-form {
-  padding-top: var(--ds-space-4);
-  border-top: 1px solid var(--ds-border-subtle);
+.login-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-3);
+}
+
+.login-card input {
+  font-size: 1rem;
 }

@@ -1,58 +1,55 @@
 <section class="login-page" aria-labelledby="login-title">
   <div class="login-card stack">
-    <div>
-      <p class="eyebrow">Futsal Stats Cloud</p>
-      <h1 id="login-title">Acceder sin contraseña</h1>
-      <p class="lede">
-        Recibe un enlace o código de un solo uso para recuperar tus equipos en cualquier
-        dispositivo.
-      </p>
-    </div>
-
     @if (config.mode !== 'cloud') {
+      <h1 id="login-title">Acceder al equipo</h1>
       <p class="banner banner--warn">El acceso cloud no está configurado en esta instalación.</p>
-    } @else {
+    } @else if (step() === 'email') {
+      <div>
+        <p class="eyebrow">Futsal Stats Cloud</p>
+        <h1 id="login-title">Acceder al equipo</h1>
+        <p class="lede">Recibe un código por correo para acceder a tus equipos.</p>
+      </div>
       <form class="stack" [formGroup]="form" (ngSubmit)="requestAccess()">
         <label class="field">
           Email
-          <input
-            formControlName="email"
-            type="email"
-            inputmode="email"
-            autocomplete="email"
-            placeholder="tu@email.com"
-            [attr.aria-invalid]="form.controls.email.invalid && form.controls.email.touched"
-          />
+          <input formControlName="email" type="email" inputmode="email" autocomplete="email"
+            placeholder="tu@email.com" [attr.aria-invalid]="form.controls.email.invalid && form.controls.email.touched" />
         </label>
-        <button class="btn btn--primary" type="submit" [disabled]="busy()">
-          {{ busy() ? 'Enviando…' : 'Enviar código de acceso' }}
+        @if (form.controls.email.invalid && form.controls.email.touched) {
+          <p class="banner banner--warn" role="alert">Introduce un correo electrónico válido.</p>
+        }
+        <button class="btn btn--primary" type="submit" [disabled]="busy() || form.controls.email.invalid">
+          {{ busy() ? 'Enviando código...' : 'Enviar código' }}
         </button>
       </form>
-
-      @if (codeRequested() || auth.status() === 'linkSent') {
-        <form class="code-form stack" [formGroup]="form" (ngSubmit)="verifyCode()">
-          <p class="banner banner--ok" role="status">
-            Revisa tu email. Puedes abrir el enlace recibido o introducir aquí el código.
-          </p>
-          <label class="field">
-            Código de 6 dígitos
-            <input
-              formControlName="code"
-              type="text"
-              inputmode="numeric"
-              autocomplete="one-time-code"
-              maxlength="6"
-              pattern="[0-9]{6}"
-            />
-          </label>
-          <button class="btn btn--secondary" type="submit" [disabled]="busy()">
-            Verificar código
-          </button>
-        </form>
-      }
-      @if (error(); as message) {
-        <p class="banner banner--warn" role="alert">{{ message }}</p>
-      }
+    } @else {
+      <div>
+        <p class="eyebrow">Futsal Stats Cloud</p>
+        <h1 id="login-title">Verifica tu correo</h1>
+        <p class="lede">Hemos enviado un código a <strong>{{ form.controls.email.value }}</strong>.</p>
+      </div>
+      <form class="stack" [formGroup]="form" (ngSubmit)="verifyCode()">
+        <label class="field">
+          Código de 6 dígitos
+          <input formControlName="code" type="text" inputmode="numeric" autocomplete="one-time-code"
+            maxlength="6" pattern="[0-9]{6}" spellcheck="false" />
+        </label>
+        <button class="btn btn--primary" type="submit" [disabled]="busy() || form.controls.code.invalid">
+          {{ busyAction() === 'verify' ? 'Verificando...' : 'Verificar' }}
+        </button>
+      </form>
+      <div class="login-actions">
+        <button type="button" class="btn btn--secondary" (click)="resendCode()"
+          [disabled]="busy() || cooldown() > 0">
+          {{ busyAction() === 'resend' ? 'Reenviando...' : cooldown() > 0 ? 'Reenviar código en ' + cooldown() + ' s' : 'Reenviar código' }}
+        </button>
+        <button type="button" class="btn btn--secondary" (click)="changeEmail()" [disabled]="busy()">
+          Cambiar correo
+        </button>
+      </div>
+    }
+    @if (error(); as message) {
+      <p class="banner banner--warn" role="alert">{{ message }}</p>
     }
   </div>
 </section>
