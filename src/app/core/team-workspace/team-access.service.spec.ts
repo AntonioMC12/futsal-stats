@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { AuthService } from '../auth/auth.service';
 import { CLOUD_CONFIG } from '../cloud/cloud.config';
 import { SupabaseClientService } from '../cloud/supabase-client.service';
@@ -82,5 +83,36 @@ describe('TeamAccessService', () => {
 
     expect(access.role()).toBe('editor');
     expect(access.canWrite()).toBe(true);
+  });
+
+  it('removes OWNER write access when the authenticated device identity changes', async () => {
+    const user = signal<{ id: string }>({ id: 'old-user' });
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: CLOUD_CONFIG,
+          useValue: {
+            mode: 'cloud',
+            supabaseUrl: 'https://example.supabase.co',
+            publishableKey: 'key',
+          },
+        },
+        {
+          provide: SupabaseClientService,
+          useValue: {
+            requireClient: () => ({ rpc: async () => ({ data: 'owner', error: null }) }),
+          },
+        },
+        { provide: AuthService, useValue: { initialize: async () => undefined, user } },
+      ],
+    });
+    const access = TestBed.inject(TeamAccessService);
+    await access.load('team-1');
+    expect(access.canWrite()).toBe(true);
+
+    user.set({ id: 'new-user' });
+    TestBed.tick();
+    expect(access.role()).toBe('viewer');
+    expect(access.canWrite()).toBe(false);
   });
 });

@@ -7,6 +7,7 @@ import { TeamWorkspaceContext } from '../../../core/team-workspace/team-workspac
 import { DeviceEnrollmentService } from '../application/device-enrollment.service';
 import { TeamAccessService } from '../../../core/team-workspace/team-access.service';
 import { OfflineSyncService } from '../../../core/sync/offline-sync.service';
+import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
   selector: 'app-join-team-page',
@@ -20,6 +21,7 @@ export class JoinTeamPage {
   private readonly cloud = inject(CloudFoundationService);
   private readonly access = inject(TeamAccessService);
   private readonly sync = inject(OfflineSyncService);
+  private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly formBuilder = inject(FormBuilder);
   protected readonly cloudConfig = inject(CLOUD_CONFIG);
@@ -49,6 +51,7 @@ export class JoinTeamPage {
         throw new Error('No hay conexión con el servicio cloud.');
       const value = this.form.getRawValue();
       const result = await this.enrollment.consumeInvitation(value.code, value.deviceName);
+      this.auth.markAccessRestored();
       this.access.invalidate();
       await this.sync.refreshAfterAccessChange();
       await this.workspace.refresh(result.teamId);

@@ -5,62 +5,135 @@ import { SupabaseClientService } from '../cloud/supabase-client.service';
 import { AuthService } from './auth.service';
 
 describe('AuthService device identity', () => {
-  const session = { user: { id: 'device-1' } } as Session;
+  const oldSession = { user: { id: 'device-old' } } as Session;
+  const newSession = { user: { id: 'device-new' } } as Session;
   afterEach(() => TestBed.resetTestingModule());
 
-  it('restores the same identity without creating another', async () => {
-    const signInAnonymously = vi.fn();
-    configure({
-      getSession: vi.fn().mockResolvedValue({ data: { session }, error: null }),
-      signInAnonymously,
+  it('reuses a remotely verified persisted identity', async () => {
+    const authClient = configure({
+      getSession: vi.fn().mockResolvedValue({ data: { session: oldSession }, error: null }),
+      getUser: vi.fn().mockResolvedValue({ data: { user: oldSession.user }, error: null }),
     });
     const auth = TestBed.inject(AuthService);
     await auth.initialize();
-    expect(auth.user()?.id).toBe('device-1');
-    expect(signInAnonymously).not.toHaveBeenCalled();
+    expect(auth.user()?.id).toBe('device-old');
+    expect(auth.remotelyVerified()).toBe(true);
+    expect(authClient.signInAnonymously).not.toHaveBeenCalled();
+    expect(authClient.signOut).not.toHaveBeenCalled();
   });
 
-  it('creates one anonymous session for concurrent initializations', async () => {
-    const signInAnonymously = vi.fn().mockResolvedValue({ data: { session }, error: null });
-    configure({ signInAnonymously });
+  it('creates one anonymous identity when no session exists, even with ten concurrent callers', async () => {
+    const authClient = configure({
+      signInAnonymously: vi.fn().mockResolvedValue({
+        data: { session: newSession, user: newSession.user },
+        error: null,
+      }),
+    });
     const auth = TestBed.inject(AuthService);
-    await Promise.all([auth.initialize(), auth.initialize(), auth.initialize()]);
-    expect(signInAnonymously).toHaveBeenCalledTimes(1);
+    await Promise.all(Array.from({ length: 10 }, () => auth.initialize()));
+    expect(authClient.signInAnonymously).toHaveBeenCalledTimes(1);
+    expect(auth.user()?.id).toBe('device-new');
+  });
+
+  it('replaces an orphaned identity and requires Team reenrollment', async () => {
+    const authClient = configure({
+      getSession: vi.fn().mockResolvedValue({ data: { session: oldSession }, error: null }),
+      getUser: vi.fn().mockResolvedValue({
+        data: { user: null },
+        error: { status: 403, code: 'user_not_found' },
+      }),
+      signInAnonymously: vi.fn().mockResolvedValue({
+        data: { session: newSession, user: newSession.user },
+        error: null,
+      }),
+    });
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      const auth = TestBed.inject(AuthService);
+      await auth.initialize();
+      expect(authClient.signOut).toHaveBeenCalledWith({ scope: 'local' });
+      expect(authClient.signInAnonymously).toHaveBeenCalledTimes(1);
+      expect(auth.user()?.id).toBe('device-new');
+      expect(auth.orphanedUserId()).toBe('device-old');
+      expect(auth.reenrollmentRequired()).toBe(true);
+      expect(warning).toHaveBeenCalledWith('auth_orphan_session_detected');
+    } finally {
+      warning.mockRestore();
+    }
+  });
+
+  it('keeps a stored session available offline without claiming remote verification', async () => {
+    const authClient = configure({
+      getSession: vi.fn().mockResolvedValue({ data: { session: oldSession }, error: null }),
+      getUser: vi
+        .fn()
+        .mockResolvedValue({ data: { user: null }, error: { message: 'fetch failed' } }),
+    });
+    const auth = TestBed.inject(AuthService);
+    await auth.initialize();
     expect(auth.authenticated()).toBe(true);
+    expect(auth.remotelyVerified()).toBe(false);
+    await expect(auth.ensureValidDeviceIdentity()).rejects.toEqual({ message: 'fetch failed' });
+    expect(authClient.signOut).not.toHaveBeenCalled();
+    expect(authClient.signInAnonymously).not.toHaveBeenCalled();
   });
 
-  it('reports anonymous authentication failures without repeating registration', async () => {
-    const signInAnonymously = vi
+  it('revalidates just before a cloud mutation and replaces a user deleted after bootstrap', async () => {
+    const getSession = vi
       .fn()
-      .mockResolvedValue({ data: { session: null }, error: new Error('denied') });
-    configure({ signInAnonymously });
-    const auth = TestBed.inject(AuthService);
-    await auth.initialize();
-    await auth.initialize();
-    expect(auth.status()).toBe('error');
-    expect(signInAnonymously).toHaveBeenCalledTimes(1);
+      .mockResolvedValueOnce({ data: { session: oldSession }, error: null })
+      .mockResolvedValueOnce({ data: { session: oldSession }, error: null })
+      .mockResolvedValueOnce({ data: { session: oldSession }, error: null });
+    const getUser = vi
+      .fn()
+      .mockResolvedValueOnce({ data: { user: oldSession.user }, error: null })
+      .mockResolvedValueOnce({
+        data: { user: null },
+        error: { status: 403, code: 'user_not_found' },
+      });
+    configure({
+      getSession,
+      getUser,
+      signInAnonymously: vi.fn().mockResolvedValue({
+        data: { session: newSession, user: newSession.user },
+        error: null,
+      }),
+    });
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      const auth = TestBed.inject(AuthService);
+      await auth.initialize();
+      expect(auth.user()?.id).toBe('device-old');
+      const verified = await auth.ensureValidDeviceIdentity();
+      expect(verified.user.id).toBe('device-new');
+      expect(auth.user()?.id).toBe('device-new');
+    } finally {
+      warning.mockRestore();
+    }
   });
 
-  it('does not create a new identity when session restoration fails', async () => {
-    const signInAnonymously = vi.fn();
-    configure({
+  it('does not register when getSession fails', async () => {
+    const authClient = configure({
       getSession: vi
         .fn()
-        .mockResolvedValue({ data: { session: null }, error: new Error('storage unavailable') }),
-      signInAnonymously,
+        .mockResolvedValue({ data: { session: null }, error: new Error('storage') }),
     });
     const auth = TestBed.inject(AuthService);
     await auth.initialize();
     expect(auth.status()).toBe('error');
-    expect(signInAnonymously).not.toHaveBeenCalled();
+    expect(authClient.signInAnonymously).not.toHaveBeenCalled();
   });
 });
 
-function configure(overrides: Record<string, unknown>): void {
+function configure(overrides: Record<string, unknown> = {}) {
   const auth = {
-    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: vi.fn() } } }),
+    onAuthStateChange: vi
+      .fn()
+      .mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
     getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
+    getUser: vi.fn(),
     signInAnonymously: vi.fn(),
+    signOut: vi.fn().mockResolvedValue({ error: null }),
     ...overrides,
   };
   TestBed.configureTestingModule({
@@ -70,10 +143,11 @@ function configure(overrides: Record<string, unknown>): void {
         useValue: {
           mode: 'cloud',
           supabaseUrl: 'https://example.supabase.co',
-          publishableKey: 'public-key',
+          publishableKey: 'key',
         },
       },
       { provide: SupabaseClientService, useValue: { requireClient: () => ({ auth }) } },
     ],
   });
+  return auth;
 }

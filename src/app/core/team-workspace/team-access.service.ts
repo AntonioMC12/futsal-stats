@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { effect, inject, Injectable, signal } from '@angular/core';
 import { AuthService } from '../auth/auth.service';
 import { CLOUD_CONFIG } from '../cloud/cloud.config';
 import { SupabaseClientService } from '../cloud/supabase-client.service';
@@ -11,8 +11,18 @@ export class TeamAccessService {
   private readonly supabase = inject(SupabaseClientService);
   private readonly auth = inject(AuthService);
   private loadedScope: string | null = null;
+  private currentUserId: string | null = this.auth.user()?.id ?? null;
   readonly role = signal<WorkspaceRole>(this.config.mode === 'local' ? 'owner' : 'viewer');
   readonly canWrite = signal(this.config.mode === 'local');
+
+  constructor() {
+    effect(() => {
+      const userId = this.auth.user()?.id ?? null;
+      if (userId === this.currentUserId) return;
+      this.currentUserId = userId;
+      this.reset();
+    });
+  }
 
   async load(teamId: string): Promise<void> {
     if (this.config.mode === 'local') {
@@ -37,10 +47,18 @@ export class TeamAccessService {
         .requireClient()
         .rpc('get_my_team_role', { p_team_id: teamId });
       if (error) throw error;
+      if (this.auth.user()?.id !== userId) {
+        this.reset();
+        return;
+      }
       const role: WorkspaceRole = data === 'owner' || data === 'editor' ? data : 'viewer';
       this.applyRole(role);
       writeCachedRole(userId, teamId, role);
     } catch {
+      if (this.auth.user()?.id !== userId) {
+        this.reset();
+        return;
+      }
       this.applyRole(readCachedRole(userId, teamId) ?? 'viewer');
     }
   }

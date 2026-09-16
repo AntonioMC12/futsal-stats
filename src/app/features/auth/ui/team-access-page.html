@@ -9,6 +9,12 @@
       <button class="btn btn--secondary" type="button" (click)="retry()">Reintentar</button>
     }
   } @else {
+    @if (auth.reenrollmentRequired()) {
+      <p class="banner banner--warn" role="status">
+        La sesión guardada ya no es válida. Este dispositivo tiene una identidad nueva. Recupera el
+        equipo con tu clave o una invitación; sus datos locales no se han borrado.
+      </p>
+    }
     <a class="btn btn--primary" routerLink="/teams/new">Crear un equipo</a>
     @if (config.mode === 'cloud') {
       <section class="panel stack">

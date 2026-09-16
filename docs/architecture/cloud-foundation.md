@@ -16,7 +16,12 @@ runtime cloud configuration the application continues in local mode with Indexed
 ## Identity and storage
 
 `AuthService` waits for Supabase to restore its session from the SDK's persistent browser storage.
-It calls `signInAnonymously()` only when `getSession()` returns no session. The Supabase client keeps
+It checks a restored identity with `getUser()` before cloud writes. If Supabase reports that the
+user no longer exists, it clears only the local Auth session, creates a new anonymous identity,
+isolates the previous Team cache and waits for recovery by key or invitation. A transient network
+failure keeps the saved session usable for offline work, while Team creation and cloud sync wait
+for remote verification. It calls `signInAnonymously()` only when no session exists or a stored
+session is confirmed invalid. The Supabase client keeps
 `persistSession` and `autoRefreshToken` enabled and uses the SDK's unchanged default storage key.
 No service worker update clears Auth storage or IndexedDB. The outbox is flushed before a cloud pull;
 voluntary PWA activation waits while a match or pending/failed outbox item exists.
@@ -31,6 +36,19 @@ An existing email Auth session remains valid and keeps its memberships. Its OWNE
 a recovery key before deleting the session. There is no automatic identity reassignment. Clearing
 all browser storage discards any unsynced local operations; synced Team data is recovered from
 Supabase with the saved key.
+
+For administrative diagnosis in Supabase SQL Editor, check the Auth user and the foreign key
+source before changing any data:
+
+```sql
+select id, is_anonymous, created_at from auth.users where id = '<AUTH_UID>';
+select id, name, created_by from public.teams order by created_at desc;
+select team_id, auth_user_id, role, device_name
+from public.team_memberships order by created_at desc;
+```
+
+`teams.created_by` still references `auth.users(id)` and defaults to `auth.uid()`. This hotfix does
+not alter that foreign key, RLS or an applied migration.
 
 ## Manual acceptance
 

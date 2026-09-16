@@ -11,12 +11,15 @@ import { OfflineSyncService } from './offline-sync.service';
 import { enqueueSyncOperation } from './sync-queue';
 import { PermanentSyncError, SyncRemoteGateway } from './sync-remote.gateway';
 import { createStrategy } from '../../features/strategies/domain/strategy';
+import { AuthService } from '../auth/auth.service';
 
 describe('OfflineSyncService', () => {
   let db: FutsalStatsDb;
   let service: OfflineSyncService;
   const online = signal(true);
   const cloudStatus = signal<'connected' | 'unreachable'>('connected');
+  const orphanedUserId = signal<string | null>(null);
+  const reenrollmentRequired = signal(false);
   const push = vi.fn();
   const pull = vi.fn();
 
@@ -24,17 +27,17 @@ describe('OfflineSyncService', () => {
     await Dexie.delete('futsal-stats');
     online.set(true);
     cloudStatus.set('connected');
+    orphanedUserId.set(null);
+    reenrollmentRequired.set(false);
     push.mockReset();
-    pull
-      .mockReset()
-      .mockResolvedValue({
-        teams: [],
-        players: [],
-        profiles: [],
-        matches: [],
-        events: [],
-        strategies: [],
-      });
+    pull.mockReset().mockResolvedValue({
+      teams: [],
+      players: [],
+      profiles: [],
+      matches: [],
+      events: [],
+      strategies: [],
+    });
     TestBed.configureTestingModule({
       providers: [
         FutsalStatsDb,
@@ -48,6 +51,14 @@ describe('OfflineSyncService', () => {
           useValue: { status: cloudStatus, initialize: vi.fn().mockResolvedValue(undefined) },
         },
         { provide: NetworkStatusService, useValue: { online } },
+        {
+          provide: AuthService,
+          useValue: {
+            orphanedUserId,
+            reenrollmentRequired,
+            remotelyVerified: signal(true),
+          },
+        },
         { provide: SyncRemoteGateway, useValue: { push, pull } },
       ],
     });
@@ -150,6 +161,15 @@ describe('OfflineSyncService', () => {
   });
 
   it('queues legacy local photo blobs for private Storage upload', async () => {
+    await db.teams.put(
+      toLocalTeamRecord({
+        id: 'team-1',
+        name: 'Team',
+        shortName: 'TM',
+        createdAt: 1,
+        updatedAt: 1,
+      }),
+    );
     const ref = {
       storageKey: 'teams/team-1/players/player-1/profile',
       mimeType: 'image/png' as const,
@@ -162,9 +182,17 @@ describe('OfflineSyncService', () => {
       data: new Uint8Array([1, 2]).buffer,
     });
     await db.playerProfiles.put({
-      playerId: 'player-1', teamId: 'team-1', photoRef: ref,
-      preferredFoot: 'unknown', notes: '', metadata: {},
-      createdAt: 1, updatedAt: 42, deletedAt: null, revision: 1, syncStatus: 'synced',
+      playerId: 'player-1',
+      teamId: 'team-1',
+      photoRef: ref,
+      preferredFoot: 'unknown',
+      notes: '',
+      metadata: {},
+      createdAt: 1,
+      updatedAt: 42,
+      deletedAt: null,
+      revision: 1,
+      syncStatus: 'synced',
     });
     await service.initialize();
     expect(push).toHaveBeenCalledWith(expect.objectContaining({ kind: 'photo-upload', ref }));
@@ -177,5 +205,75 @@ describe('OfflineSyncService', () => {
     await service.initialize();
     expect((await db.teams.get(team.id))?.accessRevoked).toBe(true);
     expect(service.revokedTeamIds()).toContain(team.id);
+  });
+
+  it('keeps old outbox data without pushing it under a replacement identity', async () => {
+    const oldTeam = { id: 'old-team', name: 'Old', shortName: 'OLD', createdAt: 1, updatedAt: 1 };
+    await db.teams.put(toLocalTeamRecord(oldTeam));
+    await enqueueSyncOperation(db.syncQueue, {
+      kind: 'team-upsert',
+      teamId: oldTeam.id,
+      entityId: oldTeam.id,
+      team: oldTeam,
+    });
+    orphanedUserId.set('deleted-user');
+    reenrollmentRequired.set(true);
+
+    await service.initialize();
+    expect((await db.teams.get(oldTeam.id))?.accessRevoked).toBe(true);
+    expect(await db.syncQueue.count()).toBe(1);
+    expect(push).not.toHaveBeenCalled();
+
+    const newTeam = { id: 'new-team', name: 'New', shortName: 'NEW', createdAt: 2, updatedAt: 2 };
+    await db.teams.put(toLocalTeamRecord(newTeam));
+    await enqueueSyncOperation(db.syncQueue, {
+      kind: 'team-upsert',
+      teamId: newTeam.id,
+      entityId: newTeam.id,
+      team: newTeam,
+    });
+    reenrollmentRequired.set(false);
+    pull.mockResolvedValue({
+      teams: [newTeam],
+      players: [],
+      profiles: [],
+      matches: [],
+      events: [],
+      strategies: [],
+    });
+    await service.syncNow();
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(push).toHaveBeenCalledWith(expect.objectContaining({ teamId: 'new-team' }));
+    expect(await db.syncQueue.count()).toBe(1);
+    expect((await db.teams.get(oldTeam.id))?.accessRevoked).toBe(true);
+  });
+
+  it('resumes a preserved outbox after the replacement identity regains Team membership', async () => {
+    const team = { id: 'team-1', name: 'Team', shortName: 'TM', createdAt: 1, updatedAt: 1 };
+    await db.teams.put(toLocalTeamRecord(team));
+    await enqueueSyncOperation(db.syncQueue, {
+      kind: 'team-upsert',
+      teamId: team.id,
+      entityId: team.id,
+      team,
+    });
+    orphanedUserId.set('deleted-user');
+    reenrollmentRequired.set(true);
+    await service.initialize();
+    expect(push).not.toHaveBeenCalled();
+
+    reenrollmentRequired.set(false);
+    pull.mockResolvedValue({
+      teams: [team],
+      players: [],
+      profiles: [],
+      matches: [],
+      events: [],
+      strategies: [],
+    });
+    await service.refreshAfterAccessChange();
+    expect(push).toHaveBeenCalledWith(expect.objectContaining({ teamId: team.id }));
+    expect(await db.syncQueue.count()).toBe(0);
+    expect((await db.teams.get(team.id))?.accessRevoked).toBe(false);
   });
 });

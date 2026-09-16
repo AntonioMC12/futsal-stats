@@ -57,6 +57,7 @@ export class TeamAccessPage {
       if (!this.auth.authenticated()) throw new Error('Este dispositivo no tiene conexión.');
       const { key, deviceName } = this.form.getRawValue();
       const teamId = await this.recovery.recover(key, deviceName);
+      this.auth.markAccessRestored();
       this.form.controls.key.setValue('');
       this.access.invalidate();
       await this.sync.refreshAfterAccessChange();
