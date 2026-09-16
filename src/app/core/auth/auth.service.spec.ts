@@ -29,21 +29,18 @@ describe('AuthService', () => {
     expect(auth.email()).toBe('coach@example.com');
   });
 
-  it('requests a passwordless login while preserving a safe private redirect', async () => {
+  it('requests a normalized email OTP without a redirect', async () => {
     const signInWithOtp = vi.fn().mockResolvedValue({ error: null });
     configure(authClientMock({ signInWithOtp }));
 
     const auth = TestBed.inject(AuthService);
-    await auth.requestAccess(' Coach@Example.com ', '/join?code=ABC');
+    await auth.requestEmailOtp(' Coach@Example.com ');
 
     expect(signInWithOtp).toHaveBeenCalledWith({
       email: 'coach@example.com',
-      options: {
-        emailRedirectTo: expect.stringContaining('/auth/callback?redirect=%2Fjoin%3Fcode%3DABC'),
-        shouldCreateUser: true,
-      },
+      options: { shouldCreateUser: true },
     });
-    expect(auth.status()).toBe('linkSent');
+    expect(auth.status()).toBe('codeSent');
   });
 
   it('verifies an email OTP and closes the local session explicitly', async () => {
@@ -52,7 +49,7 @@ describe('AuthService', () => {
     configure(authClientMock({ verifyOtp, signOut }));
     const auth = TestBed.inject(AuthService);
 
-    await auth.verifyAccessCode('coach@example.com', '123 456');
+    await auth.verifyEmailOtp('coach@example.com', '123 456');
     expect(verifyOtp).toHaveBeenCalledWith({
       email: 'coach@example.com',
       token: '123456',
@@ -62,6 +59,31 @@ describe('AuthService', () => {
 
     await auth.signOut();
     expect(signOut).toHaveBeenCalledWith({ scope: 'local' });
+    expect(auth.authenticated()).toBe(false);
+  });
+
+  it('reports request rate limiting without exposing the Supabase message', async () => {
+    const signInWithOtp = vi.fn().mockResolvedValue({ error: { status: 429, message: 'internal detail' } });
+    configure(authClientMock({ signInWithOtp }));
+    await expect(TestBed.inject(AuthService).requestEmailOtp(' A@Example.com ')).rejects.toThrow(
+      'Has realizado demasiados intentos',
+    );
+    expect(signInWithOtp).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports an expired code and keeps the user signed out', async () => {
+    const verifyOtp = vi.fn().mockResolvedValue({
+      data: { session: null },
+      error: { code: 'otp_expired', message: 'expired token' },
+    });
+    configure(authClientMock({ verifyOtp }));
+    const auth = TestBed.inject(AuthService);
+    await expect(auth.verifyEmailOtp(' A@Example.com ', '123456')).rejects.toThrow(
+      'El código ha caducado',
+    );
+    expect(verifyOtp).toHaveBeenCalledWith({
+      email: 'a@example.com', token: '123456', type: 'email',
+    });
     expect(auth.authenticated()).toBe(false);
   });
 });

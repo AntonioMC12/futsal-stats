@@ -4,7 +4,7 @@ import { CLOUD_CONFIG } from '../cloud/cloud.config';
 import { SupabaseClientService } from '../cloud/supabase-client.service';
 
 export type AuthStatus =
-  'disabled' | 'loading' | 'signedOut' | 'linkSent' | 'authenticated' | 'error';
+  'disabled' | 'loading' | 'signedOut' | 'codeSent' | 'authenticated' | 'error';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -41,34 +41,26 @@ export class AuthService {
     return this.initialization;
   }
 
-  async requestAccess(email: string, redirectPath: string | null = null): Promise<void> {
+  async requestEmailOtp(email: string): Promise<void> {
     if (this.config.mode !== 'cloud') return;
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) throw new Error('Introduce un email válido.');
     this.status.set('loading');
     this.error.set(null);
     try {
-      const redirectTo = new URL(
-        '/auth/callback',
-        globalThis.location?.origin ?? 'http://localhost',
-      );
-      if (isSafeApplicationPath(redirectPath)) {
-        redirectTo.searchParams.set('redirect', redirectPath);
-      }
       const { error } = await this.supabase.requireClient().auth.signInWithOtp({
         email: normalizedEmail,
-        options: { emailRedirectTo: redirectTo.href, shouldCreateUser: true },
+        options: { shouldCreateUser: true },
       });
       if (error) throw error;
-      this.status.set('linkSent');
-      console.info('auth_access_requested');
+      this.status.set('codeSent');
     } catch (error) {
       this.fail(error);
-      throw new Error('No se ha podido enviar el acceso. Inténtalo de nuevo.');
+      throw new Error(authErrorMessage(error, 'request'));
     }
   }
 
-  async verifyAccessCode(email: string, token: string): Promise<void> {
+  async verifyEmailOtp(email: string, token: string): Promise<void> {
     if (this.config.mode !== 'cloud') return;
     this.status.set('loading');
     this.error.set(null);
@@ -82,10 +74,9 @@ export class AuthService {
       if (!data.session) throw new Error('Supabase did not return an authenticated session.');
       this.session.set(data.session);
       this.status.set('authenticated');
-      console.info('auth_signed_in');
     } catch (error) {
       this.fail(error);
-      throw new Error('El código no es válido o ha caducado.');
+      throw new Error(authErrorMessage(error, 'verify'));
     }
   }
 
@@ -98,7 +89,6 @@ export class AuthService {
     }
     this.session.set(null);
     this.status.set('signedOut');
-    console.info('auth_signed_out');
   }
 
   private async restoreSession(): Promise<void> {
@@ -115,12 +105,24 @@ export class AuthService {
   }
 
   private fail(error: unknown): void {
-    console.error('auth_failed', error instanceof Error ? error.message : String(error));
+    console.error('auth_failed');
     this.error.set('No se ha podido completar la autenticación.');
     this.status.set('error');
   }
 }
 
-function isSafeApplicationPath(value: string | null): value is string {
-  return Boolean(value?.startsWith('/') && !value.startsWith('//'));
+function authErrorMessage(error: unknown, action: 'request' | 'verify'): string {
+  const details = error as { status?: number; code?: string; message?: string } | null;
+  const code = details?.code ?? '';
+  const message = details?.message?.toLowerCase() ?? '';
+  if (details?.status === 429 || code.includes('rate_limit'))
+    return 'Has realizado demasiados intentos. Espera un momento antes de volver a intentarlo.';
+  if (message.includes('network') || message.includes('fetch'))
+    return 'No se ha podido contactar con el servicio. Comprueba tu conexión e inténtalo de nuevo.';
+  if (action === 'verify') {
+    if (code.includes('expired') || message.includes('expired'))
+      return 'El código ha caducado. Solicita uno nuevo.';
+    return 'El código introducido no es válido.';
+  }
+  return 'No hemos podido enviar el código. Inténtalo de nuevo.';
 }

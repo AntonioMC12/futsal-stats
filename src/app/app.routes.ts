@@ -21,10 +21,6 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/ui/login-page').then((m) => m.LoginPage),
   },
   {
-    path: 'auth/callback',
-    loadComponent: () => import('./features/auth/ui/login-page').then((m) => m.LoginPage),
-  },
-  {
     path: 'dashboard',
     canActivate: [authGuard, teamWorkspaceGuard],
     loadComponent: () =>

@@ -7,9 +7,10 @@ continues to use IndexedDB.
 ## Provisioning
 
 1. Create separate Supabase projects for development and production.
-2. Enable email Magic Link/OTP in **Authentication > Providers**. Add the production origin and
-   `/auth/callback` to the allowed redirect URLs. Configure SMTP and abuse protection before a
-   public production deployment.
+2. Enable email OTP in **Authentication > Providers**. In **Authentication > Email Templates**, set
+   the email sign-in template to display `{{ .Token }}` instead of `{{ .ConfirmationURL }}`. The
+   application does not use a Magic Link redirect for this flow. Configure SMTP and abuse
+   protection before a public production deployment. Verify the received email contains a code.
 3. Apply every file in `database/migrations` in numeric order, including
    `0008_passwordless_identity.sql`, through the Supabase migration workflow.
 4. Copy `public/cloud-config.js` per deployment and set:

@@ -543,7 +543,7 @@ La aplicación principal no debe depender de esta funcionalidad para registrar u
 - Angular Signals para estado reactivo.
 - Angular Router y Reactive Forms.
 - Dexie sobre IndexedDB para persistencia.
-- Supabase/PostgreSQL opcional, con Magic Link/OTP por email y RLS por equipo.
+- Supabase/PostgreSQL opcional, con código OTP por email y RLS por equipo.
 - Outbox durable y sincronización offline-first con reintentos.
 - Angular Service Worker para capacidades PWA.
 - SCSS responsive orientado a móvil y tablet.
