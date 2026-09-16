@@ -37,6 +37,14 @@ export class MatchDetailPage {
     return formatGameClock(value);
   }
 
+  protected legacyDuration(value?: number): string {
+    return value === undefined ? '—' : formatGameClock(value * 1000);
+  }
+
+  protected metric(value?: number): string {
+    return value === undefined ? '—' : String(value);
+  }
+
   protected readonly matchSeason = matchSeason;
   protected readonly matchCompetition = matchCompetition;
 }

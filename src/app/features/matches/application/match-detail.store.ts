@@ -28,10 +28,23 @@ export class MatchDetailStore {
     const match = this.match();
     return match ? deriveMatchState(match, this.events()) : null;
   });
-  readonly score = computed(() => this.derivedState()?.score ?? { home: 0, away: 0 });
+  readonly legacySnapshot = computed(() => this.match()?.importMetadata?.legacySnapshot ?? null);
+  readonly score = computed(
+    () =>
+      this.legacySnapshot()?.observedScore ?? this.derivedState()?.score ?? { home: 0, away: 0 },
+  );
+  readonly legacyPlayerRows = computed(() => {
+    const snapshots = new Map(
+      this.legacySnapshot()?.players.map((item) => [item.playerId, item]) ?? [],
+    );
+    return this.players()
+      .map((player) => ({ player, snapshot: snapshots.get(player.id) }))
+      .filter((row) => row.snapshot !== undefined)
+      .sort((left, right) => left.player.number - right.player.number);
+  });
   readonly foulsByPeriod = computed(() => {
     const match = this.match();
-    if (!match) return [];
+    if (!match || this.legacySnapshot()) return [];
     const fouls = this.derivedState()?.foulsByPeriod ?? {};
     return Array.from({ length: match.periodCount }, (_, index) => ({
       period: index + 1,
@@ -45,10 +58,12 @@ export class MatchDetailStore {
     return deriveMatchStatistics(match, this.events(), projectRemaining(match.clock, Date.now()));
   });
   readonly playerRows = computed(() =>
-    this.players()
-      .map((player) => ({ player, statistics: this.statistics().players[player.id] }))
-      .filter((row) => row.statistics !== undefined)
-      .sort((left, right) => left.player.number - right.player.number),
+    this.legacySnapshot()
+      ? []
+      : this.players()
+          .map((player) => ({ player, statistics: this.statistics().players[player.id] }))
+          .filter((row) => row.statistics !== undefined)
+          .sort((left, right) => left.player.number - right.player.number),
   );
   readonly timeline = computed(() =>
     createMatchTimeline(

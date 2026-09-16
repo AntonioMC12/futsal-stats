@@ -1,7 +1,15 @@
 import { MatchEvent } from '../../../shared/models/match-event';
+import { LegacyMatchSnapshot } from '../../../shared/models/match';
 
 export const FUTSAL_STATS_CSV_SCHEMA_VERSION = 'futsal-stats-csv/2';
 export const MAX_MATCH_CSV_BYTES = 5 * 1024 * 1024;
+export type CsvImportFormat = 'native-current' | 'legacy-player-snapshot' | 'unknown';
+
+export interface ImportedLegacySnapshot extends Omit<LegacyMatchSnapshot, 'players'> {
+  players: (Omit<LegacyMatchSnapshot['players'][number], 'playerId'> & {
+    importKey: string;
+  })[];
+}
 
 export type ImportIssueSeverity = 'info' | 'warning' | 'error' | 'fatal';
 
@@ -30,6 +38,7 @@ export interface ImportedMatchEventDto {
 }
 
 export interface ImportedMatchDto {
+  format?: Exclude<CsvImportFormat, 'unknown'>;
   schemaVersion?: string;
   source: {
     type: 'futsal-stats-csv';
@@ -50,6 +59,7 @@ export interface ImportedMatchDto {
   players: ImportedPlayerDto[];
   events: ImportedMatchEventDto[];
   lineups: ImportedLineupDto[];
+  legacySnapshot?: ImportedLegacySnapshot;
   issues: ImportIssue[];
 }
 

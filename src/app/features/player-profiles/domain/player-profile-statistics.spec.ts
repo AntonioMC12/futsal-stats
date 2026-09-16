@@ -88,6 +88,34 @@ function history(
 }
 
 describe('player profile statistics', () => {
+  it('shows legacy player data but excludes partial snapshots from complete career totals', () => {
+    const legacy: Match = {
+      ...match('legacy', '2026/27', '2026-08-28'),
+      importMetadata: {
+        fileName: 'legacy.csv',
+        importedAt: '2026-09-16T00:00:00Z',
+        fingerprint: 'abc',
+        legacySnapshot: {
+          importFormat: 'legacy-player-snapshot',
+          reconstructionVersion: 1,
+          observedTeamName: 'Apaga',
+          observedState: 'Primera parte',
+          observedScore: { home: 1, away: 0 },
+          players: [{ playerId: 'p1', secondsPlayed: 41, starter: true, goalDifference: 1 }],
+          missingData: ['eventTimeline', 'substitutionTimeline', 'lineupHistory'],
+        },
+      },
+    };
+    const result = buildPlayerHistory('p1', [{ match: legacy, events: [] }]);
+    expect(result[0]).toMatchObject({
+      outcome: 'unknown',
+      appeared: true,
+      legacySnapshot: { secondsPlayed: 41 },
+    });
+    expect(aggregatePlayerHistory(result).appearances).toBe(0);
+    expect(aggregatePlayerHistory(result).wins).toBe(0);
+  });
+
   it('reconstructs career ratios and results from finished match events', () => {
     const current = match('current', '2026/27', '2026-09-08');
     const previous = match('previous', '2025/26', '2026-05-08', false);

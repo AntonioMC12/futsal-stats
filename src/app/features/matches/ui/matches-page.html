@@ -125,14 +125,32 @@
                 </p>
                 <p class="history-score">
                   {{ summary.match.homeTeam.shortName }}
-                  <strong>{{ summary.score.home }} - {{ summary.score.away }}</strong>
+                  <strong
+                    >{{
+                      summary.match.importMetadata?.legacySnapshot &&
+                      !summary.match.importMetadata.legacySnapshot.observedScore
+                        ? '—'
+                        : summary.score.home
+                    }}
+                    -
+                    {{
+                      summary.match.importMetadata?.legacySnapshot &&
+                      !summary.match.importMetadata.legacySnapshot.observedScore
+                        ? '—'
+                        : summary.score.away
+                    }}</strong
+                  >
                   {{ summary.match.awayTeam.shortName || summary.match.awayTeam.name }}
                 </p>
                 <p class="match-description">
                   {{ summary.match.description || 'Sin descripción' }}
                 </p>
                 <span class="finished-label">{{
-                  summary.match.status === 'finished' ? 'Finalizado' : 'En curso'
+                  summary.match.importMetadata?.legacySnapshot
+                    ? 'LEGACY · snapshot parcial'
+                    : summary.match.status === 'finished'
+                      ? 'Finalizado'
+                      : 'En curso'
                 }}</span>
               </div>
               <div class="history-actions">

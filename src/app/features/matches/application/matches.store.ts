@@ -98,7 +98,12 @@ export class MatchesStore {
       const summaries = await Promise.all(
         matches.map(async (match): Promise<MatchSummary> => {
           const events = await this.eventsRepository.listByMatch(match.id);
-          return { match, score: deriveMatchState(match, events).score };
+          return {
+            match,
+            score:
+              match.importMetadata?.legacySnapshot?.observedScore ??
+              deriveMatchState(match, events).score,
+          };
         }),
       );
       this.now.set(Date.now());

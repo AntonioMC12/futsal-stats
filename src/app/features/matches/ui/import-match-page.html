@@ -21,15 +21,32 @@
       <h2>Partido importado correctamente</h2>
       <p>{{ importedMatch()?.match?.opponent }} · {{ importedMatch()?.match?.date }}</p>
       <dl class="metrics">
-        <div><dt>Jugadores</dt><dd>{{ summary.playersCreated + summary.playersLinked }}</dd></div>
-        <div><dt>Eventos</dt><dd>{{ summary.eventCount }}</dd></div>
-        <div><dt>Sustituciones</dt><dd>{{ summary.substitutionCount }}</dd></div>
-        <div><dt>Quintetos</dt><dd>{{ summary.lineupCount }}</dd></div>
+        <div>
+          <dt>Jugadores</dt>
+          <dd>{{ summary.playersCreated + summary.playersLinked }}</dd>
+        </div>
+        <div>
+          <dt>Eventos</dt>
+          <dd>{{ summary.eventCount }}</dd>
+        </div>
+        <div>
+          <dt>Sustituciones</dt>
+          <dd>{{ summary.substitutionCount }}</dd>
+        </div>
+        <div>
+          <dt>Quintetos</dt>
+          <dd>{{ summary.lineupCount }}</dd>
+        </div>
       </dl>
       <p>{{ summary.playersCreated }} creados · {{ summary.playersLinked }} vinculados</p>
       @if (summary.issues.length) {
-        <details><summary>{{ summary.issues.length }} avisos de importación</summary>
-          <ul>@for (issue of summary.issues; track issue.code + issue.message) { <li>{{ issue.message }}</li> }</ul>
+        <details>
+          <summary>{{ summary.issues.length }} avisos de importación</summary>
+          <ul>
+            @for (issue of summary.issues; track issue.code + issue.message) {
+              <li>{{ issue.message }}</li>
+            }
+          </ul>
         </details>
       }
       <div class="actions">
@@ -51,36 +68,129 @@
         <span class="drop-zone__title">Arrastra un CSV aquí</span>
         <span>o pulsa para seleccionar el archivo</span>
       </label>
-      <p class="hint">Formato Futsal Stats CSV · máximo 5 MB</p>
-      @if (processing()) { <p role="status">Analizando {{ fileName() }}…</p> }
+      <p class="hint">CSV Futsal Stats actual o CSV legacy de jugadores · máximo 5 MB</p>
+      @if (processing()) {
+        <p role="status">Analizando {{ fileName() }}…</p>
+      }
     </article>
   } @else if (importedMatch(); as preview) {
     <article class="panel">
       <div class="panel-heading">
-        <div><p class="eyebrow">2. Validación y vista previa</p><h2>{{ preview.match.opponent }}</h2></div>
+        <div>
+          <p class="eyebrow">2. Validación y vista previa</p>
+          <h2>{{ preview.match.opponent }}</h2>
+        </div>
         <button class="text-action" type="button" (click)="reset()">Elegir otro CSV</button>
       </div>
       <dl class="match-data">
-        <div><dt>Archivo</dt><dd>{{ preview.source.fileName }}</dd></div>
-        <div><dt>Fecha</dt><dd>{{ preview.match.date }}</dd></div>
-        <div><dt>Resultado CSV</dt><dd>{{ preview.match.homeScore ?? '—' }} - {{ preview.match.awayScore ?? '—' }}</dd></div>
-        <div><dt>Estado</dt><dd>Finalizado</dd></div>
+        <div>
+          <dt>Formato</dt>
+          <dd>
+            {{
+              preview.format === 'legacy-player-snapshot'
+                ? 'CSV legacy · snapshot parcial'
+                : 'CSV Futsal Stats actual'
+            }}
+          </dd>
+        </div>
+        <div>
+          <dt>Archivo</dt>
+          <dd>{{ preview.source.fileName }}</dd>
+        </div>
+        <div>
+          <dt>Fecha</dt>
+          <dd>{{ preview.match.date }}</dd>
+        </div>
+        <div>
+          <dt>{{ preview.legacySnapshot ? 'Marcador observado' : 'Resultado CSV' }}</dt>
+          <dd>{{ preview.match.homeScore ?? '—' }} - {{ preview.match.awayScore ?? '—' }}</dd>
+        </div>
+        <div>
+          <dt>Estado</dt>
+          <dd>
+            {{ preview.legacySnapshot?.observedState ?? 'Finalizado'
+            }}{{
+              preview.legacySnapshot?.observedPeriod !== undefined
+                ? ' · periodo ' + preview.legacySnapshot.observedPeriod
+                : ''
+            }}{{
+              preview.legacySnapshot?.observedClock
+                ? ' · reloj ' + preview.legacySnapshot.observedClock
+                : ''
+            }}
+          </dd>
+        </div>
       </dl>
-      <dl class="metrics">
-        <div><dt>Jugadores</dt><dd>{{ preview.players.length }}</dd></div>
-        <div><dt>Eventos</dt><dd>{{ preview.events.length }}</dd></div>
-        <div><dt>Sustituciones</dt><dd>{{ substitutionCount() }}</dd></div>
-        <div><dt>Quintetos</dt><dd>{{ preview.lineups.length }}</dd></div>
-      </dl>
+      @if (preview.legacySnapshot; as snapshot) {
+        <p class="hint">
+          Marcador y estadísticas observados en el momento del CSV. No se conoce el resultado final
+          ni la cronología de eventos y sustituciones.
+        </p>
+        <dl class="metrics">
+          <div>
+            <dt>Titulares</dt>
+            <dd>{{ preview.lineups.length ? 5 : 'Sin quinteto válido' }}</dd>
+          </div>
+          <div>
+            <dt>Faltas equipo</dt>
+            <dd>{{ snapshot.teamTotals?.teamFouls ?? '—' }}</dd>
+          </div>
+          <div>
+            <dt>Faltas rival</dt>
+            <dd>{{ snapshot.teamTotals?.opponentFouls ?? '—' }}</dd>
+          </div>
+          <div>
+            <dt>Amarillas equipo</dt>
+            <dd>{{ snapshot.teamTotals?.teamYellowCards ?? '—' }}</dd>
+          </div>
+        </dl>
+      }
+      @if (!preview.legacySnapshot) {
+        @if (importedMatch()?.legacySnapshot) {
+          <p>
+            Snapshot legacy guardado con estadísticas parciales. No se han generado eventos
+            ficticios.
+          </p>
+        } @else {
+          <dl class="metrics">
+            <div>
+              <dt>Jugadores</dt>
+              <dd>{{ preview.players.length }}</dd>
+            </div>
+            <div>
+              <dt>Eventos</dt>
+              <dd>{{ preview.events.length }}</dd>
+            </div>
+            <div>
+              <dt>Sustituciones</dt>
+              <dd>{{ substitutionCount() }}</dd>
+            </div>
+            <div>
+              <dt>Quintetos</dt>
+              <dd>{{ preview.lineups.length }}</dd>
+            </div>
+          </dl>
+        }
+      }
       @if (blockingIssues().length) {
-        <div class="issues issues--blocking" role="alert"><strong>No se puede importar</strong><ul>
-          @for (issue of blockingIssues(); track issue.code + issue.message) { <li>{{ issue.message }}</li> }
-        </ul></div>
+        <div class="issues issues--blocking" role="alert">
+          <strong>No se puede importar</strong>
+          <ul>
+            @for (issue of blockingIssues(); track issue.code + issue.message) {
+              <li>{{ issue.message }}</li>
+            }
+          </ul>
+        </div>
       }
       @if (warnings().length) {
-        <details class="issues"><summary>{{ warnings().length }} advertencias</summary><ul>
-          @for (issue of warnings(); track issue.code + issue.message) { <li>{{ issue.message }}</li> }
-        </ul></details>
+        <details class="issues">
+          <summary>{{ warnings().length }} advertencias</summary>
+          <ul>
+            @for (issue of warnings(); track issue.code + issue.message) {
+              <li>{{ issue.message }}</li>
+            }
+          </ul>
+        </details>
       }
     </article>
 
@@ -90,21 +200,46 @@
       <div class="resolution-list">
         @for (item of resolutions(); track item.csvPlayer.importKey) {
           <label class="resolution-row">
-            <span><strong>#{{ item.csvPlayer.number }} {{ item.csvPlayer.name }}</strong>
-              @if (item.csvPlayer.startingLineup) { <small>Titular</small> }
+            <span
+              ><strong>#{{ item.csvPlayer.number }} {{ item.csvPlayer.name }}</strong>
+              @if (item.csvPlayer.startingLineup) {
+                <small>Titular</small>
+              }
+              @if (item.confidence === 'number-conflict') {
+                <small>Conflicto de dorsal: elige jugador o créalo expresamente</small>
+              }
             </span>
-            <select [value]="resolutionValue(item)" (change)="setResolution(item.csvPlayer.importKey, $any($event.target).value)">
+            <select
+              [value]="resolutionValue(item)"
+              (change)="setResolution(item.csvPlayer.importKey, $any($event.target).value)"
+            >
+              @if (item.resolution === 'manual' && !item.playerId) {
+                <option value="" disabled>Resolver conflicto de dorsal</option>
+              }
               <option value="__create__">Crear jugador</option>
               @for (player of currentPlayers(); track player.id) {
-                <option [value]="player.id">Vincular con #{{ player.number }} {{ player.name }}</option>
+                <option [value]="player.id">
+                  Vincular con #{{ player.number }} {{ player.name }}
+                </option>
               }
             </select>
           </label>
         }
       </div>
       <div class="actions">
-        <button class="btn btn--primary" type="button" [disabled]="!canImport()" (click)="confirmImport()">
-          {{ importing() ? 'Importando…' : 'Importar partido' }}
+        <button
+          class="btn btn--primary"
+          type="button"
+          [disabled]="!canImport()"
+          (click)="confirmImport()"
+        >
+          {{
+            importing()
+              ? 'Importando…'
+              : importedMatch()?.legacySnapshot
+                ? 'Importar snapshot legacy'
+                : 'Importar partido'
+          }}
         </button>
         <a class="btn btn--secondary" routerLink="/matches">Cancelar</a>
       </div>

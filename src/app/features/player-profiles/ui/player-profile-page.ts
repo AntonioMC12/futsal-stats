@@ -125,8 +125,14 @@ export class PlayerProfilePage {
       value
     ];
   }
-  protected outcomeLabel(value: 'win' | 'draw' | 'loss'): string {
-    return { win: 'Victoria', draw: 'Empate', loss: 'Derrota' }[value];
+  protected outcomeLabel(value: 'win' | 'draw' | 'loss' | 'unknown'): string {
+    return { win: 'Victoria', draw: 'Empate', loss: 'Derrota', unknown: 'Snapshot legacy' }[value];
+  }
+  protected legacyDuration(seconds: number | undefined): string {
+    return seconds === undefined ? '—' : formatGameClock(seconds * 1000);
+  }
+  protected legacyMetric(value: number | undefined): string {
+    return value === undefined ? '—' : String(value);
   }
   protected readonly matchSeason = matchSeason;
   protected readonly matchCompetition = matchCompetition;

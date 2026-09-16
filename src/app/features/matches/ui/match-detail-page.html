@@ -12,7 +12,11 @@
     <header class="detail-hero">
       <div class="detail-meta">
         <span class="status-pill">{{
-          match.status === 'finished' ? 'Finalizado' : 'En curso'
+          store.legacySnapshot()
+            ? 'LEGACY · snapshot parcial'
+            : match.status === 'finished'
+              ? 'Finalizado'
+              : 'En curso'
         }}</span>
         <span>{{ formatDate(match.date) }}</span>
         <span>{{ matchSeason(match) }}</span>
@@ -24,8 +28,17 @@
           ><span>{{ match.homeTeam.name }}</span>
         </div>
         <p>
-          <strong>{{ store.score().home }}</strong
-          ><i>–</i><strong>{{ store.score().away }}</strong>
+          <strong>{{
+            store.legacySnapshot() && !store.legacySnapshot()?.observedScore
+              ? '—'
+              : store.score().home
+          }}</strong
+          ><i>–</i
+          ><strong>{{
+            store.legacySnapshot() && !store.legacySnapshot()?.observedScore
+              ? '—'
+              : store.score().away
+          }}</strong>
         </p>
         <div>
           <strong>{{ match.awayTeam.shortName || '—' }}</strong
@@ -35,18 +48,30 @@
       @if (match.description) {
         <p class="description">{{ match.description }}</p>
       }
+      @if (store.legacySnapshot(); as legacy) {
+        <p class="banner banner--warn">
+          Este partido contiene datos parciales de un CSV antiguo. El marcador y las estadísticas
+          reflejan el momento de exportación; no se conoce el resultado final ni la cronología.
+        </p>
+        <p>
+          Estado observado: {{ legacy.observedState || 'No disponible' }} · Periodo:
+          {{ legacy.observedPeriod ?? '—' }} · Reloj: {{ legacy.observedClock || '—' }}
+        </p>
+      }
       <div class="hero-actions">
-        @if (match.status !== 'finished') {
+        @if (match.status !== 'finished' && !store.legacySnapshot()) {
           <a class="btn btn--primary" [routerLink]="['/live', match.id]">Continuar partido</a>
         }
-        <button
-          class="btn btn--secondary"
-          type="button"
-          [disabled]="csvExporter.isExporting()"
-          (click)="csvExporter.export(match.id)"
-        >
-          {{ csvExporter.isExporting() ? 'Exportando…' : 'Exportar CSV' }}
-        </button>
+        @if (!store.legacySnapshot()) {
+          <button
+            class="btn btn--secondary"
+            type="button"
+            [disabled]="csvExporter.isExporting()"
+            (click)="csvExporter.export(match.id)"
+          >
+            {{ csvExporter.isExporting() ? 'Exportando…' : 'Exportar CSV' }}
+          </button>
+        }
       </div>
       @if (csvExporter.error(); as message) {
         <p class="banner banner--warn" role="alert">{{ message }}</p>
@@ -60,20 +85,71 @@
             <p class="eyebrow">Rendimiento</p>
             <h1 id="statistics-title">Estadísticas</h1>
           </div>
-          <span>{{ store.playerRows().length }} jugadores</span>
+          <span
+            >{{
+              store.legacySnapshot() ? store.legacyPlayerRows().length : store.playerRows().length
+            }}
+            jugadores</span
+          >
         </div>
 
-        <div class="foul-summary" aria-label="Faltas por periodo">
-          @for (period of store.foulsByPeriod(); track period.period) {
-            <div>
-              <span>{{ period.period }}.ª parte</span
-              ><strong>{{ period.home }} – {{ period.away }}</strong
-              ><small>faltas</small>
-            </div>
+        @if (!store.legacySnapshot()) {
+          <div class="foul-summary" aria-label="Faltas por periodo">
+            @for (period of store.foulsByPeriod(); track period.period) {
+              <div>
+                <span>{{ period.period }}.ª parte</span
+                ><strong>{{ period.home }} – {{ period.away }}</strong
+                ><small>faltas</small>
+              </div>
+            }
+          </div>
+        }
+
+        @if (store.legacySnapshot(); as legacy) {
+          <p>Valores observados en el CSV. «—» significa que el dato no estaba disponible.</p>
+          <div class="statistics-table-wrap">
+            <table class="statistics-table">
+              <thead>
+                <tr>
+                  <th>Jugador</th>
+                  <th>Tiempo</th>
+                  <th>GF en pista</th>
+                  <th>GC en pista</th>
+                  <th>+/−</th>
+                  <th>Faltas</th>
+                  <th>Amarillas</th>
+                  <th>Expulsiones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of store.legacyPlayerRows(); track row.player.id) {
+                  <tr>
+                    <th>#{{ row.player.number }} {{ row.player.name }}</th>
+                    <td>{{ legacyDuration(row.snapshot?.secondsPlayed) }}</td>
+                    <td>{{ metric(row.snapshot?.goalsForOnCourt) }}</td>
+                    <td>{{ metric(row.snapshot?.goalsAgainstOnCourt) }}</td>
+                    <td>{{ metric(row.snapshot?.goalDifference) }}</td>
+                    <td>{{ metric(row.snapshot?.fouls) }}</td>
+                    <td>{{ metric(row.snapshot?.yellowCards) }}</td>
+                    <td>{{ metric(row.snapshot?.expulsions) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          @if (legacy.teamTotals; as totals) {
+            <p>
+              Totales observados: faltas {{ metric(totals.teamFouls) }}–{{
+                metric(totals.opponentFouls)
+              }}, amarillas {{ metric(totals.teamYellowCards) }}–{{
+                metric(totals.opponentYellowCards)
+              }}, expulsiones {{ metric(totals.teamExpulsions) }}–{{
+                metric(totals.opponentExpulsions)
+              }}.
+            </p>
           }
-        </div>
-
-        @if (store.playerRows().length === 0) {
+          <p>Goleadores: no disponible en el fichero legacy.</p>
+        } @else if (store.playerRows().length === 0) {
           <p class="empty">No hay estadísticas de jugadores para este partido.</p>
         } @else {
           <div class="statistics-table-wrap">
@@ -125,7 +201,13 @@
           <span>{{ store.timeline().length }} eventos</span>
         </div>
         @if (store.timeline().length === 0) {
-          <p class="empty">No hay eventos registrados.</p>
+          <p class="empty">
+            {{
+              store.legacySnapshot()
+                ? 'No disponible en el fichero legacy.'
+                : 'No hay eventos registrados.'
+            }}
+          </p>
         } @else {
           <ol class="timeline-list">
             @for (item of store.timeline(); track item.eventId) {
