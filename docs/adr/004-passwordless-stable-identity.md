@@ -1,6 +1,7 @@
 # ADR-004: Stable passwordless identity
 
-- Status: accepted
+- Status: superseded
+- Superseded by: [ADR-005](005-anonymous-device-team-access.md)
 - Date: 2026-09-15
 
 ## Context

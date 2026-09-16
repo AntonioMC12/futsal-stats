@@ -1,4 +1,6 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
+import { CLOUD_CONFIG } from '../../../core/cloud/cloud.config';
+import { TeamRecoveryService } from '../../../core/team-workspace/team-recovery.service';
 import { PLAYER_REPOSITORY, TEAM_REPOSITORY } from '../../../core/persistence/persistence.tokens';
 import { createId } from '../../../core/utils/id';
 import { DomainResult, fail, ok } from '../../../core/utils/result';
@@ -23,6 +25,9 @@ export interface TeamSummary {
 export class TeamsService {
   private readonly teams = inject(TEAM_REPOSITORY);
   private readonly players = inject(PLAYER_REPOSITORY);
+  private readonly cloudConfig = inject(CLOUD_CONFIG);
+  private readonly recovery = inject(TeamRecoveryService);
+  readonly createdRecoveryKey = signal<string | null>(null);
 
   async listSummaries(): Promise<TeamSummary[]> {
     const teams = await this.teams.list();
@@ -45,6 +50,10 @@ export class TeamsService {
     const record = createTeamRecord(input, createId(), Date.now());
     if (!record.ok) {
       return record;
+    }
+    this.createdRecoveryKey.set(null);
+    if (this.cloudConfig.mode === 'cloud') {
+      this.createdRecoveryKey.set(await this.recovery.createTeam(record.value));
     }
     await this.teams.put(record.value);
     return record;

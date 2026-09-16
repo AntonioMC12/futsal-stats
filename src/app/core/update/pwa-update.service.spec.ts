@@ -5,6 +5,7 @@ import { SwUpdate, UnrecoverableStateEvent, VersionEvent } from '@angular/servic
 import { Subject } from 'rxjs';
 import { MATCH_REPOSITORY } from '../persistence/persistence.tokens';
 import { MatchRepository } from '../persistence/ports/match.repository';
+import { OfflineSyncService } from '../sync/offline-sync.service';
 import { PWA_RELOAD, PwaUpdateService } from './pwa-update.service';
 
 describe('PwaUpdateService', () => {
@@ -12,6 +13,10 @@ describe('PwaUpdateService', () => {
   const unrecoverable = new Subject<UnrecoverableStateEvent>();
   const reload = vi.fn();
   const matches = { findActive: vi.fn() };
+  const sync = {
+    pendingCount: vi.fn().mockReturnValue(0),
+    failedCount: vi.fn().mockReturnValue(0),
+  };
   const swUpdate = {
     isEnabled: true,
     versionUpdates,
@@ -23,6 +28,8 @@ describe('PwaUpdateService', () => {
   beforeEach(() => {
     reload.mockReset();
     matches.findActive.mockReset().mockResolvedValue(null);
+    sync.pendingCount.mockReturnValue(0);
+    sync.failedCount.mockReturnValue(0);
     swUpdate.isEnabled = true;
     swUpdate.checkForUpdate.mockReset().mockResolvedValue(false);
     swUpdate.activateUpdate.mockReset().mockResolvedValue(true);
@@ -33,6 +40,7 @@ describe('PwaUpdateService', () => {
         PwaUpdateService,
         { provide: SwUpdate, useValue: swUpdate },
         { provide: MATCH_REPOSITORY, useValue: matches as unknown as MatchRepository },
+        { provide: OfflineSyncService, useValue: sync },
         { provide: PWA_RELOAD, useValue: reload },
       ],
     });
@@ -56,6 +64,16 @@ describe('PwaUpdateService', () => {
 
     await vi.waitFor(() => expect(service.state().status).toBe('deferred'));
     expect(service.notificationVisible()).toBe(true);
+  });
+
+  it('defers a reload while cloud changes remain pending', async () => {
+    sync.pendingCount.mockReturnValue(1);
+    const service = TestBed.inject(PwaUpdateService);
+    versionUpdates.next(readyEvent());
+    await vi.waitFor(() => expect(service.state().status).toBe('deferred'));
+    sync.pendingCount.mockReturnValue(0);
+    await service.reevaluateUpdateSafety();
+    expect(service.state().status).toBe('available');
   });
 
   it('offers a deferred update once the active match has finished', async () => {

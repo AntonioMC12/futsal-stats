@@ -55,8 +55,7 @@
     }
     @if (cloudConfig.mode === 'cloud' && auth.authenticated()) {
       <div class="account-summary">
-        <span>{{ auth.email() }}</span>
-        <button type="button" (click)="signOut()">Cerrar sesión</button>
+        <span>Dispositivo autorizado</span>
       </div>
     }
     @if (auth.authenticated()) {

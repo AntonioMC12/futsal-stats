@@ -5,6 +5,8 @@ import { CLOUD_CONFIG } from '../../../core/cloud/cloud.config';
 import { CloudFoundationService } from '../../../core/cloud/cloud-foundation.service';
 import { TeamWorkspaceContext } from '../../../core/team-workspace/team-workspace.context';
 import { DeviceEnrollmentService } from '../application/device-enrollment.service';
+import { TeamAccessService } from '../../../core/team-workspace/team-access.service';
+import { OfflineSyncService } from '../../../core/sync/offline-sync.service';
 
 @Component({
   selector: 'app-join-team-page',
@@ -16,6 +18,8 @@ export class JoinTeamPage {
   private readonly enrollment = inject(DeviceEnrollmentService);
   private readonly workspace = inject(TeamWorkspaceContext);
   private readonly cloud = inject(CloudFoundationService);
+  private readonly access = inject(TeamAccessService);
+  private readonly sync = inject(OfflineSyncService);
   private readonly router = inject(Router);
   private readonly formBuilder = inject(FormBuilder);
   protected readonly cloudConfig = inject(CLOUD_CONFIG);
@@ -45,8 +49,12 @@ export class JoinTeamPage {
         throw new Error('No hay conexión con el servicio cloud.');
       const value = this.form.getRawValue();
       const result = await this.enrollment.consumeInvitation(value.code, value.deviceName);
+      this.access.invalidate();
+      await this.sync.refreshAfterAccessChange();
       await this.workspace.refresh(result.teamId);
-      await this.workspace.selectTeam(result.teamId);
+      if (!(await this.workspace.selectTeam(result.teamId))) {
+        throw new Error('Acceso concedido. Vuelve a conectarte para descargar el equipo.');
+      }
       await this.router.navigate(['/dashboard']);
     } catch (error) {
       this.error.set(

@@ -83,6 +83,11 @@ export class OfflineSyncService {
     return this.running;
   }
 
+  async refreshAfterAccessChange(): Promise<void> {
+    if (this.running) await this.running;
+    await this.syncNow();
+  }
+
   async retryFailed(): Promise<void> {
     const now = Date.now();
     await this.db.transaction(
@@ -367,8 +372,11 @@ export class OfflineSyncService {
         }
         for (const record of await this.db.strategies.toArray()) {
           const local = record as LocalStrategyRecord;
-          if ((local.id === RAVI_STRATEGY.id && local.updatedAt === RAVI_STRATEGY.updatedAt)
-            || local.syncStatus === 'synced') continue;
+          if (
+            (local.id === RAVI_STRATEGY.id && local.updatedAt === RAVI_STRATEGY.updatedAt) ||
+            local.syncStatus === 'synced'
+          )
+            continue;
           if (existingKeys.has(`strategy:${local.id}`)) continue;
           await enqueueSyncOperation(
             this.db.syncQueue,
@@ -384,8 +392,11 @@ export class OfflineSyncService {
         }
         for (const photo of await this.db.playerPhotos.toArray()) {
           const profile = await this.db.playerProfiles.get(photo.playerId);
-          if (profile?.photoRef?.storageKey !== photo.storageKey
-            || profile.photoRef.updatedAt !== photo.updatedAt) continue;
+          if (
+            profile?.photoRef?.storageKey !== photo.storageKey ||
+            profile.photoRef.updatedAt !== photo.updatedAt
+          )
+            continue;
           if (photo.syncStatus === 'synced' || existingKeys.has(`photo:${photo.storageKey}`))
             continue;
           await enqueueSyncOperation(this.db.syncQueue, {

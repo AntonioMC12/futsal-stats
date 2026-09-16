@@ -31,6 +31,8 @@ export class TeamEditorPage {
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly missing = signal(false);
+  protected readonly recoveryKey = signal<string | null>(null);
+  protected readonly recoverySaved = signal(false);
 
   protected readonly form = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(TEAM_NAME_MAX_LENGTH)]],
@@ -100,6 +102,11 @@ export class TeamEditorPage {
       }
 
       await this.workspace?.refresh(result.value.id);
+      const key = this.teams.createdRecoveryKey();
+      if (!this.isEdit() && key) {
+        this.recoveryKey.set(key);
+        return;
+      }
       await this.router.navigate(
         this.workspaceMode() ? ['/dashboard'] : ['/teams', result.value.id],
       );
@@ -117,6 +124,20 @@ export class TeamEditorPage {
       return;
     }
     this.form.setValue({ name: team.name, shortName: team.shortName });
+  }
+
+  protected async finishCreation(): Promise<void> {
+    if (!this.recoverySaved()) return;
+    this.recoveryKey.set(null);
+    await this.router.navigate(['/dashboard']);
+  }
+
+  protected async copyRecoveryKey(key: string): Promise<void> {
+    try {
+      await globalThis.navigator.clipboard.writeText(key);
+    } catch {
+      this.error.set('Selecciona y copia la clave manualmente.');
+    }
   }
 }
 
