@@ -136,10 +136,13 @@ describe('local Dexie repository adapters', () => {
     const repository = TestBed.inject(PLAYER_PHOTO_REPOSITORY);
     const first = new Blob(['first'], { type: 'image/png' });
     const second = new Blob(['second'], { type: 'image/png' });
-    const firstRef = await repository.save('team-a', 'player-a', first, 'image/png');
-    const secondRef = await repository.save('team-a', 'player-a', second, 'image/png');
+    const teamId = '3cc467c5-0a7a-4c53-9001-da3b0a0e0140';
+    const playerId = '82561dce-e51a-4e2e-87a0-b0486a31e232';
+    const firstRef = await repository.save(teamId, playerId, first, 'image/png');
+    const secondRef = await repository.save(teamId, playerId, second, 'image/png');
 
-    expect(secondRef.storageKey).toBe(firstRef.storageKey);
+    expect(secondRef.storageKey).not.toBe(firstRef.storageKey);
+    expect(await (await repository.get(firstRef))?.text()).toBe('first');
     expect(await (await repository.get(secondRef))?.text()).toBe('second');
     expect(await (await repository.getMany([secondRef])).get(secondRef.storageKey)?.text()).toBe(
       'second',

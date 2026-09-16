@@ -2,6 +2,8 @@ import { inject, Injectable } from '@angular/core';
 import { PlayerPhotoRef } from '../../../shared/models/player-profile';
 import { PlayerPhotoRepository } from '../ports/player-photo.repository';
 import { FutsalStatsDb } from './futsal-stats.db';
+import { buildPlayerPhotoPath } from '../player-photo-path';
+import { createId } from '../../utils/id';
 
 @Injectable()
 export class DexiePlayerPhotoRepository implements PlayerPhotoRepository {
@@ -13,9 +15,8 @@ export class DexiePlayerPhotoRepository implements PlayerPhotoRepository {
     blob: Blob,
     mimeType: PlayerPhotoRef['mimeType'],
   ): Promise<PlayerPhotoRef> {
-    const storageKey = `teams/${teamId}/players/${playerId}/profile`;
-    const previous = await this.db.playerPhotos.get(storageKey);
-    const updatedAt = Math.max(Date.now(), (previous?.updatedAt ?? 0) + 1);
+    const storageKey = buildPlayerPhotoPath(teamId, playerId, createId());
+    const updatedAt = Date.now();
     await this.db.playerPhotos.put({
       storageKey,
       teamId,
