@@ -9,12 +9,14 @@ export class DexieTeamRepository implements TeamRepository {
   private readonly db = inject(FutsalStatsDb);
 
   async list(): Promise<Team[]> {
-    return (await this.db.teams.orderBy('name').toArray()).map(fromLocalTeamRecord);
+    return (await this.db.teams.orderBy('name').toArray())
+      .filter((record) => !record.accessRevoked)
+      .map(fromLocalTeamRecord);
   }
 
   async get(id: string): Promise<Team | undefined> {
     const record = await this.db.teams.get(id);
-    return record ? fromLocalTeamRecord(record) : undefined;
+    return record && !record.accessRevoked ? fromLocalTeamRecord(record) : undefined;
   }
 
   async put(team: Team): Promise<string> {

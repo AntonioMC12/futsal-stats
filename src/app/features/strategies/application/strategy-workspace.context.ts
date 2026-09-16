@@ -9,6 +9,7 @@ import { Player } from '../../../shared/models/player';
 import { Team } from '../../../shared/models/team';
 import { StrategyPlaybackStore } from './strategy-playback.store';
 import { TeamWorkspaceContext } from '../../../core/team-workspace/team-workspace.context';
+import { TeamAccessService } from '../../../core/team-workspace/team-access.service';
 
 @Injectable()
 export class StrategyWorkspaceContext {
@@ -16,6 +17,7 @@ export class StrategyWorkspaceContext {
   private readonly playersRepository = inject(PLAYER_REPOSITORY, { optional: true });
   private readonly store = inject(StrategyPlaybackStore);
   private readonly workspace = inject(TeamWorkspaceContext, { optional: true });
+  readonly canWrite = inject(TeamAccessService).canWrite;
   readonly teams = signal<readonly Team[]>([]);
   readonly roster = signal<readonly Player[]>([]);
   readonly teamId = signal(APAGA_TEAM_ID);

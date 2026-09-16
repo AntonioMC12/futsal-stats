@@ -115,6 +115,7 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'designer' },
       {
         path: 'designer',
+        canActivate: [workspaceWriteGuard],
         loadComponent: () =>
           import('./features/strategies/ui/strategy-designer-page/strategy-designer-page').then(
             (m) => m.StrategyDesignerPage,
@@ -122,6 +123,7 @@ export const routes: Routes = [
       },
       {
         path: 'designer/:strategyId',
+        canActivate: [workspaceWriteGuard],
         loadComponent: () =>
           import('./features/strategies/ui/strategy-designer-page/strategy-designer-page').then(
             (m) => m.StrategyDesignerPage,

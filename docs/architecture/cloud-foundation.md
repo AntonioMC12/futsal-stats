@@ -12,7 +12,8 @@ continues to use IndexedDB.
    application does not use a Magic Link redirect for this flow. Configure SMTP and abuse
    protection before a public production deployment. Verify the received email contains a code.
 3. Apply every file in `database/migrations` in numeric order, including
-   `0008_passwordless_identity.sql`, through the Supabase migration workflow.
+   `0009_team_shared_assets.sql`, through the Supabase migration workflow. Keep the
+   `player-photos` Storage bucket private.
 4. Copy `public/cloud-config.js` per deployment and set:
 
 ```js
@@ -40,8 +41,8 @@ revoked; only the `authenticated` role receives explicit grants.
 At startup `AuthService` restores the persistent session. Private routes redirect to `/login` when
 it is absent. Once authenticated, `CloudFoundationService` performs a minimal RLS-protected health
 check and the offline sync service pushes its durable outbox before pulling the authorized snapshot.
-Repository tokens select local-first adapters in cloud mode. Strategies remain local until their
-cloud model is introduced.
+Repository tokens select local-first adapters in cloud mode. Strategies and photos use the
+same Team boundary and durable sync queue; see [Team data ownership](team-data-ownership.md).
 
 ## Manual acceptance check
 

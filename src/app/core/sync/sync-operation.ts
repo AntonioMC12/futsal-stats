@@ -3,6 +3,8 @@ import { MatchEvent } from '../../shared/models/match-event';
 import { Player } from '../../shared/models/player';
 import { PlayerProfile } from '../../shared/models/player-profile';
 import { Team } from '../../shared/models/team';
+import { Strategy } from '../../features/strategies/domain/strategy';
+import { PlayerPhotoRef } from '../../shared/models/player-profile';
 
 export type SyncOperation =
   | { kind: 'team-upsert'; teamId: string; entityId: string; team: Team }
@@ -23,7 +25,11 @@ export type SyncOperation =
       match: Match;
       event: MatchEvent;
     }
-  | { kind: 'match-delete'; teamId: string; entityId: string };
+  | { kind: 'match-delete'; teamId: string; entityId: string }
+  | { kind: 'strategy-upsert'; teamId: string; entityId: string; strategy: Strategy }
+  | { kind: 'strategy-delete'; teamId: string; entityId: string }
+  | { kind: 'photo-upload'; teamId: string; entityId: string; ref: PlayerPhotoRef }
+  | { kind: 'photo-delete'; teamId: string; entityId: string; ref: PlayerPhotoRef };
 
 export type SyncQueueStatus = 'pending' | 'failed';
 
@@ -61,6 +67,12 @@ export function syncDedupeKey(operation: SyncOperation): string {
       return `match-events:${operation.entityId}`;
     case 'match-event-update':
       return `match-event-update:${operation.event.id}`;
+    case 'strategy-upsert':
+    case 'strategy-delete':
+      return `strategy:${operation.entityId}`;
+    case 'photo-upload':
+    case 'photo-delete':
+      return `photo:${operation.ref.storageKey}`;
   }
 }
 
@@ -92,5 +104,11 @@ export function operationLabel(operation: SyncOperation): string {
       return 'Corrección disciplinaria';
     case 'match-delete':
       return 'Eliminación de partido';
+    case 'strategy-upsert':
+    case 'strategy-delete':
+      return 'Estrategia';
+    case 'photo-upload':
+    case 'photo-delete':
+      return 'Foto de jugador';
   }
 }

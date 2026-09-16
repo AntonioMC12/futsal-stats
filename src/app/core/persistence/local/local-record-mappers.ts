@@ -18,11 +18,20 @@ export function toLocalTeamRecord(team: Team, previous?: LocalTeamRecord): Local
     deletedAt: previous?.deletedAt ?? null,
     revision: nextRevision(previous),
     syncStatus: LOCAL_ONLY_SYNC_STATUS,
+    accessRevoked: false,
+    everSynced: previous?.everSynced ?? false,
   };
 }
 
 export function fromLocalTeamRecord(record: LocalTeamRecord): Team {
-  const { deletedAt: _, revision: __, syncStatus: ___, ...team } = record;
+  const {
+    deletedAt: _,
+    revision: __,
+    syncStatus: ___,
+    accessRevoked: ____,
+    everSynced: _____,
+    ...team
+  } = record;
   return team;
 }
 

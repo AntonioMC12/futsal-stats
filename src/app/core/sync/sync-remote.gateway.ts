@@ -9,6 +9,12 @@ import { SupabaseMatchRepository } from '../persistence/cloud/supabase-match.rep
 import { SupabasePlayerProfileRepository } from '../persistence/cloud/supabase-player-profile.repository';
 import { SupabasePlayerRepository } from '../persistence/cloud/supabase-player.repository';
 import { SupabaseTeamRepository } from '../persistence/cloud/supabase-team.repository';
+import {
+  SupabaseStrategyRepository,
+  CloudStrategyRecord,
+} from '../persistence/cloud/supabase-strategy.repository';
+import { SupabasePlayerPhotoRepository } from '../persistence/cloud/supabase-player-photo.repository';
+import { FutsalStatsDb } from '../persistence/local/futsal-stats.db';
 import { SyncOperation } from './sync-operation';
 
 export interface RemoteSyncSnapshot {
@@ -17,6 +23,7 @@ export interface RemoteSyncSnapshot {
   profiles: readonly PlayerProfile[];
   matches: readonly Match[];
   events: readonly MatchEvent[];
+  strategies: readonly CloudStrategyRecord[];
 }
 
 export class PermanentSyncError extends Error {}
@@ -28,6 +35,9 @@ export class SyncRemoteGateway {
   private readonly profiles = inject(SupabasePlayerProfileRepository);
   private readonly matches = inject(SupabaseMatchRepository);
   private readonly events = inject(SupabaseMatchEventRepository);
+  private readonly strategies = inject(SupabaseStrategyRepository);
+  private readonly photos = inject(SupabasePlayerPhotoRepository);
+  private readonly db = inject(FutsalStatsDb);
 
   async push(operation: SyncOperation): Promise<void> {
     switch (operation.kind) {
@@ -38,6 +48,18 @@ export class SyncRemoteGateway {
         await this.players.put(operation.player);
         return;
       case 'player-profile-upsert':
+        if (operation.profile.photoRef) {
+          const record = await this.db.playerPhotos.get(operation.profile.photoRef.storageKey);
+          if (
+            record?.syncStatus === 'pending' &&
+            record.updatedAt === operation.profile.photoRef.updatedAt
+          ) {
+            await this.photos.upload(
+              operation.profile.photoRef,
+              new Blob([record.data], { type: record.mimeType }),
+            );
+          }
+        }
         await this.profiles.put(operation.profile);
         return;
       case 'match-upsert': {
@@ -61,6 +83,23 @@ export class SyncRemoteGateway {
         return;
       case 'match-delete':
         await this.matches.delete(operation.entityId);
+        return;
+      case 'strategy-upsert':
+        await this.strategies.save(operation.strategy);
+        return;
+      case 'strategy-delete':
+        await this.strategies.delete(operation.entityId);
+        return;
+      case 'photo-upload': {
+        const record = await this.db.playerPhotos.get(operation.ref.storageKey);
+        if (!record || record.updatedAt !== operation.ref.updatedAt)
+          throw new PermanentSyncError('La foto local no está disponible para sincronizar.');
+        await this.photos.upload(operation.ref, new Blob([record.data], { type: record.mimeType }));
+        return;
+      }
+      case 'photo-delete':
+        await this.photos.delete(operation.ref);
+        return;
     }
   }
 
@@ -70,6 +109,9 @@ export class SyncRemoteGateway {
     const profileGroups = await Promise.all(teams.map((team) => this.profiles.listByTeam(team.id)));
     const matchGroups = await Promise.all(teams.map((team) => this.matches.listByTeam(team.id)));
     const matches = matchGroups.flat();
+    const strategyGroups = await Promise.all(
+      teams.map((team) => this.strategies.listIncludingDeleted(team.id)),
+    );
     const eventGroups = await Promise.all(
       matches.map((match) => this.events.listByMatch(match.id)),
     );
@@ -79,6 +121,7 @@ export class SyncRemoteGateway {
       profiles: profileGroups.flat(),
       matches,
       events: eventGroups.flat(),
+      strategies: strategyGroups.flat(),
     };
   }
 }

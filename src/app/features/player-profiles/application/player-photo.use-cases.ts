@@ -32,9 +32,9 @@ export class DeletePlayerPhotoUseCase {
   private readonly profiles = inject(PLAYER_PROFILE_REPOSITORY);
 
   async execute(profile: PlayerProfile): Promise<PlayerProfile> {
-    if (profile.photoRef) await this.photos.delete(profile.photoRef);
     const updated = { ...profile, photoRef: undefined, photoUrl: undefined, updatedAt: Date.now() };
     await this.profiles.put(updated);
+    if (profile.photoRef) await this.photos.delete(profile.photoRef);
     return updated;
   }
 }

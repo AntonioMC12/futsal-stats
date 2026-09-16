@@ -13,6 +13,8 @@ import { enqueueSyncOperation, retryDelayMs } from './sync-queue';
 import { operationLabel, SyncFailure, SyncOperation, SyncQueueRecord } from './sync-operation';
 import { NetworkStatusService } from './network-status.service';
 import { PermanentSyncError, RemoteSyncSnapshot, SyncRemoteGateway } from './sync-remote.gateway';
+import { RAVI_STRATEGY } from '../../features/strategies/data/ravi.strategy';
+import { LocalStrategyRecord } from '../persistence/local/local-records';
 
 export type OfflineSyncState = 'disabled' | 'idle' | 'offline' | 'syncing' | 'error';
 
@@ -35,6 +37,7 @@ export class OfflineSyncService {
   readonly failures = signal<readonly SyncFailure[]>([]);
   readonly error = signal<string | null>(null);
   readonly lastSyncedAt = signal<number | null>(null);
+  readonly revokedTeamIds = signal<readonly string[]>([]);
   readonly online = this.network.online.asReadonly();
   readonly hasProblems = computed(() => this.failedCount() > 0);
   readonly statusLabel = computed(() => {
@@ -91,6 +94,8 @@ export class OfflineSyncService {
         this.db.playerProfiles,
         this.db.matches,
         this.db.events,
+        this.db.strategies,
+        this.db.playerPhotos,
       ],
       async () => {
         const failed = await this.db.syncQueue.where('status').equals('failed').toArray();
@@ -140,17 +145,13 @@ export class OfflineSyncService {
     }
 
     await this.refreshSummary();
-    if (!stoppedByFailure && this.pendingCount() === 0 && this.failedCount() === 0) {
-      try {
-        await this.cacheRemoteSnapshot(await this.remote.pull());
-        this.lastSyncedAt.set(Date.now());
-        this.state.set('idle');
-      } catch (error) {
-        this.error.set(errorMessage(error));
-        this.state.set('error');
-      }
-    } else {
-      this.state.set(this.failedCount() > 0 ? 'error' : this.online() ? 'idle' : 'offline');
+    try {
+      await this.cacheRemoteSnapshot(await this.remote.pull());
+      this.lastSyncedAt.set(Date.now());
+      this.state.set(stoppedByFailure || this.failedCount() > 0 ? 'error' : 'idle');
+    } catch (error) {
+      this.error.set(errorMessage(error));
+      this.state.set('error');
     }
     await this.scheduleNextAttempt();
   }
@@ -174,6 +175,8 @@ export class OfflineSyncService {
         this.db.playerProfiles,
         this.db.matches,
         this.db.events,
+        this.db.strategies,
+        this.db.playerPhotos,
       ],
       async () => {
         const current = await this.db.syncQueue.get(item.id);
@@ -199,6 +202,8 @@ export class OfflineSyncService {
         this.db.playerProfiles,
         this.db.matches,
         this.db.events,
+        this.db.strategies,
+        this.db.playerPhotos,
       ],
       async () => {
         const current = await this.db.syncQueue.get(item.id);
@@ -221,7 +226,10 @@ export class OfflineSyncService {
   ): Promise<void> {
     switch (operation.kind) {
       case 'team-upsert':
-        await this.db.teams.update(operation.entityId, { syncStatus: status });
+        await this.db.teams.update(operation.entityId, {
+          syncStatus: status,
+          ...(status === 'synced' ? { everSynced: true } : {}),
+        });
         return;
       case 'player-upsert':
         await this.db.players.update(operation.entityId, { syncStatus: status });
@@ -244,6 +252,15 @@ export class OfflineSyncService {
         return;
       case 'match-delete':
         return;
+      case 'strategy-upsert':
+      case 'strategy-delete':
+        await this.db.strategies.update(operation.entityId, { syncStatus: status });
+        return;
+      case 'photo-upload':
+        await this.db.playerPhotos.update(operation.ref.storageKey, { syncStatus: status });
+        return;
+      case 'photo-delete':
+        return;
     }
   }
 
@@ -256,6 +273,8 @@ export class OfflineSyncService {
         this.db.playerProfiles,
         this.db.matches,
         this.db.events,
+        this.db.strategies,
+        this.db.playerPhotos,
         this.db.syncQueue,
       ],
       async () => {
@@ -346,24 +365,73 @@ export class OfflineSyncService {
             });
           }
         }
+        for (const record of await this.db.strategies.toArray()) {
+          const local = record as LocalStrategyRecord;
+          if ((local.id === RAVI_STRATEGY.id && local.updatedAt === RAVI_STRATEGY.updatedAt)
+            || local.syncStatus === 'synced') continue;
+          if (existingKeys.has(`strategy:${local.id}`)) continue;
+          await enqueueSyncOperation(
+            this.db.syncQueue,
+            local.deletedAt
+              ? { kind: 'strategy-delete', teamId: local.teamId, entityId: local.id }
+              : {
+                  kind: 'strategy-upsert',
+                  teamId: local.teamId,
+                  entityId: local.id,
+                  strategy: local,
+                },
+          );
+        }
+        for (const photo of await this.db.playerPhotos.toArray()) {
+          const profile = await this.db.playerProfiles.get(photo.playerId);
+          if (profile?.photoRef?.storageKey !== photo.storageKey
+            || profile.photoRef.updatedAt !== photo.updatedAt) continue;
+          if (photo.syncStatus === 'synced' || existingKeys.has(`photo:${photo.storageKey}`))
+            continue;
+          await enqueueSyncOperation(this.db.syncQueue, {
+            kind: 'photo-upload',
+            teamId: photo.teamId,
+            entityId: photo.playerId,
+            ref: {
+              storageKey: photo.storageKey,
+              mimeType: photo.mimeType,
+              updatedAt: photo.updatedAt,
+            },
+          });
+        }
       },
     );
   }
 
   private async cacheRemoteSnapshot(snapshot: RemoteSyncSnapshot): Promise<void> {
     const now = Date.now();
+    const authorizedIds = new Set(snapshot.teams.map((team) => team.id));
+    const revoked: string[] = [];
     await this.db.transaction(
       'rw',
-      this.db.teams,
-      this.db.players,
-      this.db.playerProfiles,
-      this.db.matches,
-      this.db.events,
+      [
+        this.db.teams,
+        this.db.players,
+        this.db.playerProfiles,
+        this.db.matches,
+        this.db.events,
+        this.db.strategies,
+      ],
       async () => {
+        for (const local of await this.db.teams.toArray()) {
+          if (authorizedIds.has(local.id) || local.accessRevoked) continue;
+          if (local.syncStatus !== 'synced' && !local.everSynced) continue;
+          await this.db.teams.update(local.id, { accessRevoked: true });
+          revoked.push(local.id);
+        }
         for (const team of snapshot.teams) {
           const local = await this.db.teams.get(team.id);
           if (local && local.syncStatus !== 'synced') continue;
-          await this.db.teams.put({ ...toLocalTeamRecord(team, local), syncStatus: 'synced' });
+          await this.db.teams.put({
+            ...toLocalTeamRecord(team, local),
+            syncStatus: 'synced',
+            everSynced: true,
+          });
         }
         for (const player of snapshot.players) {
           const local = await this.db.players.get(player.id);
@@ -391,8 +459,19 @@ export class OfflineSyncService {
           if (local && local.syncStatus !== 'synced') continue;
           await this.db.events.put({ ...toLocalMatchEventRecord(event), syncStatus: 'synced' });
         }
+        for (const strategy of snapshot.strategies) {
+          const local = (await this.db.strategies.get(strategy.id)) as
+            LocalStrategyRecord | undefined;
+          if (
+            !strategy.deletedAt &&
+            (local?.syncStatus === 'pending' || local?.syncStatus === 'failed')
+          )
+            continue;
+          await this.db.strategies.put({ ...strategy, syncStatus: 'synced' });
+        }
       },
     );
+    if (revoked.length) this.revokedTeamIds.set(revoked);
   }
 
   private async refreshSummary(): Promise<void> {

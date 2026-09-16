@@ -8,7 +8,9 @@
         {{ context.teams().find((t) => t.id === context.teamId())?.name }}.
       </p>
     </div>
-    <button class="btn btn--primary" type="button" (click)="create()">+ Nueva jugada</button>
+    @if (context.canWrite()) {
+      <button class="btn btn--primary" type="button" (click)="create()">+ Nueva jugada</button>
+    }
   </header>
   <div class="library-toolbar" role="search">
     <label class="search-field"
@@ -43,9 +45,11 @@
     <div class="library-state">
       <h2>Todavía no hay jugadas guardadas</h2>
       <p>Diseña tu primera estrategia y aparecerá aquí.</p>
-      <button class="btn btn--primary" type="button" (click)="create()">
-        Crear primera jugada
-      </button>
+      @if (context.canWrite()) {
+        <button class="btn btn--primary" type="button" (click)="create()">
+          Crear primera jugada
+        </button>
+      }
     </div>
   } @else if (strategies().length === 0) {
     <div class="library-state">
@@ -58,6 +62,7 @@
   } @else {
     <app-strategy-list
       [strategies]="strategies()"
+      [canEdit]="context.canWrite()"
       (strategyPlayed)="play($event)"
       (strategyEdited)="edit($event)"
     />

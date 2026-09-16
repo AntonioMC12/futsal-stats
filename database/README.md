@@ -1,7 +1,7 @@
 # Database migrations
 
-Las migraciones se ejecutan en orden lexicográfico sobre una base PostgreSQL vacía. La aplicación
-Angular todavía no las ejecuta ni se conecta a un backend.
+Las migraciones se ejecutan en orden lexicográfico mediante el flujo de migraciones de Supabase.
+Angular no las ejecuta; en modo cloud utiliza el proyecto configurado por despliegue.
 
 - `0001_initial_cloud_model.sql`: modelo relacional inicial de equipos, jugadores, partidos,
   convocatorias y eventos.
@@ -11,10 +11,12 @@ Angular todavía no las ejecuta ni se conecta a un backend.
   actualización del snapshot cloud.
 - `0005_player_profiles.sql`: perfiles deportivos persistentes por jugador, RLS e inserción o
   actualización autorizada mediante RPC.
+- `0006_match_csv_import.sql`: importación CSV cloud.
+- `0007_current_team_role.sql`: consulta del rol actual del Team.
+- `0008_passwordless_identity.sql`: identidad recuperable por email.
+- `0009_team_shared_assets.sql`: estrategias Team y bucket privado de fotos con RLS.
 
-La migración está envuelta en una transacción. Ante un fallo, PostgreSQL revierte el bloque
-completo. Como todavía no existe información cloud productiva, el rollback operativo consiste en
-descartar la base incompleta y volver a ejecutar las migraciones desde una base vacía. Futuras
-migraciones con datos deberán incorporar scripts de avance/recuperación específicos; no se
-recomienda editar una migración ya aplicada. La migración `0004` es aditiva; ante una reversión del
-cliente sus columnas pueden permanecer sin afectar a versiones anteriores.
+Cada migración se aplica en una transacción. Ante un fallo, PostgreSQL revierte ese bloque.
+No se debe descartar una base con datos para recuperar una migración fallida ni editar una
+migración ya aplicada; preparar una migración correctiva y una copia de seguridad. La migración
+`0009` añade tablas y policies sin transformar partidos o perfiles existentes.

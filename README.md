@@ -545,6 +545,7 @@ La aplicación principal no debe depender de esta funcionalidad para registrar u
 - Dexie sobre IndexedDB para persistencia.
 - Supabase/PostgreSQL opcional, con código OTP por email y RLS por equipo.
 - Outbox durable y sincronización offline-first con reintentos.
+- Estrategias y fotos de jugador compartidas por Team en modo cloud, con caché local y permisos por membership.
 - Angular Service Worker para capacidades PWA.
 - SCSS responsive orientado a móvil y tablet.
 - Vitest y Angular Testing Utilities.

@@ -9,6 +9,7 @@ import { TacticalBoard } from '../tactical-board/tactical-board';
 })
 export class StrategyCard {
   readonly strategy = input.required<Strategy>();
+  readonly canEdit = input(true);
   readonly played = output<string>();
   readonly edited = output<string>();
   protected date(value: string): string {

@@ -15,13 +15,15 @@ export const teamWorkspaceGuard: CanActivateFn = async () => {
 
 export const matchTeamWorkspaceGuard: CanActivateFn = async (route) => {
   const workspace = inject(TeamWorkspaceContext);
+  const router = inject(Router);
   const matches = inject(MATCH_REPOSITORY);
   await workspace.initialize();
   const matchId = route.paramMap.get('matchId');
   if (!matchId) return true;
   try {
     const match = await matches.get(matchId);
-    if (match) await workspace.selectTeam(match.teamId);
+    if (match && !(await workspace.selectTeam(match.teamId)))
+      return router.createUrlTree(['/teams']);
   } catch {
     // The live screen owns its existing missing/load-error handling.
   }
@@ -30,13 +32,15 @@ export const matchTeamWorkspaceGuard: CanActivateFn = async (route) => {
 
 export const playerTeamWorkspaceGuard: CanActivateFn = async (route) => {
   const workspace = inject(TeamWorkspaceContext);
+  const router = inject(Router);
   const players = inject(PLAYER_REPOSITORY);
   await workspace.initialize();
   const playerId = route.paramMap.get('playerId');
   if (!playerId) return true;
   try {
     const player = (await players.listByIds([playerId]))[0];
-    if (player) await workspace.selectTeam(player.teamId);
+    if (player && !(await workspace.selectTeam(player.teamId)))
+      return router.createUrlTree(['/teams']);
   } catch {
     // The profile screen owns its missing/load-error handling.
   }

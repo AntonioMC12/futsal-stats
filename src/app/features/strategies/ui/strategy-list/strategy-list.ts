@@ -10,6 +10,7 @@ import { StrategyCard } from '../strategy-card/strategy-card';
 })
 export class StrategyList {
   readonly strategies = input.required<readonly Strategy[]>();
+  readonly canEdit = input(true);
   readonly selectedStrategyId = input<string | null>(null);
   readonly strategySelected = output<string>();
   readonly strategyPlayed = output<string>();
