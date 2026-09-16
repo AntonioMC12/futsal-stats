@@ -15,6 +15,7 @@ import { NetworkStatusService } from './network-status.service';
 import { PermanentSyncError, RemoteSyncSnapshot, SyncRemoteGateway } from './sync-remote.gateway';
 import { RAVI_STRATEGY } from '../../features/strategies/data/ravi.strategy';
 import { LocalStrategyRecord } from '../persistence/local/local-records';
+import { AuthService } from '../auth/auth.service';
 
 export type OfflineSyncState = 'disabled' | 'idle' | 'offline' | 'syncing' | 'error';
 
@@ -27,7 +28,9 @@ export class OfflineSyncService {
   private readonly db = inject(FutsalStatsDb);
   private readonly injector = inject(Injector);
   private readonly network = inject(NetworkStatusService);
+  private readonly auth = inject(AuthService);
   private running: Promise<void> | null = null;
+  private isolatedOrphanId: string | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly ready = signal(false);
 
@@ -62,6 +65,7 @@ export class OfflineSyncService {
 
   async initialize(): Promise<void> {
     if (this.config.mode !== 'cloud') return;
+    await this.isolateOrphanedIdentity();
     await this.recoverUnqueuedChanges();
     await this.refreshSummary();
     this.ready.set(true);
@@ -86,6 +90,14 @@ export class OfflineSyncService {
   async refreshAfterAccessChange(): Promise<void> {
     if (this.running) await this.running;
     await this.syncNow();
+    if (this.pendingCount() > 0 && this.online()) await this.syncNow();
+  }
+
+  async isolateOrphanedIdentity(): Promise<void> {
+    const orphanedId = this.auth.orphanedUserId();
+    if (!orphanedId || this.isolatedOrphanId === orphanedId) return;
+    await this.db.teams.toCollection().modify({ accessRevoked: true });
+    this.isolatedOrphanId = orphanedId;
   }
 
   async retryFailed(): Promise<void> {
@@ -122,6 +134,15 @@ export class OfflineSyncService {
 
   private async runSync(): Promise<void> {
     this.clearRetryTimer();
+    if (!this.auth.remotelyVerified()) {
+      try {
+        await this.auth.ensureValidDeviceIdentity();
+      } catch {
+        this.state.set('offline');
+        return;
+      }
+    }
+    await this.isolateOrphanedIdentity();
     await this.refreshSummary();
     if (!this.online()) {
       this.state.set('offline');
@@ -136,7 +157,7 @@ export class OfflineSyncService {
     this.state.set('syncing');
     this.error.set(null);
     let stoppedByFailure = false;
-    while (this.online()) {
+    while (this.online() && !this.auth.reenrollmentRequired()) {
       const item = await this.nextReadyItem();
       if (!item) break;
       try {
@@ -163,11 +184,15 @@ export class OfflineSyncService {
 
   private async nextReadyItem(): Promise<SyncQueueRecord | undefined> {
     const now = Date.now();
-    return this.db.syncQueue
+    const items = await this.db.syncQueue
       .where('[status+nextAttemptAt]')
       .between(['pending', 0], ['pending', now])
-      .sortBy('createdAt')
-      .then((items) => items[0]);
+      .sortBy('createdAt');
+    for (const item of items) {
+      const team = await this.db.teams.get(item.operation.teamId);
+      if (team && !team.accessRevoked) return item;
+    }
+    return undefined;
   }
 
   private async complete(item: SyncQueueRecord): Promise<void> {
@@ -437,7 +462,10 @@ export class OfflineSyncService {
         }
         for (const team of snapshot.teams) {
           const local = await this.db.teams.get(team.id);
-          if (local && local.syncStatus !== 'synced') continue;
+          if (local && local.syncStatus !== 'synced') {
+            await this.db.teams.update(team.id, { accessRevoked: false });
+            continue;
+          }
           await this.db.teams.put({
             ...toLocalTeamRecord(team, local),
             syncStatus: 'synced',
@@ -506,8 +534,16 @@ export class OfflineSyncService {
     this.clearRetryTimer();
     if (!this.online() || this.failedCount() > 0) return;
     const next = await this.db.syncQueue.where('status').equals('pending').sortBy('nextAttemptAt');
-    if (!next[0]) return;
-    const delay = Math.max(0, next[0].nextAttemptAt - Date.now());
+    let ready: SyncQueueRecord | undefined;
+    for (const item of next) {
+      const team = await this.db.teams.get(item.operation.teamId);
+      if (team && !team.accessRevoked) {
+        ready = item;
+        break;
+      }
+    }
+    if (!ready) return;
+    const delay = Math.max(0, ready.nextAttemptAt - Date.now());
     this.retryTimer = setTimeout(() => void this.syncNow(), delay);
   }
 

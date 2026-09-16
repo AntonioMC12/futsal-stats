@@ -2,18 +2,25 @@ import { inject, Injectable } from '@angular/core';
 import { SupabaseClientService } from '../cloud/supabase-client.service';
 import { teamToCloud } from '../persistence/cloud/cloud-record-mappers';
 import { Team } from '../../shared/models/team';
+import { AuthService } from '../auth/auth.service';
+import { OfflineSyncService } from '../sync/offline-sync.service';
 
 @Injectable({ providedIn: 'root' })
 export class TeamRecoveryService {
   private readonly client = inject(SupabaseClientService);
+  private readonly auth = inject(AuthService);
+  private readonly sync = inject(OfflineSyncService, { optional: true });
 
   async createTeam(team: Team): Promise<string> {
+    await this.auth.ensureValidDeviceIdentity();
+    await this.sync?.isolateOrphanedIdentity();
     const { data, error } = await this.client.requireClient().rpc('create_team_with_recovery_key', {
       p_team: teamToCloud(team),
     });
     if (error) throw error;
     const key = (data as { recovery_key: string }[] | null)?.[0]?.recovery_key;
     if (!key) throw new Error('El servidor no ha devuelto la clave de recuperación.');
+    this.auth.markAccessRestored();
     return formatRecoveryKey(key);
   }
 
