@@ -21,7 +21,23 @@ export class UploadPlayerPhotoUseCase {
       validation.value,
     );
     const updated = { ...profile, photoRef, photoUrl: undefined, updatedAt: Date.now() };
-    await this.profiles.put(updated);
+    try {
+      await this.profiles.put(updated);
+    } catch (error) {
+      try {
+        await this.photos.delete(photoRef);
+      } catch (cleanupError) {
+        console.warn('player_photo_cleanup_failed', cleanupError);
+      }
+      throw error;
+    }
+    if (profile.photoRef && profile.photoRef.storageKey !== photoRef.storageKey) {
+      try {
+        await this.photos.delete(profile.photoRef);
+      } catch (cleanupError) {
+        console.warn('previous_player_photo_cleanup_failed', cleanupError);
+      }
+    }
     return updated;
   }
 }

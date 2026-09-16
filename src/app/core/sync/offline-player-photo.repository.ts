@@ -7,6 +7,7 @@ import { PlayerPhotoRepository } from '../persistence/ports/player-photo.reposit
 import { TeamAccessService } from '../team-workspace/team-access.service';
 import { OfflineSyncService } from './offline-sync.service';
 import { enqueueSyncOperation } from './sync-queue';
+import { parsePlayerPhotoPath } from '../persistence/player-photo-path';
 
 @Injectable()
 export class OfflinePlayerPhotoRepository implements PlayerPhotoRepository {
@@ -58,9 +59,9 @@ export class OfflinePlayerPhotoRepository implements PlayerPhotoRepository {
   }
 
   async delete(ref: PlayerPhotoRef): Promise<void> {
-    const parsed = /^teams\/([^/]+)\/players\/([^/]+)\/profile$/.exec(ref.storageKey);
+    const parsed = parsePlayerPhotoPath(ref.storageKey);
     if (!parsed) throw new Error('Referencia de foto inválida.');
-    const [, teamId, playerId] = parsed;
+    const { teamId, playerId } = parsed;
     await this.access.assertCanWrite(teamId);
     await enqueueSyncOperation(this.db.syncQueue, {
       kind: 'photo-delete',
@@ -73,7 +74,7 @@ export class OfflinePlayerPhotoRepository implements PlayerPhotoRepository {
   }
 
   private async cache(ref: PlayerPhotoRef, blob: Blob): Promise<void> {
-    const parsed = /^teams\/([^/]+)\/players\/([^/]+)\/profile$/.exec(ref.storageKey);
+    const parsed = parsePlayerPhotoPath(ref.storageKey);
     if (!parsed) return;
     const existing = await this.db.playerPhotos.get(ref.storageKey);
     if (
@@ -85,8 +86,8 @@ export class OfflinePlayerPhotoRepository implements PlayerPhotoRepository {
       return;
     await this.db.playerPhotos.put({
       storageKey: ref.storageKey,
-      teamId: parsed[1],
-      playerId: parsed[2],
+      teamId: parsed.teamId,
+      playerId: parsed.playerId,
       mimeType: ref.mimeType,
       data: await blob.arrayBuffer(),
       updatedAt: ref.updatedAt,

@@ -2,6 +2,8 @@ import { inject, Injectable } from '@angular/core';
 import { PlayerPhotoRef } from '../../../shared/models/player-profile';
 import { PlayerPhotoRepository } from '../ports/player-photo.repository';
 import { SupabaseClientService } from '../../cloud/supabase-client.service';
+import { buildPlayerPhotoPath, parsePlayerPhotoPath } from '../player-photo-path';
+import { createId } from '../../utils/id';
 
 const BUCKET = 'player-photos';
 
@@ -16,7 +18,7 @@ export class SupabasePlayerPhotoRepository implements PlayerPhotoRepository {
     mimeType: PlayerPhotoRef['mimeType'],
   ): Promise<PlayerPhotoRef> {
     const ref = {
-      storageKey: `teams/${teamId}/players/${playerId}/profile`,
+      storageKey: buildPlayerPhotoPath(teamId, playerId, createId()),
       mimeType,
       updatedAt: Date.now(),
     };
@@ -25,6 +27,7 @@ export class SupabasePlayerPhotoRepository implements PlayerPhotoRepository {
   }
 
   async upload(ref: PlayerPhotoRef, blob: Blob): Promise<void> {
+    if (!parsePlayerPhotoPath(ref.storageKey)) throw new Error('Referencia de foto inválida.');
     const { error } = await this.bucket.upload(ref.storageKey, blob, {
       contentType: ref.mimeType,
       upsert: true,
@@ -34,6 +37,7 @@ export class SupabasePlayerPhotoRepository implements PlayerPhotoRepository {
   }
 
   async get(ref: PlayerPhotoRef): Promise<Blob | undefined> {
+    if (!parsePlayerPhotoPath(ref.storageKey)) throw new Error('Referencia de foto inválida.');
     const { data, error } = await this.bucket.download(ref.storageKey);
     if (error) throw error;
     return data;
@@ -47,6 +51,7 @@ export class SupabasePlayerPhotoRepository implements PlayerPhotoRepository {
   }
 
   async delete(ref: PlayerPhotoRef): Promise<void> {
+    if (!parsePlayerPhotoPath(ref.storageKey)) throw new Error('Referencia de foto inválida.');
     const { error } = await this.bucket.remove([ref.storageKey]);
     if (error) throw error;
   }

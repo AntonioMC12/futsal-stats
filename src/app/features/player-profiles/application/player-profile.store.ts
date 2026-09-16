@@ -153,7 +153,10 @@ export class PlayerProfileStore {
       this.notice.set('Foto guardada.');
       return true;
     } catch (error) {
-      this.error.set(error instanceof Error ? error.message : 'No se ha podido guardar la foto.');
+      console.warn('player_photo_save_failed', error);
+      this.error.set(
+        'No se ha podido guardar la fotografía del jugador. La imagen anterior se mantiene.',
+      );
       return false;
     } finally {
       this.saving.set(false);
