@@ -5,6 +5,7 @@ import { PlayerProfile } from '../../shared/models/player-profile';
 import { Team } from '../../shared/models/team';
 import { Strategy } from '../../features/strategies/domain/strategy';
 import { PlayerPhotoRef } from '../../shared/models/player-profile';
+import { FinalMatchSnapshot } from './match-integrity.model';
 
 export type SyncOperation =
   | { kind: 'team-upsert'; teamId: string; entityId: string; team: Team }
@@ -26,6 +27,12 @@ export type SyncOperation =
       event: MatchEvent;
     }
   | { kind: 'match-delete'; teamId: string; entityId: string }
+  | {
+      kind: 'match-integrity-manifest';
+      teamId: string;
+      entityId: string;
+      snapshot: FinalMatchSnapshot;
+    }
   | { kind: 'strategy-upsert'; teamId: string; entityId: string; strategy: Strategy }
   | { kind: 'strategy-delete'; teamId: string; entityId: string }
   | { kind: 'photo-upload'; teamId: string; entityId: string; ref: PlayerPhotoRef }
@@ -65,6 +72,8 @@ export function syncDedupeKey(operation: SyncOperation): string {
       return `match:${operation.entityId}`;
     case 'match-events-commit':
       return `match-events:${operation.entityId}`;
+    case 'match-integrity-manifest':
+      return `match-integrity:${operation.entityId}`;
     case 'match-event-update':
       return `match-event-update:${operation.event.id}`;
     case 'strategy-upsert':
@@ -102,6 +111,8 @@ export function operationLabel(operation: SyncOperation): string {
       return `${operation.events.length} acción${operation.events.length === 1 ? '' : 'es'} de partido`;
     case 'match-event-update':
       return 'Corrección disciplinaria';
+    case 'match-integrity-manifest':
+      return 'Manifiesto de integridad';
     case 'match-delete':
       return 'Eliminación de partido';
     case 'strategy-upsert':

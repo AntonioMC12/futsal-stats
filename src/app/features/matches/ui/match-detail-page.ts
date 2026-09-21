@@ -47,4 +47,9 @@ export class MatchDetailPage {
 
   protected readonly matchSeason = matchSeason;
   protected readonly matchCompetition = matchCompetition;
+  protected formatDateTime(value: number): string {
+    return new Intl.DateTimeFormat('es-ES', { dateStyle: 'short', timeStyle: 'short' }).format(
+      value,
+    );
+  }
 }

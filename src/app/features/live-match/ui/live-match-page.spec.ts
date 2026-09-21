@@ -749,7 +749,7 @@ describe('LiveMatchPage', () => {
 
     expect(store.match()?.status).toBe('finished');
     expect(store.clockRunning()).toBe(false);
-    expect(navigate).toHaveBeenCalledWith(['/matches']);
+    expect(navigate).toHaveBeenCalledWith(['/matches', 'match-1']);
     expect(fixture.nativeElement.querySelector('.clock-fab')).toBeNull();
     expect(fixture.nativeElement.querySelector('.match-action')).toBeNull();
     expect(fixture.nativeElement.querySelector('.primary-actions')?.textContent).toContain(

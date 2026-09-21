@@ -11,6 +11,7 @@ import {
   toLocalPlayerRecord,
 } from './local-record-mappers';
 import { assertEventReferences, assertMatchReferences } from './local-reference-validation';
+import { saveFinalMatchSnapshot } from '../../sync/final-match-snapshot';
 
 @Injectable()
 export class DexieMatchEventRepository implements MatchEventRepository {
@@ -30,6 +31,7 @@ export class DexieMatchEventRepository implements MatchEventRepository {
       this.db.players,
       this.db.matches,
       this.db.events,
+      this.db.matchIntegrity,
       async () => {
         await assertMatchReferences(this.db, match);
         await assertEventReferences(this.db, match, events);
@@ -38,24 +40,32 @@ export class DexieMatchEventRepository implements MatchEventRepository {
         }
         const previous = await this.db.matches.get(match.id);
         await this.db.matches.put(toLocalMatchRecord(match, previous));
+        await saveFinalMatchSnapshot(this.db, match);
       },
     );
   }
 
   async updateEvent(match: Match, event: MatchEvent): Promise<void> {
-    await this.db.transaction('rw', this.db.matches, this.db.events, async () => {
-      await assertEventReferences(this.db, match, [event]);
-      const previous = await this.db.events.get(event.id);
-      if (!previous || previous.matchId !== match.id) throw new Error('Match event not found');
-      await this.db.events.put({
-        ...toLocalMatchEventRecord(event),
-        createdAt: previous.createdAt,
-        updatedAt: Date.now(),
-        revision: previous.revision + 1,
-      });
-      const previousMatch = await this.db.matches.get(match.id);
-      await this.db.matches.put(toLocalMatchRecord(match, previousMatch));
-    });
+    await this.db.transaction(
+      'rw',
+      this.db.matches,
+      this.db.events,
+      this.db.matchIntegrity,
+      async () => {
+        await assertEventReferences(this.db, match, [event]);
+        const previous = await this.db.events.get(event.id);
+        if (!previous || previous.matchId !== match.id) throw new Error('Match event not found');
+        await this.db.events.put({
+          ...toLocalMatchEventRecord(event),
+          createdAt: previous.createdAt,
+          updatedAt: Date.now(),
+          revision: previous.revision + 1,
+        });
+        const previousMatch = await this.db.matches.get(match.id);
+        await this.db.matches.put(toLocalMatchRecord(match, previousMatch));
+        await saveFinalMatchSnapshot(this.db, match);
+      },
+    );
   }
 
   async importMatch(
@@ -69,6 +79,7 @@ export class DexieMatchEventRepository implements MatchEventRepository {
       this.db.players,
       this.db.matches,
       this.db.events,
+      this.db.matchIntegrity,
       async () => {
         if (!(await this.db.teams.get(match.teamId)))
           throw new Error('Import references missing team');
@@ -81,6 +92,7 @@ export class DexieMatchEventRepository implements MatchEventRepository {
         await assertEventReferences(this.db, match, events);
         if (events.length > 0) await this.db.events.bulkAdd(events.map(toLocalMatchEventRecord));
         await this.db.matches.add(toLocalMatchRecord(match));
+        await saveFinalMatchSnapshot(this.db, match);
       },
     );
   }

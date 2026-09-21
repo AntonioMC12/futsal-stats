@@ -57,6 +57,7 @@ describe('OfflineSyncService', () => {
             orphanedUserId,
             reenrollmentRequired,
             remotelyVerified: signal(true),
+            ensureValidDeviceIdentity: vi.fn().mockResolvedValue({}),
           },
         },
         { provide: SyncRemoteGateway, useValue: { push, pull } },
@@ -68,8 +69,9 @@ describe('OfflineSyncService', () => {
   });
 
   afterEach(async () => {
-    db.close();
+    await service.syncNow();
     TestBed.resetTestingModule();
+    db.close();
     await Dexie.delete('futsal-stats');
   });
 
@@ -126,6 +128,25 @@ describe('OfflineSyncService', () => {
     await vi.waitFor(() => expect(service.pendingCount()).toBe(0));
     expect(push).toHaveBeenCalledOnce();
     expect(service.state()).toBe('idle');
+  });
+
+  it('keeps a temporary 401 retryable and sends it after identity recovers', async () => {
+    const team = { id: 'team-1', name: 'Local', shortName: 'LOC', createdAt: 1, updatedAt: 1 };
+    await db.teams.put(toLocalTeamRecord(team));
+    await enqueueSyncOperation(db.syncQueue, {
+      kind: 'team-upsert',
+      teamId: team.id,
+      entityId: team.id,
+      team,
+    });
+    push.mockRejectedValueOnce({ status: 401, message: 'expired' }).mockResolvedValue(undefined);
+    await service.initialize();
+    const item = (await db.syncQueue.toArray())[0]!;
+    expect(item.status).toBe('pending');
+    expect(item.attempts).toBe(1);
+    await db.syncQueue.update(item.id, { nextAttemptAt: Date.now() - 1 });
+    await service.syncNow();
+    expect(await db.syncQueue.count()).toBe(0);
   });
 
   it('migrates a local strategy, then restores its complete sequence on another cache', async () => {

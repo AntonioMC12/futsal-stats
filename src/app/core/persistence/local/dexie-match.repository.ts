@@ -53,10 +53,17 @@ export class DexieMatchRepository implements MatchRepository {
   }
 
   async delete(matchId: string): Promise<void> {
-    await this.db.transaction('rw', this.db.matches, this.db.events, async () => {
-      await this.db.events.where('matchId').equals(matchId).delete();
-      await this.db.matches.delete(matchId);
-    });
+    await this.db.transaction(
+      'rw',
+      this.db.matches,
+      this.db.events,
+      this.db.matchIntegrity,
+      async () => {
+        await this.db.events.where('matchId').equals(matchId).delete();
+        await this.db.matchIntegrity.delete(matchId);
+        await this.db.matches.delete(matchId);
+      },
+    );
   }
 }
 

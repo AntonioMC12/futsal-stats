@@ -16,6 +16,7 @@ import {
 import { SupabasePlayerPhotoRepository } from '../persistence/cloud/supabase-player-photo.repository';
 import { FutsalStatsDb } from '../persistence/local/futsal-stats.db';
 import { SyncOperation } from './sync-operation';
+import { SupabaseClientService } from '../cloud/supabase-client.service';
 
 export interface RemoteSyncSnapshot {
   teams: readonly Team[];
@@ -38,6 +39,7 @@ export class SyncRemoteGateway {
   private readonly strategies = inject(SupabaseStrategyRepository);
   private readonly photos = inject(SupabasePlayerPhotoRepository);
   private readonly db = inject(FutsalStatsDb);
+  private readonly client = inject(SupabaseClientService).requireClient();
 
   async push(operation: SyncOperation): Promise<void> {
     switch (operation.kind) {
@@ -78,6 +80,17 @@ export class SyncRemoteGateway {
       case 'match-events-commit':
         await this.events.commit(operation.match, operation.events);
         return;
+      case 'match-integrity-manifest': {
+        const { error } = await this.client.rpc('publish_match_integrity_manifest', {
+          p_match_id: operation.entityId,
+          p_event_ids: operation.snapshot.expectedEventIds,
+          p_lineup_event_ids: operation.snapshot.expectedLineupEventIds,
+          p_player_ids: operation.snapshot.expectedMatchPlayerIds,
+          p_checksum: operation.snapshot.checksum,
+        });
+        if (error) throw error;
+        return;
+      }
       case 'match-event-update':
         await this.events.updateEvent(operation.match, operation.event);
         return;

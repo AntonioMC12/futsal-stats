@@ -1,5 +1,13 @@
 # Futsal Stats
 
+## Integridad de partidos finalizados
+
+Finalizar guarda el partido y sus eventos en este dispositivo. La sincronización cloud puede quedar pendiente si no hay conexión. El histórico muestra el estado técnico por separado: **verificado** significa que se compararon los IDs reales en Supabase con el manifiesto de cierre; **pendiente** indica trabajo local; **inconsistencia** indica diferencias comprobadas; **no verificable** indica que cloud no respondió; **sin verificar** indica que falta un manifiesto confiable (por ejemplo, un partido anterior a esta función).
+
+En el detalle del partido, **Comprobar integridad** vuelve a consultar cloud y **Reparar sincronización** reencola solo eventos ausentes usando los IDs y tiempos originales. El outbox sobrevive a recargas; el arranque, la recuperación de conexión y la vuelta a la app vuelven a intentarlo. No borres los datos del dispositivo capturador si otro dispositivo muestra un partido incompleto. Consulta [arquitectura y recuperación](docs/architecture/match-integrity-recovery.md).
+
+Antes de publicar el frontend, aplica `database/migrations/0012_match_integrity_manifest.sql` en Supabase. Sin esa tabla y su RPC, la verificación cloud aparecerá como no disponible y las operaciones de manifiesto permanecerán en cola.
+
 **Estado actual: desarrollo post-alpha · baseline estable: `alpha_0.1`**
 
 Futsal Stats es una aplicación web progresiva para registrar, seguir y consultar estadísticas de partidos de fútbol sala en tiempo real. Está orientada a entrenadores, analistas y miembros del cuerpo técnico que necesitan operar con rapidez desde móvil, tablet u ordenador durante un partido.

@@ -29,6 +29,7 @@ import { TeamRepository } from '../persistence/ports/team.repository';
 import { enqueueSyncOperation } from './sync-queue';
 import { OfflineSyncService } from './offline-sync.service';
 import { TeamAccessService } from '../team-workspace/team-access.service';
+import { saveFinalMatchSnapshot } from './final-match-snapshot';
 
 @Injectable()
 export class OfflineTeamRepository implements TeamRepository {
@@ -217,6 +218,7 @@ export class OfflineMatchRepository implements MatchRepository {
       this.db.matches,
       this.db.events,
       this.db.syncQueue,
+      this.db.matchIntegrity,
       async () => {
         const match = await this.db.matches.get(matchId);
         if (!match) return;
@@ -227,6 +229,8 @@ export class OfflineMatchRepository implements MatchRepository {
           entityId: matchId,
         });
         await this.db.events.where('matchId').equals(matchId).delete();
+        await this.db.syncQueue.where('dedupeKey').equals(`match-integrity:${matchId}`).delete();
+        await this.db.matchIntegrity.delete(matchId);
         await this.db.matches.delete(matchId);
       },
     );
@@ -236,14 +240,19 @@ export class OfflineMatchRepository implements MatchRepository {
   private async write(match: Match, createOnly: boolean): Promise<void> {
     await this.db.transaction(
       'rw',
-      this.db.teams,
-      this.db.players,
-      this.db.matches,
-      this.db.syncQueue,
+      [
+        this.db.teams,
+        this.db.players,
+        this.db.matches,
+        this.db.syncQueue,
+        this.db.events,
+        this.db.matchIntegrity,
+      ],
       async () => {
         await assertMatchReferences(this.db, match);
         const previous = await this.db.matches.get(match.id);
         await this.db.matches.put(toLocalMatchRecord(match, previous));
+        await saveFinalMatchSnapshot(this.db, match);
         await enqueueSyncOperation(this.db.syncQueue, {
           kind: 'match-upsert',
           teamId: match.teamId,
@@ -251,6 +260,7 @@ export class OfflineMatchRepository implements MatchRepository {
           match,
           createOnly,
         });
+        await enqueueFinalManifest(this.db, match);
       },
     );
   }
@@ -271,17 +281,21 @@ export class OfflineMatchEventRepository implements MatchEventRepository {
     await this.access.assertCanWrite(match.teamId);
     await this.db.transaction(
       'rw',
-      this.db.teams,
-      this.db.players,
-      this.db.matches,
-      this.db.events,
-      this.db.syncQueue,
+      [
+        this.db.teams,
+        this.db.players,
+        this.db.matches,
+        this.db.events,
+        this.db.syncQueue,
+        this.db.matchIntegrity,
+      ],
       async () => {
         await assertMatchReferences(this.db, match);
         await assertEventReferences(this.db, match, events);
         if (events.length > 0) await this.db.events.bulkAdd(events.map(toLocalMatchEventRecord));
         const previous = await this.db.matches.get(match.id);
         await this.db.matches.put(toLocalMatchRecord(match, previous));
+        await saveFinalMatchSnapshot(this.db, match);
         await enqueueSyncOperation(this.db.syncQueue, {
           kind: 'match-events-commit',
           teamId: match.teamId,
@@ -289,6 +303,7 @@ export class OfflineMatchEventRepository implements MatchEventRepository {
           match,
           events,
         });
+        await enqueueFinalManifest(this.db, match);
       },
     );
     this.sync.requestSync();
@@ -301,6 +316,7 @@ export class OfflineMatchEventRepository implements MatchEventRepository {
       this.db.matches,
       this.db.events,
       this.db.syncQueue,
+      this.db.matchIntegrity,
       async () => {
         await assertEventReferences(this.db, match, [event]);
         const previous = await this.db.events.get(event.id);
@@ -313,6 +329,7 @@ export class OfflineMatchEventRepository implements MatchEventRepository {
         });
         const previousMatch = await this.db.matches.get(match.id);
         await this.db.matches.put(toLocalMatchRecord(match, previousMatch));
+        await saveFinalMatchSnapshot(this.db, match);
         await enqueueSyncOperation(this.db.syncQueue, {
           kind: 'match-event-update',
           teamId: match.teamId,
@@ -320,6 +337,7 @@ export class OfflineMatchEventRepository implements MatchEventRepository {
           match,
           event,
         });
+        await enqueueFinalManifest(this.db, match);
       },
     );
     this.sync.requestSync();
@@ -333,11 +351,14 @@ export class OfflineMatchEventRepository implements MatchEventRepository {
     await this.access.assertCanWrite(match.teamId);
     await this.db.transaction(
       'rw',
-      this.db.teams,
-      this.db.players,
-      this.db.matches,
-      this.db.events,
-      this.db.syncQueue,
+      [
+        this.db.teams,
+        this.db.players,
+        this.db.matches,
+        this.db.events,
+        this.db.syncQueue,
+        this.db.matchIntegrity,
+      ],
       async () => {
         if (!(await this.db.teams.get(match.teamId)))
           throw new Error('Import references missing team');
@@ -354,6 +375,7 @@ export class OfflineMatchEventRepository implements MatchEventRepository {
         await assertEventReferences(this.db, match, events);
         if (events.length > 0) await this.db.events.bulkAdd(events.map(toLocalMatchEventRecord));
         await this.db.matches.add(toLocalMatchRecord(match));
+        await saveFinalMatchSnapshot(this.db, match);
         await enqueueSyncOperation(this.db.syncQueue, {
           kind: 'match-events-commit',
           teamId: match.teamId,
@@ -361,8 +383,21 @@ export class OfflineMatchEventRepository implements MatchEventRepository {
           match,
           events,
         });
+        await enqueueFinalManifest(this.db, match);
       },
     );
     this.sync.requestSync();
   }
+}
+
+async function enqueueFinalManifest(db: FutsalStatsDb, match: Match): Promise<void> {
+  if (match.status !== 'finished') return;
+  const snapshot = await db.matchIntegrity.get(match.id);
+  if (snapshot)
+    await enqueueSyncOperation(db.syncQueue, {
+      kind: 'match-integrity-manifest',
+      teamId: match.teamId,
+      entityId: match.id,
+      snapshot,
+    });
 }

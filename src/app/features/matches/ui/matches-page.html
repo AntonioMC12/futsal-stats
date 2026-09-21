@@ -152,6 +152,11 @@
                       ? 'Finalizado'
                       : 'En curso'
                 }}</span>
+                @if (summary.match.status === 'finished') {
+                  <p class="match-description">
+                    {{ integrityLabel(store.integrityStatuses()[summary.match.id]) }}
+                  </p>
+                }
               </div>
               <div class="history-actions">
                 <a
