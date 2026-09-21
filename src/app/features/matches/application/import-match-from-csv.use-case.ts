@@ -123,6 +123,7 @@ export class ImportMatchFromCsvUseCase {
               .map((player) => localPlayerIds.get(player.importKey)!),
       createdAt: now,
       updatedAt: now,
+      ...(dto.match.statisticsSchemaVersion === 2 ? { statisticsSchemaVersion: 2 as const } : {}),
       source: 'csv-import',
       importMetadata: {
         fileName: dto.source.fileName,
@@ -228,6 +229,7 @@ function remapEvent(
   for (const key of [
     'playerId',
     'foulPlayerId',
+    'receivedByPlayerId',
     'scorerPlayerId',
     'outPlayerId',
     'inPlayerId',

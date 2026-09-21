@@ -9,6 +9,8 @@ export const MATCH_EVENT_TYPES = [
   'PLAYER_LEFT',
   'SUBSTITUTION',
   'FOUL',
+  'SHOT',
+  'SAVE',
   'DISCIPLINE',
   'BENCH_DISCIPLINE',
   'RED_CARD_REPLACEMENT',
@@ -96,6 +98,7 @@ export interface FoulEvent extends MatchEventBase {
   /** Original rival offender when an embedded card is later reassigned. */
   foulOpponentPlayerNumber?: number;
   playerId?: string;
+  receivedByPlayerId?: string;
   opponentPlayerNumber?: number;
   periodFoulNumber: number;
   countsAsAccumulatedFoul?: boolean;
@@ -104,6 +107,17 @@ export interface FoulEvent extends MatchEventBase {
   accumulated?: boolean;
   disciplinaryAction?: DisciplinaryAction;
   matchElapsedMs?: number;
+}
+
+export interface ShotEvent extends MatchEventBase {
+  type: 'SHOT';
+  playerId: string;
+  outcome: 'on_target' | 'off_target';
+}
+
+export interface SaveEvent extends MatchEventBase {
+  type: 'SAVE';
+  playerId: string;
 }
 
 export interface DisciplineEvent extends MatchEventBase {
@@ -183,6 +197,8 @@ export type MatchEvent =
   | PlayerLeftEvent
   | SubstitutionEvent
   | FoulEvent
+  | ShotEvent
+  | SaveEvent
   | DisciplineEvent
   | BenchDisciplineEvent
   | RedCardReplacementEvent

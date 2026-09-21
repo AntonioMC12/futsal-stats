@@ -75,7 +75,9 @@ describe('LiveMatchStore', () => {
                 );
       vi.setSystemTime(15_000);
       expect(await record()).toBe(true);
-      expect(store.clockRunning()).toBe(action === 'substitution' || action === 'card');
+      expect(store.clockRunning()).toBe(
+        action === 'substitution' || action === 'card' || action === 'foul',
+      );
       if (store.clockRunning()) await store.stopClock();
       const stoppedEvents = history.filter((event) => event.type === 'CLOCK_STOPPED').length;
       vi.setSystemTime(25_000);

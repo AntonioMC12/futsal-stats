@@ -10,6 +10,8 @@ export type UndoableMatchEvent = Extract<
       | 'GOAL_FOR'
       | 'GOAL_AGAINST'
       | 'FOUL'
+      | 'SHOT'
+      | 'SAVE'
       | 'DISCIPLINE'
       | 'BENCH_DISCIPLINE'
       | 'SUBSTITUTION'
@@ -73,6 +75,8 @@ function isUndoableEvent(event: MatchEvent): event is UndoableMatchEvent {
     event.type === 'GOAL_FOR' ||
     event.type === 'GOAL_AGAINST' ||
     event.type === 'FOUL' ||
+    event.type === 'SHOT' ||
+    event.type === 'SAVE' ||
     event.type === 'DISCIPLINE' ||
     event.type === 'BENCH_DISCIPLINE' ||
     event.type === 'SUBSTITUTION' ||

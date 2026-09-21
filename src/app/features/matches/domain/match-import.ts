@@ -55,6 +55,7 @@ export interface ImportedMatchDto {
     awayScore?: number;
     periodCount: number;
     periodDurationMs: number;
+    statisticsSchemaVersion?: 2;
   };
   players: ImportedPlayerDto[];
   events: ImportedMatchEventDto[];

@@ -11,6 +11,11 @@ import {
 } from './player-playing-time';
 
 export interface PlayerMatchStatistics extends PlayerPlayingTime {
+  shotsTotal: number | null;
+  shotsOnTarget: number | null;
+  shotsOffTarget: number | null;
+  saves: number | null;
+  foulsReceived: number | null;
   goals: number;
   goalsForOnCourt: number;
   goalsAgainstOnCourt: number;
@@ -57,6 +62,11 @@ export function createMatchStatisticsProjection(
       playerId,
       {
         ...time,
+        shotsTotal: match.statisticsSchemaVersion === 2 ? 0 : null,
+        shotsOnTarget: match.statisticsSchemaVersion === 2 ? 0 : null,
+        shotsOffTarget: match.statisticsSchemaVersion === 2 ? 0 : null,
+        saves: match.statisticsSchemaVersion === 2 ? 0 : null,
+        foulsReceived: match.statisticsSchemaVersion === 2 ? 0 : null,
         goals: 0,
         goalsForOnCourt: 0,
         goalsAgainstOnCourt: 0,
@@ -83,6 +93,23 @@ export function createMatchStatisticsProjection(
     ]),
   );
   for (const event of selectActiveEvents(events)) {
+    if (match.statisticsSchemaVersion === 2) {
+      if (event.type === 'SHOT' && players[event.playerId]) {
+        const player = players[event.playerId];
+        player.shotsTotal! += 1;
+        if (event.outcome === 'on_target') player.shotsOnTarget! += 1;
+        else player.shotsOffTarget! += 1;
+      } else if (event.type === 'SAVE' && players[event.playerId]) {
+        players[event.playerId].saves! += 1;
+      } else if (
+        event.type === 'FOUL' &&
+        event.team === 'away' &&
+        event.receivedByPlayerId &&
+        players[event.receivedByPlayerId]
+      ) {
+        players[event.receivedByPlayerId].foulsReceived! += 1;
+      }
+    }
     if (event.type === 'GOAL_FOR' || event.type === 'GOAL_AGAINST') {
       addGoal(
         players,

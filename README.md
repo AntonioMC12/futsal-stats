@@ -31,7 +31,7 @@ Futsal Stats concentra en una única interfaz las operaciones principales de un 
 
 - preparación de equipos y convocatoria, con elección posterior del quinteto inicial;
 - cronómetro y control del periodo;
-- marcador, faltas y sanciones;
+- marcador, faltas y sanciones; disparos a puerta o fuera, paradas y faltas recibidas;
 - sustituciones y quinteto actual;
 - registro de eventos en directo;
 - estadísticas derivadas por jugador y quinteto;
@@ -61,7 +61,7 @@ Vista principal para operar durante el encuentro: estadísticas, marcador, cron�
 
 ### Estadísticas detalladas
 
-Panel de estadísticas por jugador con minutos, goles, goles a favor/en contra, plus/minus, faltas, tarjetas y expulsiones, además de exportación CSV.
+Panel de estadísticas por jugador con minutos, goles, goles a favor/en contra, plus/minus, faltas, tarjetas y expulsiones, además de exportación CSV. Los partidos creados con el esquema estadístico v2 también muestran disparos, tiros a puerta y fuera, paradas y faltas recibidas. Los partidos anteriores muestran estas métricas como no registradas.
 
 ![Estadísticas detalladas](docs/screenshots/03-estadisticas.png)
 
@@ -287,6 +287,9 @@ si el evento incrementa o no el contador.
 Pulsa **Falta rival**.
 
 Las faltas del rival se contabilizan por periodo y se reflejan en el estado del partido.
+La acción rápida **Falta a favor** permite elegir al jugador que recibió la falta entre quienes están en pista, o **Ninguno / No aplica**. Esta acción conserva el estado del cronómetro.
+
+Para registrar un **Disparo a favor**, elige al jugador en pista y después **Tiro a puerta** o **Tiro fuera**. Para una **Parada**, elige al jugador en pista y confirma. Ambas acciones conservan el estado del cronómetro y se pueden deshacer.
 
 Cuando sea necesario identificar a un rival sancionado, la aplicación permite reutilizar su dorsal durante el encuentro.
 

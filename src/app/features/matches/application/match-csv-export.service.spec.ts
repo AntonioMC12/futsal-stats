@@ -56,7 +56,7 @@ describe('MatchCsvExportService', () => {
     expect(download.mock.calls[0]?.[0]).toContain('\uFEFFfecha,equipo,rival');
     expect(download.mock.calls[0]?.[0]).not.toContain('match_id');
     expect(download.mock.calls[0]?.[0]).not.toContain('player_id');
-    expect(download.mock.calls[0]?.[0]).toContain('Álex,0,00:00,0');
+    expect(download.mock.calls[0]?.[0]).toContain('Álex,0,,,,,,00:00,0');
     expect(download.mock.calls[0]?.[1]).toBe('futsal-stats_2026-08-28_inter_vs_rival.csv');
   });
 

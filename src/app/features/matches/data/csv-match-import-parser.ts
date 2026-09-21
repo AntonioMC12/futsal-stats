@@ -140,6 +140,9 @@ export class CsvMatchImportParser implements CsvImportAdapter {
         awayScore: score?.[1],
         periodCount,
         periodDurationMs,
+        ...(metadata['statisticsSchemaVersion'] === '2'
+          ? { statisticsSchemaVersion: 2 as const }
+          : {}),
       },
       players,
       events,
@@ -250,6 +253,12 @@ function playerSourceIds(
     );
     addPlayerSource(
       result,
+      record['receivedByPlayerId'],
+      record['receivedByPlayerNumber'],
+      record['receivedByPlayerName'],
+    );
+    addPlayerSource(
+      result,
       record['secondaryPlayerId'],
       record['secondaryPlayerNumber'],
       record['secondaryPlayerName'],
@@ -295,6 +304,15 @@ function parseEvents(eventRecords: CsvRecord[], issues: ImportIssue[]): Imported
     }
     if (!event || !MATCH_EVENT_TYPES.includes(event.type) || !record['eventId']) {
       throw new InvalidCsvFormatError(`El evento ${index + 1} no es válido.`);
+    }
+    if (
+      event.type === 'SHOT' &&
+      (!event.playerId || !['on_target', 'off_target'].includes(event.outcome))
+    ) {
+      throw new InvalidCsvFormatError(`El disparo ${index + 1} no es válido.`);
+    }
+    if (event.type === 'SAVE' && !event.playerId) {
+      throw new InvalidCsvFormatError(`La parada ${index + 1} no es válida.`);
     }
     const sequence = Number(record['sequence']);
     const period = Number(record['period']);
@@ -387,6 +405,7 @@ function validateEvents(
     for (const key of [
       'playerId',
       'foulPlayerId',
+      'receivedByPlayerId',
       'scorerPlayerId',
       'outPlayerId',
       'inPlayerId',

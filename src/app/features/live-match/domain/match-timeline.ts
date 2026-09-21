@@ -62,6 +62,10 @@ export function eventLabel(
       return `Cambio: ${playerName(event.outPlayerId, playerNames)} → ${playerName(event.inPlayerId, playerNames)}`;
     case 'FOUL':
       return foulLabel(event, playerNames);
+    case 'SHOT':
+      return `${event.outcome === 'on_target' ? 'Tiro a puerta' : 'Tiro fuera'} · ${playerName(event.playerId, playerNames)}`;
+    case 'SAVE':
+      return `Parada · ${playerName(event.playerId, playerNames)}`;
     case 'DISCIPLINE': {
       const card =
         event.disciplinaryAction === 'yellow'
@@ -148,8 +152,12 @@ function foulLabel(
   playerNames: Readonly<Record<string, string>>,
 ): string {
   const classification = countsAsAccumulatedFoul(event) ? 'Acumulativa' : 'No acumulativa';
+  const receiver =
+    event.team === 'away' && event.receivedByPlayerId
+      ? ` · Sobre ${playerName(event.receivedByPlayerId, playerNames)}`
+      : '';
   if (!event.playerId && (event.disciplinaryAction ?? 'none') === 'none') {
-    return `${event.team === 'home' ? 'Falta propia' : 'Falta rival'} · ${classification}`;
+    return `${event.team === 'home' ? 'Falta propia' : 'Falta a favor'} · ${classification}${receiver}`;
   }
   const who =
     event.team === 'home'
@@ -166,7 +174,7 @@ function foulLabel(
           : event.team === 'home'
             ? 'Falta propia'
             : 'Falta rival';
-  return `${prefix} ${who} · ${classification}`;
+  return `${prefix} ${who} · ${classification}${receiver}`;
 }
 
 function playerName(playerId: string, playerNames: Readonly<Record<string, string>>): string {
