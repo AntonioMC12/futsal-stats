@@ -101,6 +101,25 @@ describe('offline-first match repositories', () => {
     expect(await db.syncQueue.count()).toBe(3);
   });
 
+  it('persists the final manifest with events and outbox across restart', async () => {
+    const matches = TestBed.inject(OfflineMatchRepository);
+    const events = TestBed.inject(OfflineMatchEventRepository);
+    const initial = matchFixture();
+    await matches.addIfNoActive(initial);
+    const finished = { ...initial, status: 'finished' as const, updatedAt: 4 };
+    await events.commit(finished, [eventFixture('event-1', 1)]);
+    db.close();
+    db = new FutsalStatsDb();
+    await db.open();
+    const snapshot = await db.matchIntegrity.get(initial.id);
+    expect(snapshot?.expectedEventIds).toEqual(['event-1']);
+    expect(snapshot?.status).toBe('pending');
+    expect(
+      await db.syncQueue.where('dedupeKey').equals(`match-integrity:${initial.id}`).count(),
+    ).toBe(1);
+    expect(await db.events.where('matchId').equals(initial.id).count()).toBe(1);
+  });
+
   it('rolls back local events and queue together when validation fails', async () => {
     const repository = TestBed.inject(OfflineMatchEventRepository);
     const match = matchFixture();

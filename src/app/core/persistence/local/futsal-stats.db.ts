@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 import { migrateToCloudDataModel } from './cloud-data-model.migration';
 import { SyncQueueRecord } from '../../sync/sync-operation';
+import { FinalMatchSnapshot } from '../../sync/match-integrity.model';
 import {
   LocalMatchEventRecord,
   LocalMatchRecord,
@@ -22,6 +23,7 @@ export class FutsalStatsDb extends Dexie {
   events!: Table<LocalMatchEventRecord, string>;
   strategies!: Table<LocalStrategyRecord, string>;
   syncQueue!: Table<SyncQueueRecord, string>;
+  matchIntegrity!: Table<FinalMatchSnapshot, string>;
 
   constructor() {
     super('futsal-stats');
@@ -90,6 +92,18 @@ export class FutsalStatsDb extends Dexie {
       events: 'id, matchId, sequence, type, timestamp, updatedAt, syncStatus, [matchId+sequence]',
       strategies: 'id, teamId, updatedAt',
       syncQueue: 'id, &dedupeKey, status, nextAttemptAt, createdAt, [status+nextAttemptAt]',
+    });
+    this.version(9).stores({
+      teams: 'id, name, updatedAt, &seedKey, syncStatus',
+      players: 'id, teamId, number, active, updatedAt, syncStatus',
+      playerProfiles: 'playerId, teamId, updatedAt, syncStatus',
+      playerPhotos: 'storageKey, teamId, playerId, updatedAt',
+      matches:
+        'id, teamId, status, date, season, competition, updatedAt, syncStatus, [teamId+updatedAt]',
+      events: 'id, matchId, sequence, type, timestamp, updatedAt, syncStatus, [matchId+sequence]',
+      strategies: 'id, teamId, updatedAt',
+      syncQueue: 'id, &dedupeKey, status, nextAttemptAt, createdAt, [status+nextAttemptAt]',
+      matchIntegrity: 'matchId, teamId, status, checkedAt',
     });
   }
 }

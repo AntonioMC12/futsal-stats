@@ -653,7 +653,7 @@ export class LiveMatchPage {
     await this.store.finishMatch();
     if (this.store.match()?.status === 'finished') {
       this.confirmFinish.set(false);
-      await this.router.navigate(['/matches']);
+      await this.router.navigate(['/matches', this.store.match()!.id]);
     }
   }
 

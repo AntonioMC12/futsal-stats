@@ -10,6 +10,7 @@ import { Match } from '../../../shared/models/match';
 import { DeleteMatchService } from '../application/delete-match.service';
 import { MatchCsvExportService } from '../application/match-csv-export.service';
 import { MatchesPage } from './matches-page';
+import { MatchIntegrityService } from '../../../core/sync/match-integrity.service';
 
 function match(id: string, status: Match['status'], date: number): Match {
   return {
@@ -51,6 +52,13 @@ describe('MatchesPage', () => {
         { provide: MatchEventRepository, useValue: { listByMatch: async () => [] } },
         { provide: DeleteMatchService, useValue: { execute: async () => undefined } },
         { provide: MatchCsvExportService, useValue: csvExporter },
+        {
+          provide: MatchIntegrityService,
+          useValue: {
+            getIntegrityStatus: async () => 'unknown',
+            verify: async () => ({ status: 'unknown' }),
+          },
+        },
       ],
     }).compileComponents();
     const router = TestBed.inject(Router);
@@ -62,7 +70,9 @@ describe('MatchesPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Partido en curso');
     expect(fixture.nativeElement.textContent).toContain('Continuar partido');
     expect(fixture.nativeElement.textContent).toContain('Historial');
-    expect(fixture.nativeElement.querySelector('.import-match')?.getAttribute('href')).toBe('/matches/import');
+    expect(fixture.nativeElement.querySelector('.import-match')?.getAttribute('href')).toBe(
+      '/matches/import',
+    );
     const finishedLink = fixture.nativeElement.querySelector('.history-actions > a');
     expect(finishedLink.textContent).toContain('Ver detalle');
     expect(finishedLink.getAttribute('href')).toBe('/matches/finished');
@@ -107,6 +117,13 @@ describe('MatchesPage', () => {
         { provide: MatchEventRepository, useValue: { listByMatch: async () => [] } },
         { provide: DeleteMatchService, useValue: { execute: async () => undefined } },
         { provide: MatchCsvExportService, useValue: csvExporter },
+        {
+          provide: MatchIntegrityService,
+          useValue: {
+            getIntegrityStatus: async () => 'unknown',
+            verify: async () => ({ status: 'unknown' }),
+          },
+        },
       ],
     }).compileComponents();
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);

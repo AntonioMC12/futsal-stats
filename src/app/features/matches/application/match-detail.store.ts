@@ -11,18 +11,24 @@ import { Player } from '../../../shared/models/player';
 import { deriveMatchState } from '../../live-match/domain/derived-match-state';
 import { deriveMatchStatistics } from '../../live-match/domain/match-statistics';
 import { createMatchTimeline } from '../../live-match/domain/match-timeline';
+import { MatchIntegrityService } from '../../../core/sync/match-integrity.service';
+import { MatchIntegrityReport } from '../../../core/sync/match-integrity.model';
 
 @Injectable()
 export class MatchDetailStore {
   private readonly matches = inject(MATCH_REPOSITORY);
   private readonly eventsRepository = inject(MATCH_EVENT_REPOSITORY);
   private readonly playersRepository = inject(PLAYER_REPOSITORY);
+  private readonly integrity = inject(MatchIntegrityService, { optional: true });
 
   readonly match = signal<Match | null>(null);
   readonly events = signal<MatchEvent[]>([]);
   readonly players = signal<Player[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
+  readonly integrityReport = signal<MatchIntegrityReport | null>(null);
+  readonly integrityBusy = signal(false);
+  readonly integrityError = signal<string | null>(null);
 
   readonly derivedState = computed(() => {
     const match = this.match();
@@ -90,10 +96,39 @@ export class MatchDetailStore {
       this.match.set(match);
       this.events.set(events);
       this.players.set(players);
+      if (match.status === 'finished') void this.checkIntegrity();
     } catch {
       this.error.set('No se ha podido cargar el detalle del partido.');
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  async checkIntegrity(): Promise<void> {
+    const match = this.match();
+    if (!match || !this.integrity || this.integrityBusy()) return;
+    this.integrityBusy.set(true);
+    this.integrityError.set(null);
+    try {
+      this.integrityReport.set(await this.integrity.verify(match.id));
+    } catch (error) {
+      this.integrityError.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.integrityBusy.set(false);
+    }
+  }
+
+  async repairIntegrity(): Promise<void> {
+    const match = this.match();
+    if (!match || !this.integrity || this.integrityBusy()) return;
+    this.integrityBusy.set(true);
+    this.integrityError.set(null);
+    try {
+      this.integrityReport.set(await this.integrity.repair(match.id));
+    } catch (error) {
+      this.integrityError.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.integrityBusy.set(false);
     }
   }
 }

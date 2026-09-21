@@ -16,6 +16,8 @@ import { ScoreSnapshot } from '../../../shared/models/match-event';
 import { deriveMatchState } from '../../live-match/domain/derived-match-state';
 import { DeleteMatchService } from './delete-match.service';
 import { TeamWorkspaceContext } from '../../../core/team-workspace/team-workspace.context';
+import { MatchIntegrityService } from '../../../core/sync/match-integrity.service';
+import { MatchIntegrityStatus } from '../../../core/sync/match-integrity.model';
 
 export interface MatchSummary {
   match: Match;
@@ -31,12 +33,14 @@ export class MatchesStore {
   private readonly deleteMatchService = inject(DeleteMatchService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly workspace = inject(TeamWorkspaceContext, { optional: true });
+  private readonly integrity = inject(MatchIntegrityService, { optional: true });
   private readonly now = signal(Date.now());
 
   readonly matches = signal<MatchSummary[]>([]);
   readonly loading = signal(true);
   readonly deletingId = signal<string | null>(null);
   readonly error = signal<string | null>(null);
+  readonly integrityStatuses = signal<Record<string, MatchIntegrityStatus>>({});
   readonly seasonFilter = signal('all');
   readonly competitionFilter = signal('all');
   readonly statusFilter = signal<MatchHistoryStatusFilter>('finished');
@@ -108,6 +112,35 @@ export class MatchesStore {
       );
       this.now.set(Date.now());
       this.matches.set(summaries);
+      if (this.integrity) {
+        const entries = await Promise.all(
+          matches.map(
+            async (match) =>
+              [match.id, await this.integrity!.getIntegrityStatus(match.id)] as const,
+          ),
+        );
+        const recentFinished = matches.filter((item) => item.status === 'finished').slice(0, 10);
+        const recentIds = new Set(recentFinished.map((item) => item.id));
+        this.integrityStatuses.set(
+          Object.fromEntries(
+            entries.map(([id, status]) => [
+              id,
+              recentIds.has(id) ? 'checking' : status === 'verified' ? 'unknown' : status,
+            ]),
+          ),
+        );
+        for (const match of recentFinished) {
+          void this.integrity
+            .verify(match.id)
+            .then((report) => {
+              this.integrityStatuses.update((current) => ({
+                ...current,
+                [match.id]: report.status,
+              }));
+            })
+            .catch(() => undefined);
+        }
+      }
     } catch {
       this.error.set('No se han podido cargar los partidos guardados.');
     } finally {

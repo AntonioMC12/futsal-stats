@@ -1,4 +1,4 @@
-import { computed, effect, inject, Injectable, Injector, signal } from '@angular/core';
+import { computed, DestroyRef, effect, inject, Injectable, Injector, signal } from '@angular/core';
 import { CLOUD_CONFIG } from '../cloud/cloud.config';
 import { CloudFoundationService } from '../cloud/cloud-foundation.service';
 import { FutsalStatsDb } from '../persistence/local/futsal-stats.db';
@@ -16,6 +16,7 @@ import { PermanentSyncError, RemoteSyncSnapshot, SyncRemoteGateway } from './syn
 import { RAVI_STRATEGY } from '../../features/strategies/data/ravi.strategy';
 import { LocalStrategyRecord } from '../persistence/local/local-records';
 import { AuthService } from '../auth/auth.service';
+import { saveFinalMatchSnapshot } from './final-match-snapshot';
 
 export type OfflineSyncState = 'disabled' | 'idle' | 'offline' | 'syncing' | 'error';
 
@@ -27,9 +28,12 @@ export class OfflineSyncService {
   private readonly cloud = inject(CloudFoundationService);
   private readonly db = inject(FutsalStatsDb);
   private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly network = inject(NetworkStatusService);
   private readonly auth = inject(AuthService);
   private running: Promise<void> | null = null;
+  private rerun: Promise<void> | null = null;
+  private destroyed = false;
   private isolatedOrphanId: string | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly ready = signal(false);
@@ -61,6 +65,20 @@ export class OfflineSyncService {
       if (this.online()) this.requestSync();
       else this.state.set('offline');
     });
+    if (typeof document !== 'undefined') {
+      const onVisible = () => {
+        if (document.visibilityState === 'visible') this.requestSync();
+      };
+      document.addEventListener('visibilitychange', onVisible);
+      this.destroyRef.onDestroy(() => document.removeEventListener('visibilitychange', onVisible));
+    }
+    const onFocus = () => this.requestSync();
+    globalThis.addEventListener?.('focus', onFocus);
+    this.destroyRef.onDestroy(() => {
+      this.destroyed = true;
+      globalThis.removeEventListener?.('focus', onFocus);
+      this.clearRetryTimer();
+    });
   }
 
   async initialize(): Promise<void> {
@@ -74,21 +92,36 @@ export class OfflineSyncService {
   }
 
   requestSync(): void {
+    if (this.destroyed) return;
     if (this.config.mode !== 'cloud' || !this.online()) {
-      void this.refreshSummary();
+      void this.refreshSummary().catch(() => undefined);
       return;
     }
-    queueMicrotask(() => void this.syncNow());
+    queueMicrotask(() => {
+      if (!this.destroyed) void this.syncNow().catch(() => undefined);
+    });
   }
 
   syncNow(): Promise<void> {
-    if (this.running) return this.running;
+    if (this.destroyed) return Promise.resolve();
+    if (this.running) {
+      this.rerun ??= this.running.then(() => {
+        this.rerun = null;
+        return this.syncNow();
+      });
+      return this.rerun;
+    }
     this.running = this.runSync().finally(() => (this.running = null));
     return this.running;
   }
 
   async refreshAfterAccessChange(): Promise<void> {
     if (this.running) await this.running;
+    await this.refreshSummary();
+    if (this.failedCount() > 0) {
+      await this.retryFailed();
+      return;
+    }
     await this.syncNow();
     if (this.pendingCount() > 0 && this.online()) await this.syncNow();
   }
@@ -139,6 +172,7 @@ export class OfflineSyncService {
         await this.auth.ensureValidDeviceIdentity();
       } catch {
         this.state.set('offline');
+        this.scheduleRecoveryRetry();
         return;
       }
     }
@@ -151,6 +185,7 @@ export class OfflineSyncService {
     if (this.cloud.status() !== 'connected') await this.cloud.initialize();
     if (this.cloud.status() !== 'connected') {
       this.state.set('offline');
+      this.scheduleRecoveryRetry();
       return;
     }
 
@@ -164,6 +199,8 @@ export class OfflineSyncService {
         await this.remote.push(item.operation);
         await this.complete(item);
       } catch (error) {
+        if ((error as { status?: number } | null)?.status === 401)
+          this.auth.remotelyVerified.set(false);
         await this.fail(item, error);
         stoppedByFailure = true;
         break;
@@ -188,6 +225,11 @@ export class OfflineSyncService {
       .where('[status+nextAttemptAt]')
       .between(['pending', 0], ['pending', now])
       .sortBy('createdAt');
+    items.sort(
+      (a, b) =>
+        Number(a.operation.kind === 'match-integrity-manifest') -
+          Number(b.operation.kind === 'match-integrity-manifest') || a.createdAt - b.createdAt,
+    );
     for (const item of items) {
       const team = await this.db.teams.get(item.operation.teamId);
       if (team && !team.accessRevoked) return item;
@@ -219,7 +261,8 @@ export class OfflineSyncService {
 
   private async fail(item: SyncQueueRecord, error: unknown): Promise<void> {
     const attempts = item.attempts + 1;
-    const permanent = isPermanent(error) || attempts >= MAX_ATTEMPTS;
+    const unauthorized = (error as { status?: number } | null)?.status === 401;
+    const permanent = isPermanent(error) || (!unauthorized && attempts >= MAX_ATTEMPTS);
     const now = Date.now();
     const message = errorMessage(error);
     this.error.set(message);
@@ -282,6 +325,8 @@ export class OfflineSyncService {
         return;
       case 'match-delete':
         return;
+      case 'match-integrity-manifest':
+        return;
       case 'strategy-upsert':
       case 'strategy-delete':
         await this.db.strategies.update(operation.entityId, { syncStatus: status });
@@ -306,6 +351,7 @@ export class OfflineSyncService {
         this.db.strategies,
         this.db.playerPhotos,
         this.db.syncQueue,
+        this.db.matchIntegrity,
       ],
       async () => {
         const existingKeys = new Set(
@@ -357,12 +403,16 @@ export class OfflineSyncService {
             });
           }
         }
-        for (const record of await this.db.matches
-          .where('syncStatus')
-          .equals('pending')
-          .toArray()) {
+        for (const record of await this.db.matches.toArray()) {
           const eventRecords = await this.db.events.where('matchId').equals(record.id).toArray();
-          const pendingEvents = eventRecords.filter((event) => event.syncStatus === 'pending');
+          const pendingEvents = eventRecords.filter((event) => event.syncStatus !== 'synced');
+          if (
+            record.status === 'finished' &&
+            !(await this.db.matchIntegrity.get(record.id)) &&
+            (pendingEvents.length > 0 || existingKeys.has(`match-events:${record.id}`))
+          ) {
+            await saveFinalMatchSnapshot(this.db, record);
+          }
           const { deletedAt: _, revision: __, syncStatus: ___, ...match } = record;
           if (pendingEvents.length > 0 && !existingKeys.has(`match-events:${record.id}`)) {
             const events = pendingEvents.map(
@@ -383,6 +433,7 @@ export class OfflineSyncService {
               events,
             });
           } else if (
+            record.syncStatus === 'pending' &&
             !existingKeys.has(`match:${record.id}`) &&
             !existingKeys.has(`match-events:${record.id}`)
           ) {
@@ -394,6 +445,19 @@ export class OfflineSyncService {
               createOnly: false,
             });
           }
+        }
+        for (const snapshot of await this.db.matchIntegrity.toArray()) {
+          if (
+            snapshot.status === 'verified' ||
+            existingKeys.has(`match-integrity:${snapshot.matchId}`)
+          )
+            continue;
+          await enqueueSyncOperation(this.db.syncQueue, {
+            kind: 'match-integrity-manifest',
+            teamId: snapshot.teamId,
+            entityId: snapshot.matchId,
+            snapshot,
+          });
         }
         for (const record of await this.db.strategies.toArray()) {
           const local = record as LocalStrategyRecord;
@@ -532,7 +596,7 @@ export class OfflineSyncService {
 
   private async scheduleNextAttempt(): Promise<void> {
     this.clearRetryTimer();
-    if (!this.online() || this.failedCount() > 0) return;
+    if (!this.online() || this.auth.reenrollmentRequired()) return;
     const next = await this.db.syncQueue.where('status').equals('pending').sortBy('nextAttemptAt');
     let ready: SyncQueueRecord | undefined;
     for (const item of next) {
@@ -544,12 +608,18 @@ export class OfflineSyncService {
     }
     if (!ready) return;
     const delay = Math.max(0, ready.nextAttemptAt - Date.now());
-    this.retryTimer = setTimeout(() => void this.syncNow(), delay);
+    this.retryTimer = setTimeout(() => void this.syncNow().catch(() => undefined), delay);
   }
 
   private clearRetryTimer(): void {
     if (this.retryTimer !== null) clearTimeout(this.retryTimer);
     this.retryTimer = null;
+  }
+
+  private scheduleRecoveryRetry(): void {
+    this.clearRetryTimer();
+    if (this.online())
+      this.retryTimer = setTimeout(() => void this.syncNow().catch(() => undefined), 30_000);
   }
 
   private get remote(): SyncRemoteGateway {
@@ -565,7 +635,7 @@ function isPermanent(error: unknown): boolean {
   return (
     code === '42501' ||
     (/^2[23]/.test(code) && code !== '23505') ||
-    [400, 401, 403, 404].includes(status)
+    [400, 403, 404].includes(status)
   );
 }
 

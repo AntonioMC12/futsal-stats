@@ -8,6 +8,7 @@ import {
   matchDateTimestamp,
   matchSeason,
 } from '../../../shared/models/match';
+import { MatchIntegrityStatus } from '../../../core/sync/match-integrity.model';
 
 @Component({
   selector: 'app-matches-page',
@@ -88,4 +89,20 @@ export class MatchesPage {
 
   protected readonly matchSeason = matchSeason;
   protected readonly matchCompetition = matchCompetition;
+  protected integrityLabel(status: MatchIntegrityStatus | undefined): string {
+    switch (status) {
+      case 'verified':
+        return '✓ Integridad verificada';
+      case 'pending':
+      case 'repairing':
+      case 'checking':
+        return '↻ Sincronización pendiente';
+      case 'mismatch':
+        return '⚠ Inconsistencia detectada';
+      case 'unreachable':
+        return '○ No verificable ahora';
+      default:
+        return '○ Integridad sin verificar';
+    }
+  }
 }

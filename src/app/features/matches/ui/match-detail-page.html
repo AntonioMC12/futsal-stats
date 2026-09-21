@@ -78,6 +78,89 @@
       }
     </header>
 
+    @if (match.status === 'finished') {
+      <section class="detail-panel" aria-labelledby="integrity-title">
+        <h2 id="integrity-title">Integridad de datos</h2>
+        <p>Partido finalizado · datos guardados en este dispositivo.</p>
+        @if (store.integrityReport(); as report) {
+          <p role="status">
+            @switch (report.status) {
+              @case ('verified') {
+                ✓ Datos verificados en la nube
+              }
+              @case ('mismatch') {
+                ⚠ Inconsistencia detectada
+              }
+              @case ('unreachable') {
+                ○ No se puede verificar ahora; los datos locales siguen disponibles
+              }
+              @default {
+                ○ Integridad sin verificar
+              }
+            }
+          </p>
+          <p>
+            Eventos: {{ report.local.eventIds.length }} locales /
+            {{ report.cloud.reachable ? report.cloud.eventIds.length : '—' }} cloud
+          </p>
+          <p>
+            Quintetos: {{ report.local.lineupEventIds.length }} locales /
+            {{ report.cloud.reachable ? report.cloud.lineupEventIds.length : '—' }} cloud
+          </p>
+          <p>
+            Jugadores: {{ report.local.matchPlayerIds.length }} locales /
+            {{ report.cloud.reachable ? report.cloud.matchPlayerIds.length : '—' }} cloud
+          </p>
+          <p>
+            Cola: {{ report.sync.pendingCount }} pendientes · {{ report.sync.failedCount }} fallidos
+          </p>
+          <p>Última comprobación: {{ formatDateTime(report.checkedAt) }}</p>
+          @if (report.status === 'mismatch' && report.repairAvailable) {
+            <button
+              class="btn btn--primary"
+              type="button"
+              [disabled]="store.integrityBusy()"
+              (click)="store.repairIntegrity()"
+            >
+              Reparar sincronización
+            </button>
+          }
+          @if (report.status === 'mismatch' && !report.repairAvailable) {
+            <p>
+              La reparación requiere el dispositivo que conserva el cierre original o una revisión
+              de los datos remotos.
+            </p>
+          }
+          <details>
+            <summary>Ver diagnóstico</summary>
+            <p>Match ID: {{ report.matchId }} · Team ID: {{ report.teamId }}</p>
+            <p>
+              Faltan {{ report.missingEventIds.length }} eventos y
+              {{ report.missingLineupEventIds.length }} quintetos en cloud.
+            </p>
+            @if (report.sync.lastError) {
+              <p>Último error: {{ report.sync.lastError }}</p>
+            }
+          </details>
+        } @else {
+          <p role="status">
+            {{ store.integrityBusy() ? 'Comprobando integridad…' : 'Integridad sin verificar' }}
+          </p>
+        }
+        @if (store.integrityError(); as message) {
+          <p class="banner banner--warn" role="alert">{{ message }}</p>
+        }
+        <button
+          class="btn btn--secondary"
+          type="button"
+          [disabled]="store.integrityBusy()"
+          (click)="store.checkIntegrity()"
+        >
+          Comprobar integridad
+        </button>
+      </section>
+    }
+
     <div class="detail-grid">
       <section class="detail-panel" aria-labelledby="statistics-title">
         <div class="panel-title">

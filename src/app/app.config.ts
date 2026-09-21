@@ -18,6 +18,7 @@ import { CLOUD_CONFIG } from './core/cloud/cloud.config';
 import { CloudFoundationService } from './core/cloud/cloud-foundation.service';
 import { OfflineSyncService } from './core/sync/offline-sync.service';
 import { AuthService } from './core/auth/auth.service';
+import { MatchIntegrityService } from './core/sync/match-integrity.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -33,12 +34,18 @@ export const appConfig: ApplicationConfig = {
       const cloud = inject(CloudFoundationService);
       const sync = inject(OfflineSyncService);
       const auth = inject(AuthService);
+      const integrity = inject(MatchIntegrityService);
       return (async () => {
         if (config.mode === 'cloud') {
           await auth.initialize();
           if (auth.authenticated()) {
             await cloud.initialize();
             await sync.initialize();
+            void integrity
+              .recover()
+              .catch((error: unknown) =>
+                console.warn('[INTEGRITY] startup recovery failed', String(error)),
+              );
           }
         } else {
           await builtInData.ensureBuiltInTeams();
