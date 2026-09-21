@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Match } from '../../../shared/models/match';
-import { GoalForEvent } from '../../../shared/models/match-event';
+import { GoalForEvent, MatchEvent } from '../../../shared/models/match-event';
 import {
   eventFromCloud,
   eventToCloud,
@@ -34,6 +34,7 @@ describe('cloud record mappers', () => {
       startingLineupPlayerIds: ['p1'],
       createdAt: 1_700_000_000_000,
       updatedAt: 1_700_000_001_000,
+      statisticsSchemaVersion: 2,
     };
     const row = matchToCloud(match);
     expect(row['season']).toBe('2026/27');
@@ -109,6 +110,26 @@ describe('cloud record mappers', () => {
       { player_id: 'p1', position: 0 },
     ];
     expect(eventFromCloud(row)).toEqual(event);
+  });
+
+  it('round-trips shot, save and foul receiver metadata', () => {
+    const base = {
+      id: 'event-1',
+      matchId: 'match-1',
+      period: 1,
+      gameClockMs: 30_000,
+      timestamp: 1_700_000_000_000,
+      sequence: 2,
+      undone: false,
+    };
+    const events: MatchEvent[] = [
+      { ...base, type: 'SHOT', playerId: 'p1', outcome: 'off_target' },
+      { ...base, type: 'SAVE', playerId: 'p2' },
+      { ...base, type: 'FOUL', team: 'away', receivedByPlayerId: 'p1', periodFoulNumber: 1 },
+    ];
+    for (const event of events) {
+      expect(eventFromCloud(eventToCloud(event))).toEqual(event);
+    }
   });
 
   it('round-trips an extended player profile', () => {

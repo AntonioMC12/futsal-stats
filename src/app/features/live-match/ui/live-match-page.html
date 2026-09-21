@@ -347,7 +347,27 @@
                 (click)="openFoul('away')"
               >
                 <span class="match-action__icon" aria-hidden="true">!&nbsp;</span>
-                <span class="match-action__content"><strong>Falta rival</strong></span>
+                <span class="match-action__content"><strong>Falta a favor</strong></span>
+              </button>
+              <button
+                class="btn btn--secondary match-action"
+                type="button"
+                [disabled]="
+                  !store.canRegisterGoal() || store.saving() || match.statisticsSchemaVersion !== 2
+                "
+                (click)="openShotSave('shot')"
+              >
+                <span class="match-action__content"><strong>Disparo a favor</strong></span>
+              </button>
+              <button
+                class="btn btn--secondary match-action"
+                type="button"
+                [disabled]="
+                  !store.canRegisterGoal() || store.saving() || match.statisticsSchemaVersion !== 2
+                "
+                (click)="openShotSave('save')"
+              >
+                <span class="match-action__content"><strong>Parada</strong></span>
               </button>
             </div>
             <button
@@ -547,6 +567,11 @@
                           <th scope="col">1.ª mitad</th>
                           <th scope="col">2.ª mitad</th>
                           <th scope="col">G</th>
+                          <th scope="col" title="Disparos">Disp</th>
+                          <th scope="col" title="Tiros a puerta">Puerta</th>
+                          <th scope="col" title="Tiros fuera">Fuera</th>
+                          <th scope="col" title="Paradas">Par</th>
+                          <th scope="col" title="Faltas recibidas">FR</th>
                           <th scope="col">GF</th>
                           <th scope="col">GC</th>
                           <th scope="col">+/-</th>
@@ -582,6 +607,11 @@
                               <td>{{ formatDuration(stats.firstHalfMs) }}</td>
                               <td>{{ formatDuration(stats.secondHalfMs) }}</td>
                               <td>{{ stats.goals }}</td>
+                              <td>{{ stats.shotsTotal ?? '—' }}</td>
+                              <td>{{ stats.shotsOnTarget ?? '—' }}</td>
+                              <td>{{ stats.shotsOffTarget ?? '—' }}</td>
+                              <td>{{ stats.saves ?? '—' }}</td>
+                              <td>{{ stats.foulsReceived ?? '—' }}</td>
                               <td>{{ stats.goalsForOnCourt }}</td>
                               <td>{{ stats.goalsAgainstOnCourt }}</td>
                               <td
@@ -1720,6 +1750,72 @@
     </div>
   }
 
+  @if (shotSaveMode(); as mode) {
+    <div class="substitution-backdrop" (click)="closeShotSave()">
+      <dialog
+        class="substitution-sheet foul-sheet shot-save-sheet"
+        open
+        aria-labelledby="shot-save-title"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <h2 id="shot-save-title">{{ mode === 'shot' ? 'Disparo a favor' : 'Parada' }}</h2>
+        <p class="sheet-kicker">Selecciona un jugador en pista</p>
+        <div class="bench-options foul-player-options">
+          @for (player of store.currentLineup(); track player.id) {
+            <button
+              class="bench-option"
+              type="button"
+              [class.is-selected]="shotSavePlayerId() === player.id"
+              [disabled]="shotSaveSaving()"
+              (click)="shotSavePlayerId.set(player.id)"
+            >
+              <strong>#{{ player.number }}</strong
+              ><span>{{ player.name }}</span>
+            </button>
+          }
+        </div>
+        @if (mode === 'shot') {
+          <div class="disciplinary-options">
+            <button
+              class="btn btn--primary"
+              type="button"
+              [disabled]="!shotSavePlayerId() || shotSaveSaving()"
+              (click)="submitShotSave('on_target')"
+            >
+              Tiro a puerta
+            </button>
+            <button
+              class="btn btn--secondary"
+              type="button"
+              [disabled]="!shotSavePlayerId() || shotSaveSaving()"
+              (click)="submitShotSave('off_target')"
+            >
+              Tiro fuera
+            </button>
+          </div>
+        } @else {
+          <button
+            class="btn btn--primary"
+            type="button"
+            [disabled]="!shotSavePlayerId() || shotSaveSaving()"
+            (click)="submitShotSave()"
+          >
+            Confirmar parada
+          </button>
+        }
+        <button
+          class="btn btn--secondary"
+          type="button"
+          [disabled]="shotSaveSaving()"
+          (click)="closeShotSave()"
+        >
+          Cancelar
+        </button>
+      </dialog>
+    </div>
+  }
+
   @if (foulTeam(); as team) {
     <div class="substitution-backdrop" (click)="cancelFoul()">
       <dialog
@@ -1778,6 +1874,35 @@
                 @if (playerYellowCards(player.id) > 0) {
                   <small aria-label="Tiene una amarilla">🟨</small>
                 }
+              </button>
+            }
+          </div>
+        }
+
+        @if (
+          team === 'away' && foulMode() === 'foul' && store.match()?.statisticsSchemaVersion === 2
+        ) {
+          <p class="sheet-kicker">¿Sobre qué jugador se cometió la falta?</p>
+          <div class="bench-options foul-player-options">
+            <button
+              class="bench-option"
+              type="button"
+              [class.is-selected]="receivedByPlayerId() === null"
+              [disabled]="disciplineSaving()"
+              (click)="receivedByPlayerId.set(null)"
+            >
+              Ninguno / No aplica
+            </button>
+            @for (player of store.currentLineup(); track player.id) {
+              <button
+                class="bench-option"
+                type="button"
+                [class.is-selected]="receivedByPlayerId() === player.id"
+                [disabled]="disciplineSaving()"
+                (click)="receivedByPlayerId.set(player.id)"
+              >
+                <strong>#{{ player.number }}</strong
+                ><span>{{ player.name }}</span>
               </button>
             }
           </div>

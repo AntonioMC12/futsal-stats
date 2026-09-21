@@ -25,6 +25,12 @@ export interface PlayerHistoricalMatch {
 }
 
 export interface PlayerAggregateStatistics {
+  trackedMatches: number;
+  shotsTotal: number;
+  shotsOnTarget: number;
+  shotsOffTarget: number;
+  saves: number;
+  foulsReceived: number;
   squadSelections: number;
   appearances: number;
   starts: number;
@@ -53,6 +59,11 @@ export interface MatchWithEvents {
 }
 
 const EMPTY_MATCH_STATISTICS: PlayerMatchStatistics = {
+  shotsTotal: null,
+  shotsOnTarget: null,
+  shotsOffTarget: null,
+  saves: null,
+  foulsReceived: null,
   playedMs: 0,
   firstHalfMs: 0,
   secondHalfMs: 0,
@@ -126,6 +137,14 @@ export function aggregatePlayerHistory(
     .reduce(
       (result, item) => {
         result.squadSelections += 1;
+        if (item.statistics.shotsTotal !== null) {
+          result.trackedMatches += 1;
+          result.shotsTotal += item.statistics.shotsTotal;
+          result.shotsOnTarget += item.statistics.shotsOnTarget ?? 0;
+          result.shotsOffTarget += item.statistics.shotsOffTarget ?? 0;
+          result.saves += item.statistics.saves ?? 0;
+          result.foulsReceived += item.statistics.foulsReceived ?? 0;
+        }
         result.appearances += Number(item.appeared);
         result.starts += Number(item.started);
         result.playedMs += item.statistics.playedMs;
@@ -144,6 +163,12 @@ export function aggregatePlayerHistory(
       },
       {
         squadSelections: 0,
+        trackedMatches: 0,
+        shotsTotal: 0,
+        shotsOnTarget: 0,
+        shotsOffTarget: 0,
+        saves: 0,
+        foulsReceived: 0,
         appearances: 0,
         starts: 0,
         playedMs: 0,

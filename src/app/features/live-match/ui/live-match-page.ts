@@ -60,6 +60,10 @@ export class LiveMatchPage {
   protected readonly selectedOpponentNumber = signal<number | null>(null);
   protected readonly opponentNumberInput = signal('');
   protected readonly goalSelectorOpen = signal(false);
+  protected readonly shotSaveMode = signal<'shot' | 'save' | null>(null);
+  protected readonly shotSavePlayerId = signal<string | null>(null);
+  protected readonly shotSaveSaving = signal(false);
+  protected readonly receivedByPlayerId = signal<string | null>(null);
   protected readonly goalSaving = signal(false);
   protected readonly activeOverlay = signal<MatchOverlay | null>(null);
   protected readonly initialLineupOpen = signal(false);
@@ -441,6 +445,43 @@ export class LiveMatchPage {
     });
   }
 
+  protected openShotSave(mode: 'shot' | 'save'): void {
+    if (
+      !this.store.canRegisterGoal() ||
+      this.store.saving() ||
+      this.store.match()?.statisticsSchemaVersion !== 2
+    )
+      return;
+    this.shotSaveMode.set(mode);
+    this.shotSavePlayerId.set(null);
+  }
+
+  protected closeShotSave(): void {
+    if (this.shotSaveSaving()) return;
+    this.shotSaveMode.set(null);
+    this.shotSavePlayerId.set(null);
+  }
+
+  protected async submitShotSave(outcome?: 'on_target' | 'off_target'): Promise<void> {
+    const mode = this.shotSaveMode();
+    const playerId = this.shotSavePlayerId();
+    if (!mode || !playerId || this.shotSaveSaving() || (mode === 'shot' && !outcome)) return;
+    this.shotSaveSaving.set(true);
+    try {
+      const saved =
+        mode === 'shot'
+          ? await this.store.registerShot(playerId, outcome!)
+          : await this.store.registerSave(playerId);
+      if (saved) {
+        this.showActionFeedback(mode === 'shot' ? 'Disparo registrado' : 'Parada registrada');
+        this.shotSaveMode.set(null);
+        this.shotSavePlayerId.set(null);
+      }
+    } finally {
+      this.shotSaveSaving.set(false);
+    }
+  }
+
   protected async undoLastAction(): Promise<void> {
     if (await this.store.undoLastEvent()) {
       this.notifications.info(this.store.notice() ?? 'Acción deshecha');
@@ -449,14 +490,17 @@ export class LiveMatchPage {
 
   protected openFoul(team: FoulTeam, mode: 'foul' | 'card' = 'foul'): void | Promise<void> {
     if (!this.store.canRegisterFoul() || this.store.saving()) return;
-    return this.runAfterClockStopped('FOUL', () => {
+    const open = () => {
       this.selectedFoulPlayerId.set(null);
+      this.receivedByPlayerId.set(null);
       this.foulMode.set(mode);
       this.foulAccumulated.set(true);
       this.standaloneDisciplineReason.set('protest');
       this.resetOpponentSelection();
       this.foulTeam.set(team);
-    });
+    };
+    if (team === 'away' && mode === 'foul') return open();
+    return this.runAfterClockStopped('FOUL', open);
   }
 
   protected openBenchDiscipline(): void | Promise<void> {
@@ -513,6 +557,7 @@ export class LiveMatchPage {
     if (this.disciplineSaving()) return;
     this.foulTeam.set(null);
     this.selectedFoulPlayerId.set(null);
+    this.receivedByPlayerId.set(null);
     this.resetOpponentSelection();
   }
 
@@ -561,6 +606,10 @@ export class LiveMatchPage {
     if (!team || this.disciplineSaving()) return;
     this.disciplineSaving.set(true);
     try {
+      if (this.foulMode() === 'card' && this.store.clockRunning()) {
+        await this.store.stopClock();
+        if (this.store.clockRunning()) return;
+      }
       const saved =
         this.foulMode() === 'card' && action !== 'none'
           ? await this.store.registerStandaloneDiscipline(
@@ -580,6 +629,7 @@ export class LiveMatchPage {
                 action,
                 opponentPlayerNumber,
                 this.foulAccumulated(),
+                this.receivedByPlayerId() ?? undefined,
               );
       if (saved) {
         this.showActionFeedback(
@@ -630,6 +680,8 @@ export class LiveMatchPage {
       this.activeOverlay.set(null);
     } else if (this.goalSelectorOpen() && !this.goalSaving()) {
       this.cancelGoalSelector();
+    } else if (this.shotSaveMode() && !this.shotSaveSaving()) {
+      this.closeShotSave();
     } else if (this.selectedOutPlayerId() && !this.substituting()) {
       this.cancelSubstitution();
     } else if (this.foulTeam() && !this.disciplineSaving()) {

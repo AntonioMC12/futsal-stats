@@ -58,6 +58,11 @@ export class PlayerMatchDetailComponent {
     return stats
       ? [
           { label: 'Goles', value: stats.goals },
+          { label: 'Disparos', value: stats.shotsTotal ?? 'No registrado' },
+          { label: 'Tiros a puerta', value: stats.shotsOnTarget ?? 'No registrado' },
+          { label: 'Tiros fuera', value: stats.shotsOffTarget ?? 'No registrado' },
+          { label: 'Paradas', value: stats.saves ?? 'No registrado' },
+          { label: 'Faltas recibidas', value: stats.foulsReceived ?? 'No registrado' },
           { label: 'Goles a favor en pista', value: stats.goalsForOnCourt },
           { label: 'Goles en contra en pista', value: stats.goalsAgainstOnCourt },
           {

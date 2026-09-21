@@ -78,6 +78,7 @@ export function createMatchRecord(
     startingLineupPlayerIds: [],
     createdAt: now,
     updatedAt: now,
+    statisticsSchemaVersion: 2,
   });
 }
 

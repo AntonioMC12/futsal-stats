@@ -67,6 +67,8 @@ export interface Match {
   startingLineupPlayerIds: string[];
   createdAt: number;
   updatedAt: number;
+  /** Version 2 tracks shots, saves and fouls received. Missing means historical tracking unavailable. */
+  statisticsSchemaVersion?: 2;
   source?: 'native' | 'csv-import';
   importMetadata?: {
     fileName: string;

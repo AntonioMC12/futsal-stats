@@ -133,6 +133,9 @@ export function matchFromCloud(row: JsonRecord): Match {
       .map((item) => string(item['player_id'])),
     createdAt: timestamp(row['created_at']),
     updatedAt: timestamp(row['updated_at']),
+    ...(number(row['statistics_schema_version']) === 2
+      ? { statisticsSchemaVersion: 2 as const }
+      : {}),
     ...(source === 'csv-import' ? { source } : {}),
     ...(importMetadata ? { importMetadata } : {}),
   };
@@ -158,6 +161,7 @@ export function matchToCloud(match: Match): JsonRecord {
     starting_lineup_player_ids: match.startingLineupPlayerIds,
     created_at: iso(match.createdAt),
     updated_at: iso(match.updatedAt),
+    statistics_schema_version: match.statisticsSchemaVersion ?? null,
     source: match.source ?? 'native',
     import_metadata: match.importMetadata ?? null,
   };

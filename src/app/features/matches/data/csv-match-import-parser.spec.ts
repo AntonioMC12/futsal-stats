@@ -73,6 +73,7 @@ describe('CsvMatchImportParser', () => {
     const result = await parser.parseText(csv, 'partido.csv');
 
     expect(result.schemaVersion).toBe('futsal-stats-csv/2');
+    expect(result.match.statisticsSchemaVersion).toBeUndefined();
     expect(result.source.originalMatchId).toBe(match.id);
     expect(result.match).toMatchObject({
       opponent: 'Rival FC',
@@ -86,6 +87,38 @@ describe('CsvMatchImportParser', () => {
     expect(result.events.map(({ event }) => event)).toEqual(events);
     expect(result.issues.map(({ code }) => code)).toEqual(['missing-lineups']);
     expect(result.source.fingerprint).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('round-trips tracked shots, saves and received fouls', async () => {
+    const tracked = { ...match, statisticsSchemaVersion: 2 as const };
+    const extra: MatchEvent[] = [
+      {
+        ...events[0]!,
+        id: 'shot',
+        type: 'SHOT',
+        playerId: 'player-1',
+        outcome: 'on_target',
+        sequence: 4,
+      },
+      { ...events[0]!, id: 'save', type: 'SAVE', playerId: 'player-2', sequence: 5 },
+      {
+        ...events[0]!,
+        id: 'foul',
+        type: 'FOUL',
+        team: 'away',
+        receivedByPlayerId: 'player-1',
+        periodFoulNumber: 1,
+        countsAsAccumulatedFoul: true,
+        restart: 'direct-free-kick',
+        sequence: 6,
+      },
+    ];
+    const csv = serializeMatchCsv(
+      buildMatchStatisticsExport(tracked, [...events, ...extra], players),
+    );
+    const result = await parser.parseText(csv, 'tracked.csv');
+    expect(result.match.statisticsSchemaVersion).toBe(2);
+    expect(result.events.slice(-3).map(({ event }) => event)).toEqual(extra);
   });
 
   it('produces the same fingerprint for the same semantic CSV', async () => {

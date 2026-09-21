@@ -23,6 +23,11 @@ export interface PlayerMatchExportRow {
   number: number | '';
   playerName: string;
   goals: number;
+  shotsTotal: number | '';
+  shotsOnTarget: number | '';
+  shotsOffTarget: number | '';
+  saves: number | '';
+  foulsReceived: number | '';
   playingTime: string;
   playingSeconds: number;
   firstHalfTime: string;
@@ -98,6 +103,11 @@ export function buildMatchStatisticsExport(
         entries: 0,
         percentage: 0,
         goals: 0,
+        shotsTotal: null,
+        shotsOnTarget: null,
+        shotsOffTarget: null,
+        saves: null,
+        foulsReceived: null,
         goalsForOnCourt: 0,
         goalsAgainstOnCourt: 0,
         plusMinus: 0,
@@ -120,6 +130,11 @@ export function buildMatchStatisticsExport(
         number: player?.number ?? '',
         playerName: player?.name ?? 'Jugador no disponible',
         goals: stats.goals,
+        shotsTotal: stats.shotsTotal ?? '',
+        shotsOnTarget: stats.shotsOnTarget ?? '',
+        shotsOffTarget: stats.shotsOffTarget ?? '',
+        saves: stats.saves ?? '',
+        foulsReceived: stats.foulsReceived ?? '',
         playingTime: formatGameClock(stats.playedMs),
         playingSeconds: Math.floor(stats.playedMs / 1_000),
         firstHalfTime: formatGameClock(stats.firstHalfMs),
@@ -169,6 +184,7 @@ export function buildMatchStatisticsExport(
                 : undefined;
         const secondaryPlayerId = event.type === 'SUBSTITUTION' ? event.inPlayerId : undefined;
         const foulPlayerId = event.type === 'FOUL' ? event.foulPlayerId : undefined;
+        const receivedByPlayerId = event.type === 'FOUL' ? event.receivedByPlayerId : undefined;
         const player = playerId ? playersById.get(playerId) : undefined;
         const foulPlayer = foulPlayerId ? playersById.get(foulPlayerId) : undefined;
         const secondary = secondaryPlayerId ? playersById.get(secondaryPlayerId) : undefined;
@@ -195,6 +211,14 @@ export function buildMatchStatisticsExport(
           foulPlayerId: foulPlayerId ?? '',
           foulPlayerNumber: foulPlayer?.number ?? '',
           foulPlayerName: foulPlayer?.name ?? '',
+          receivedByPlayerId: receivedByPlayerId ?? '',
+          receivedByPlayerNumber: receivedByPlayerId
+            ? (playersById.get(receivedByPlayerId)?.number ?? '')
+            : '',
+          receivedByPlayerName: receivedByPlayerId
+            ? (playersById.get(receivedByPlayerId)?.name ?? '')
+            : '',
+          shotOutcome: event.type === 'SHOT' ? event.outcome : '',
           foulOpponentPlayerNumber:
             event.type === 'FOUL' ? (event.foulOpponentPlayerNumber ?? '') : '',
           secondaryPlayerId: secondaryPlayerId ?? '',
@@ -248,6 +272,7 @@ export function buildMatchStatisticsExport(
     metadata: [
       {
         schemaVersion: 'futsal-stats-csv/2',
+        statisticsSchemaVersion: match.statisticsSchemaVersion === 2 ? '2' : '',
         matchId: match.id,
         opponentShortName: match.awayTeam.shortName,
         description: match.description,

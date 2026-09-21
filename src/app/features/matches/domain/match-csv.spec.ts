@@ -175,7 +175,7 @@ describe('match statistics CSV', () => {
     expect(csv.startsWith(CSV_UTF8_BOM)).toBe(true);
     expect(csv).toContain(
       'fecha,equipo,rival,estado_partido,periodo,reloj,marcador,dorsal,jugador,' +
-        'goles,tiempo_jugado,segundos_jugados,goles_favor_en_pista,goles_contra_en_pista,' +
+        'goles,shots_total,shots_on_target,shots_off_target,saves,fouls_received,tiempo_jugado,segundos_jugados,goles_favor_en_pista,goles_contra_en_pista,' +
         'diferencia_goles,titular,en_pista,entradas_en_pista',
     );
     expect(csv).not.toContain('match_id');
@@ -192,7 +192,7 @@ describe('match statistics CSV', () => {
     expect(csv).toContain('"José ""Pepe"" García"');
     expect(csv).toContain('Álex Muñoz');
     expect(csv).toContain('Iñaki');
-    expect(csv).toContain(',Sin minutos,0,00:00,0,0,0,0,No,No,0');
+    expect(csv).toContain(',Sin minutos,0,,,,,,00:00,0,0,0,0,No,No,0');
     expect(csv.endsWith('\r\n')).toBe(true);
   });
 

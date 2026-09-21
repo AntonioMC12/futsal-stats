@@ -41,6 +41,7 @@ function activeMatch(): Match {
     startingLineupPlayerIds: players.slice(0, 5).map((player) => player.id),
     createdAt: 1,
     updatedAt: 1,
+    statisticsSchemaVersion: 2,
   };
 }
 
@@ -582,7 +583,7 @@ describe('LiveMatchPage', () => {
     fixture.destroy();
   });
 
-  it('stops the clock before opening either foul flow', async () => {
+  it('stops the clock for a home foul but keeps it running for a foul won', async () => {
     const { fixture, store } = await createPage();
     const stopClock = vi.spyOn(store, 'stopClock');
     const foulButtons = fixture.nativeElement.querySelectorAll(
@@ -603,9 +604,9 @@ describe('LiveMatchPage', () => {
     foulButtons[1]?.click();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(store.clockRunning()).toBe(false);
+    expect(store.clockRunning()).toBe(true);
     expect(fixture.nativeElement.querySelector('.foul-sheet')).not.toBeNull();
-    expect(stopClock).toHaveBeenCalledTimes(2);
+    expect(stopClock).toHaveBeenCalledTimes(1);
     fixture.destroy();
   });
 
@@ -814,20 +815,65 @@ describe('LiveMatchPage', () => {
     fixture.destroy();
   });
 
-  it('keeps the four frequent actions and adds bench discipline as a secondary action', async () => {
+  it('shows seven quick actions including shot, save and bench discipline', async () => {
     const { fixture } = await createPage();
     const actions = fixture.nativeElement.querySelectorAll(
       '.primary-actions .btn',
     ) as NodeListOf<HTMLButtonElement>;
 
-    expect(actions).toHaveLength(5);
+    expect(actions).toHaveLength(7);
     expect([...actions].map((button) => button.textContent?.trim().replace(/\s+/g, ' '))).toEqual([
       '+1 Gol',
       '+1 Gol rival',
       '! Falta',
-      '! Falta rival',
+      '! Falta a favor',
+      'Disparo a favor',
+      'Parada',
       '▰ Disciplina banquillo',
     ]);
+    fixture.destroy();
+  });
+
+  it('registers a shot and save from the current lineup without stopping the clock', async () => {
+    const { fixture, store, committedEvents } = await createPage();
+    await store.startClock();
+    fixture.detectChanges();
+    const actions = fixture.nativeElement.querySelectorAll(
+      '.foul-actions button',
+    ) as NodeListOf<HTMLButtonElement>;
+    actions[2]!.click();
+    fixture.detectChanges();
+    const options = fixture.nativeElement.querySelectorAll(
+      '.shot-save-sheet .bench-option',
+    ) as NodeListOf<HTMLButtonElement>;
+    expect(options).toHaveLength(5);
+    options[0]!.click();
+    fixture.detectChanges();
+    (
+      fixture.nativeElement.querySelector(
+        '.shot-save-sheet .disciplinary-options button',
+      ) as HTMLButtonElement
+    ).click();
+    await fixture.whenStable();
+    expect(store.clockRunning()).toBe(true);
+    expect(committedEvents.at(-1)).toMatchObject({
+      type: 'SHOT',
+      playerId: 'p1',
+      outcome: 'on_target',
+    });
+    fixture.detectChanges();
+    actions[3]!.click();
+    fixture.detectChanges();
+    (
+      fixture.nativeElement.querySelector('.shot-save-sheet .bench-option') as HTMLButtonElement
+    ).click();
+    fixture.detectChanges();
+    (
+      fixture.nativeElement.querySelector('.shot-save-sheet .btn--primary') as HTMLButtonElement
+    ).click();
+    await fixture.whenStable();
+    expect(committedEvents.at(-1)).toMatchObject({ type: 'SAVE', playerId: 'p1' });
+    expect(store.clockRunning()).toBe(true);
     fixture.destroy();
   });
 

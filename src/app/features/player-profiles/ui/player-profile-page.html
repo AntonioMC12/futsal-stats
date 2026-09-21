@@ -102,6 +102,26 @@
             >
           </article>
           <article>
+            <span>Disparos</span
+            ><strong>{{
+              store.statistics().trackedMatches ? store.statistics().shotsTotal : '—'
+            }}</strong>
+            <small
+              >{{ store.statistics().shotsOnTarget }} a puerta ·
+              {{ store.statistics().shotsOffTarget }} fuera</small
+            >
+          </article>
+          <article>
+            <span>Paradas / faltas recibidas</span>
+            <strong>{{
+              store.statistics().trackedMatches ? store.statistics().saves : '—'
+            }}</strong>
+            <small
+              >{{ store.statistics().foulsReceived }} faltas recibidas ·
+              {{ store.statistics().trackedMatches }} partidos con registro</small
+            >
+          </article>
+          <article>
             <span>Resultados</span><strong>{{ percentage(store.statistics().winRate) }}</strong
             ><small
               >{{ store.statistics().wins }}V · {{ store.statistics().draws }}E ·
@@ -153,6 +173,11 @@
                     } @else {
                       <span>{{ duration(item.statistics.playedMs) }}</span
                       ><span>{{ item.statistics.goals }} goles</span
+                      ><span>{{
+                        item.statistics.shotsTotal === null
+                          ? 'Disparos: sin registro'
+                          : item.statistics.shotsTotal + ' disparos'
+                      }}</span
                       ><span
                         >{{ item.statistics.plusMinus > 0 ? '+' : ''
                         }}{{ item.statistics.plusMinus }} +/−</span

@@ -55,6 +55,11 @@ export async function assertEventReferences(
       case 'FOUL':
         assertPlayer(event.foulPlayerId);
         assertPlayer(event.playerId);
+        assertPlayer(event.receivedByPlayerId);
+        break;
+      case 'SHOT':
+      case 'SAVE':
+        assertPlayer(event.playerId);
         break;
       case 'DISCIPLINE':
       case 'BENCH_DISCIPLINE':

@@ -12,6 +12,7 @@ export interface RegisterFoulInput {
   team: FoulTeam;
   currentPeriodFoulCount: number;
   playerId?: string;
+  receivedByPlayerId?: string;
   opponentPlayerNumber?: number;
   opponentPlayerYellowCards?: number;
   sentOffOpponentPlayerNumbers?: readonly number[];
@@ -42,6 +43,19 @@ export function registerFoul(input: RegisterFoulInput): DomainResult<RegisterFou
   }
   if (input.team === 'away' && input.playerId) {
     return fail('No se puede asignar un jugador propio a una falta rival.');
+  }
+  if (input.team === 'home' && input.receivedByPlayerId) {
+    return fail('Una falta propia no puede tener un jugador receptor.');
+  }
+  if (input.receivedByPlayerId && input.match.statisticsSchemaVersion !== 2) {
+    return fail('Este partido no registra faltas recibidas.');
+  }
+  if (
+    input.receivedByPlayerId &&
+    (!input.match.squadPlayerIds.includes(input.receivedByPlayerId) ||
+      !input.currentLineupPlayerIds?.includes(input.receivedByPlayerId))
+  ) {
+    return fail('El jugador que recibe la falta debe estar en pista.');
   }
   if (input.team === 'home' && input.opponentPlayerNumber !== undefined) {
     return fail('No se puede asignar un dorsal rival a una falta propia.');
@@ -104,6 +118,7 @@ export function registerFoul(input: RegisterFoulInput): DomainResult<RegisterFou
       undone: false,
       team: input.team,
       playerId: input.playerId,
+      receivedByPlayerId: input.receivedByPlayerId,
       opponentPlayerNumber: input.opponentPlayerNumber,
       periodFoulNumber: input.currentPeriodFoulCount + (accumulated ? 1 : 0),
       countsAsAccumulatedFoul: accumulated,

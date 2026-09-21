@@ -26,6 +26,7 @@ import { deriveMatchState } from '../domain/derived-match-state';
 import { deriveDisciplinaryState, registerRedCardReplacement } from '../domain/discipline';
 import { createDisciplineView } from '../domain/discipline-view';
 import { registerFoul as createFoul } from '../domain/foul';
+import { registerShot as createShot, registerSave as createSave } from '../domain/shot-save';
 import { registerDisciplinarySanction as createDisciplinarySanction } from '../domain/disciplinary-sanction';
 import { GoalSide, registerGoal as createGoal } from '../domain/goal';
 import {
@@ -450,6 +451,7 @@ export class LiveMatchStore {
     disciplinaryAction: DisciplinaryAction = 'none',
     opponentPlayerNumber?: number,
     countsAsAccumulatedFoul = true,
+    receivedByPlayerId?: string,
   ): Promise<boolean> {
     return this.registerFoul(
       'away',
@@ -457,7 +459,62 @@ export class LiveMatchStore {
       undefined,
       opponentPlayerNumber,
       countsAsAccumulatedFoul,
+      receivedByPlayerId,
     );
+  }
+
+  registerShot(playerId: string, outcome: 'on_target' | 'off_target'): Promise<boolean> {
+    return this.registerShotOrSave('shot', playerId, outcome);
+  }
+
+  registerSave(playerId: string): Promise<boolean> {
+    return this.registerShotOrSave('save', playerId);
+  }
+
+  private async registerShotOrSave(
+    kind: 'shot' | 'save',
+    playerId: string,
+    outcome?: 'on_target' | 'off_target',
+  ): Promise<boolean> {
+    const match = this.match();
+    if (!match || this.commandInProgress) return false;
+    this.commandInProgress = true;
+    this.saving.set(true);
+    this.error.set(null);
+    this.notice.set(null);
+    const timestamp = Date.now();
+    try {
+      const input = {
+        match,
+        playerId,
+        currentLineupPlayerIds: this.lineupPlayerIds(),
+        gameClockMs: projectRemaining(match.clock, timestamp),
+        timestamp,
+        sequence: this.nextSequence(this.events()),
+        eventId: createId(),
+      };
+      const result =
+        kind === 'shot' ? createShot({ ...input, outcome: outcome! }) : createSave(input);
+      if (!result.ok) {
+        this.error.set(result.error);
+        return false;
+      }
+      await this.eventStore.commit(result.value.match, [result.value.event]);
+      this.now.set(timestamp);
+      this.match.set(result.value.match);
+      this.events.update((events) => [...events, result.value.event]);
+      return true;
+    } catch {
+      this.error.set(
+        kind === 'shot'
+          ? 'No se ha podido guardar el disparo.'
+          : 'No se ha podido guardar la parada.',
+      );
+      return false;
+    } finally {
+      this.commandInProgress = false;
+      this.saving.set(false);
+    }
   }
 
   async registerStandaloneDiscipline(
@@ -815,6 +872,7 @@ export class LiveMatchStore {
     playerId?: string,
     opponentPlayerNumber?: number,
     countsAsAccumulatedFoul = true,
+    receivedByPlayerId?: string,
   ): Promise<boolean> {
     const match = this.match();
     if (!match || this.commandInProgress) {
@@ -832,6 +890,7 @@ export class LiveMatchStore {
         team,
         currentPeriodFoulCount: this.currentPeriodFouls()[team],
         playerId,
+        receivedByPlayerId,
         opponentPlayerNumber,
         opponentPlayerYellowCards:
           this.disciplinaryState().opponentPlayers.find(
@@ -860,7 +919,11 @@ export class LiveMatchStore {
 
       let updatedMatch = result.value.match;
       const recordedEvents: MatchEvent[] = [result.value.event];
-      if (shouldAutoStopClock(result.value.event.type) && updatedMatch.clock.running) {
+      if (
+        team === 'home' &&
+        shouldAutoStopClock(result.value.event.type) &&
+        updatedMatch.clock.running
+      ) {
         const stopped = stopMatchClock(updatedMatch, timestamp);
         if (!stopped.ok) {
           this.error.set(stopped.error);
@@ -993,6 +1056,10 @@ function undoLabel(type: MatchEvent['type']): string {
       return 'gol en contra';
     case 'FOUL':
       return 'falta';
+    case 'SHOT':
+      return 'disparo';
+    case 'SAVE':
+      return 'parada';
     case 'BENCH_DISCIPLINE':
       return 'disciplina de banquillo';
     case 'SUBSTITUTION':

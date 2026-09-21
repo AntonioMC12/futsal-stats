@@ -13,6 +13,11 @@ const HEADERS: readonly (keyof PlayerMatchExportRow)[] = [
   'number',
   'playerName',
   'goals',
+  'shotsTotal',
+  'shotsOnTarget',
+  'shotsOffTarget',
+  'saves',
+  'foulsReceived',
   'playingTime',
   'playingSeconds',
   'goalsForOnCourt',
@@ -53,6 +58,11 @@ const CSV_HEADERS = [
   'dorsal',
   'jugador',
   'goles',
+  'shots_total',
+  'shots_on_target',
+  'shots_off_target',
+  'saves',
+  'fouls_received',
   'tiempo_jugado',
   'segundos_jugados',
   'goles_favor_en_pista',
@@ -115,6 +125,10 @@ export function serializeMatchCsv(exportData: MatchStatisticsExport): string {
       'foulPlayerId',
       'foulPlayerNumber',
       'foulPlayerName',
+      'receivedByPlayerId',
+      'receivedByPlayerNumber',
+      'receivedByPlayerName',
+      'shotOutcome',
       'foulOpponentPlayerNumber',
       'secondaryPlayerId',
       'secondaryPlayerNumber',
@@ -152,7 +166,7 @@ export function serializeMatchCsv(exportData: MatchStatisticsExport): string {
   );
   section(
     'METADATOS',
-    ['schemaVersion', 'matchId', 'opponentShortName', 'description'],
+    ['schemaVersion', 'statisticsSchemaVersion', 'matchId', 'opponentShortName', 'description'],
     exportData.metadata,
   );
   return CSV_UTF8_BOM + lines.join('\r\n') + '\r\n';

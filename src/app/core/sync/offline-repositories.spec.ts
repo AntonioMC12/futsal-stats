@@ -101,6 +101,51 @@ describe('offline-first match repositories', () => {
     expect(await db.syncQueue.count()).toBe(3);
   });
 
+  it('persists new event metadata and one deduplicated outbox operation across restart', async () => {
+    await TestBed.inject(DexiePlayerRepository).put({
+      id: 'p1',
+      teamId: 'team-1',
+      number: 1,
+      name: 'Player',
+      active: true,
+    });
+    const match = {
+      ...matchFixture(),
+      squadPlayerIds: ['p1'],
+      statisticsSchemaVersion: 2 as const,
+    };
+    const matches = TestBed.inject(OfflineMatchRepository);
+    const events = TestBed.inject(OfflineMatchEventRepository);
+    await matches.addIfNoActive(match);
+    const shot: MatchEvent = {
+      ...eventFixture('shot', 1),
+      type: 'SHOT',
+      playerId: 'p1',
+      outcome: 'on_target',
+    };
+    const save: MatchEvent = { ...eventFixture('save', 2), type: 'SAVE', playerId: 'p1' };
+    const foul: MatchEvent = {
+      ...eventFixture('foul', 3),
+      type: 'FOUL',
+      team: 'away',
+      receivedByPlayerId: 'p1',
+      periodFoulNumber: 1,
+    };
+    await events.commit(match, [shot]);
+    await events.commit(match, [save, foul]);
+    db.close();
+    db = new FutsalStatsDb();
+    await db.open();
+    expect(
+      (await db.events.toArray()).sort((a, b) => a.sequence - b.sequence).map(({ type }) => type),
+    ).toEqual(['SHOT', 'SAVE', 'FOUL']);
+    expect(await db.syncQueue.where('dedupeKey').equals('match-events:match-1').count()).toBe(1);
+    const queued = await db.syncQueue.where('dedupeKey').equals('match-events:match-1').first();
+    if (queued?.operation.kind === 'match-events-commit')
+      expect(queued.operation.events).toEqual([shot, save, foul]);
+    expect(await db.matches.get(match.id)).toMatchObject({ statisticsSchemaVersion: 2 });
+  });
+
   it('persists the final manifest with events and outbox across restart', async () => {
     const matches = TestBed.inject(OfflineMatchRepository);
     const events = TestBed.inject(OfflineMatchEventRepository);

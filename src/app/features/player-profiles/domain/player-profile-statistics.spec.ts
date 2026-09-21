@@ -88,6 +88,38 @@ function history(
 }
 
 describe('player profile statistics', () => {
+  it('aggregates new metrics only over matches with tracking', () => {
+    const old = match('old', '2026/27', '2026-09-01');
+    const tracked = {
+      ...match('tracked', '2026/27', '2026-09-21'),
+      statisticsSchemaVersion: 2 as const,
+    };
+    const shot: MatchEvent = {
+      id: 'shot',
+      matchId: tracked.id,
+      type: 'SHOT',
+      playerId: 'p1',
+      outcome: 'on_target',
+      period: 1,
+      gameClockMs: 900_000,
+      timestamp: 5,
+      sequence: 5,
+      undone: false,
+    };
+    const result = aggregatePlayerHistory(
+      buildPlayerHistory('p1', [
+        { match: old, events: history(old.id, { home: 1, away: 0 }) },
+        { match: tracked, events: [...history(tracked.id, { home: 1, away: 0 }), shot] },
+      ]),
+    );
+    expect(result).toMatchObject({
+      squadSelections: 2,
+      trackedMatches: 1,
+      shotsTotal: 1,
+      shotsOnTarget: 1,
+      shotsOffTarget: 0,
+    });
+  });
   it('shows legacy player data but excludes partial snapshots from complete career totals', () => {
     const legacy: Match = {
       ...match('legacy', '2026/27', '2026-08-28'),
