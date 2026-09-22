@@ -114,10 +114,63 @@ describe('player profile statistics', () => {
     );
     expect(result).toMatchObject({
       squadSelections: 2,
-      trackedMatches: 1,
+      statisticsV2Matches: 1,
       shotsTotal: 2,
       shotsOnTarget: 2,
       shotsOffTarget: 0,
+    });
+  });
+
+  it('aggregates saves and received fouls independently from v2 matches', () => {
+    const tracked = {
+      ...match('tracked', '2026/27', '2026-09-21'),
+      statisticsSchemaVersion: 2 as const,
+    };
+    const old = match('old', '2025/26', '2026-05-21');
+    const save: MatchEvent = {
+      id: 'save',
+      matchId: tracked.id,
+      type: 'SAVE',
+      playerId: 'p1',
+      period: 1,
+      gameClockMs: 500_000,
+      timestamp: 9,
+      sequence: 9,
+      undone: false,
+    };
+    const received: MatchEvent = {
+      id: 'received',
+      matchId: tracked.id,
+      type: 'FOUL',
+      team: 'away',
+      receivedByPlayerId: 'p1',
+      periodFoulNumber: 1,
+      period: 1,
+      gameClockMs: 490_000,
+      timestamp: 10,
+      sequence: 10,
+      undone: false,
+    };
+    const all = buildPlayerHistory('p1', [
+      { match: tracked, events: [...history(tracked.id, { home: 0, away: 1 }), save, received] },
+      { match: old, events: history(old.id, { home: 0, away: 1 }) },
+    ]);
+
+    expect(all.find((item) => item.match.id === tracked.id)?.statistics).toMatchObject({
+      saves: 1,
+      foulsReceived: 1,
+      fouls: 1,
+    });
+    expect(aggregatePlayerHistory(all)).toMatchObject({
+      statisticsV2Matches: 1,
+      saves: 1,
+      foulsReceived: 1,
+      fouls: 2,
+    });
+    expect(aggregatePlayerHistory(filterPlayerHistoryBySeason(all, '2025/26'))).toMatchObject({
+      statisticsV2Matches: 0,
+      saves: 0,
+      foulsReceived: 0,
     });
   });
   it('shows legacy player data but excludes partial snapshots from complete career totals', () => {

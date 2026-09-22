@@ -120,6 +120,14 @@ export class PlayerProfilePage {
   protected percentage(value: number): string {
     return new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(value) + '%';
   }
+  protected isGoalkeeper(position: string | undefined): boolean {
+    return /^(?:porter[oa]|gk|goalkeeper)\b/i.test(position?.trim() ?? '');
+  }
+  protected trackingLabel(count: number): string {
+    return count
+      ? `${count} ${count === 1 ? 'partido' : 'partidos'} con registro`
+      : 'Sin registro en esta selección';
+  }
   protected footLabel(value: PreferredFoot): string {
     return { unknown: 'Sin especificar', right: 'Derecho', left: 'Izquierdo', both: 'Ambidiestro' }[
       value

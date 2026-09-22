@@ -25,7 +25,8 @@ export interface PlayerHistoricalMatch {
 }
 
 export interface PlayerAggregateStatistics {
-  trackedMatches: number;
+  /** Finished matches with the v2 schema, which tracks shots, saves and received fouls. */
+  statisticsV2Matches: number;
   shotsTotal: number;
   shotsOnTarget: number;
   shotsOffTarget: number;
@@ -137,9 +138,9 @@ export function aggregatePlayerHistory(
     .reduce(
       (result, item) => {
         result.squadSelections += 1;
-        if (item.statistics.shotsTotal !== null) {
-          result.trackedMatches += 1;
-          result.shotsTotal += item.statistics.shotsTotal;
+        if (item.match.statisticsSchemaVersion === 2) {
+          result.statisticsV2Matches += 1;
+          result.shotsTotal += item.statistics.shotsTotal ?? 0;
           result.shotsOnTarget += item.statistics.shotsOnTarget ?? 0;
           result.shotsOffTarget += item.statistics.shotsOffTarget ?? 0;
           result.saves += item.statistics.saves ?? 0;
@@ -163,7 +164,7 @@ export function aggregatePlayerHistory(
       },
       {
         squadSelections: 0,
-        trackedMatches: 0,
+        statisticsV2Matches: 0,
         shotsTotal: 0,
         shotsOnTarget: 0,
         shotsOffTarget: 0,
