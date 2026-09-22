@@ -1,5 +1,6 @@
 .matches-page {
   width: min(100%, var(--ds-content));
+  min-width: 0;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -100,8 +101,14 @@
   width: 100%;
 }
 
-.match-create-actions { display: flex; flex-wrap: wrap; gap: var(--ds-space-3); }
-.match-create-actions .btn { min-height: var(--ds-touch-primary); }
+.match-create-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-3);
+}
+.match-create-actions .btn {
+  min-height: var(--ds-touch-primary);
+}
 
 .new-match {
   min-height: var(--ds-touch-primary);
@@ -154,6 +161,7 @@
 }
 
 .history-list {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
@@ -219,11 +227,18 @@
 
 .history-item {
   min-height: 5rem;
+  max-width: 100%;
   padding: 0.85rem 1rem;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: 1rem;
+}
+
+.history-item__content {
+  flex: 1 1 16rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .history-item p {
@@ -232,14 +247,14 @@
 
 .history-opponent {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
+  min-width: 0;
   gap: var(--ds-space-2);
 }
 
 .history-opponent > span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .history-score {
@@ -264,10 +279,14 @@
 .history-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
   gap: var(--ds-space-2);
+  margin-left: auto;
 }
 
 .history-actions > .btn {
+  min-height: var(--ds-touch-min);
   white-space: nowrap;
 }
 
@@ -276,7 +295,12 @@
   text-align: right;
 }
 
-@media (min-width: 768px) {
+.secondary-actions--compact summary {
+  min-width: var(--ds-touch-min);
+  justify-content: center;
+}
+
+@media (min-width: 1360px) {
   .matches-page {
     display: grid;
     grid-template-columns: minmax(0, 1.15fr) minmax(19rem, 0.85fr);
@@ -304,6 +328,7 @@
   .history {
     grid-column: 2;
     grid-row: 2 / span 3;
+    min-width: 0;
     padding-left: var(--ds-space-6);
     border-left: 1px solid var(--ds-border-subtle);
   }
@@ -316,7 +341,10 @@
 
   .history-item {
     align-items: flex-start;
-    flex-direction: column;
+  }
+
+  .history-item__content {
+    flex-basis: 100%;
   }
 
   .history-actions {

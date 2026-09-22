@@ -108,6 +108,7 @@ tiempo del tramo actual y el reparto por periodos.
 - Un único partido activo simultáneamente.
 - Continuación de un partido en curso después de cerrar o recargar la aplicación.
 - Histórico de partidos finalizados con fecha y resultado.
+- Tarjetas de historial adaptables a tablet y escritorio: el contenido y las acciones conservan zonas separadas incluso con nombres largos.
 - Filtros por temporada, competición y estado.
 - Detalle de partido en modo consulta con cronología y estadísticas reproducibles desde eventos.
 - Eliminación transaccional de partidos y sus eventos asociados.

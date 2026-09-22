@@ -112,7 +112,7 @@
         <div class="history-list">
           @for (summary of store.filteredMatches(); track summary.match.id) {
             <article class="history-item">
-              <div>
+              <div class="history-item__content">
                 <time>{{ formatDate(summary.match.date) }}</time>
                 <p class="history-metadata">
                   {{ matchSeason(summary.match) }} · {{ matchCompetition(summary.match) }}

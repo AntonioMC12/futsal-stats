@@ -15,6 +15,14 @@ Los partidos nuevos guardan `season` y `competition`. Los registros locales ante
 legibles: la temporada se deduce de la fecha con inicio en julio y la competición aparece como
 `Sin competición`. La versión 5 de IndexedDB añade índices para ambos campos sin eliminar datos.
 
+## Presentación del listado
+
+Cada tarjeta separa información y acciones. La página muestra el historial en una columna en anchuras
+de tablet y recupera las dos columnas de la página cuando hay espacio suficiente. Dentro de una tarjeta,
+las acciones pasan a una segunda fila si el contenido necesita la anchura disponible. Los nombres largos
+pueden partirse sin empujar «Ver detalle» ni el menú fuera de la tarjeta. Véase el
+[seguimiento del ajuste para iPad](fixes/2026-09-22-match-history-ipad-layout.md).
+
 ## Cloud y despliegue
 
 La migración `database/migrations/0004_match_history.sql` añade y rellena los metadatos históricos,
