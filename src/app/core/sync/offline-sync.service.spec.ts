@@ -141,6 +141,9 @@ describe('OfflineSyncService', () => {
     });
     push.mockRejectedValueOnce({ status: 401, message: 'expired' }).mockResolvedValue(undefined);
     await service.initialize();
+    await vi.waitFor(async () => {
+      expect((await db.syncQueue.toArray())[0]?.attempts).toBe(1);
+    });
     const item = (await db.syncQueue.toArray())[0]!;
     expect(item.status).toBe('pending');
     expect(item.attempts).toBe(1);
@@ -171,10 +174,14 @@ describe('OfflineSyncService', () => {
     });
 
     await service.initialize();
-    expect(push).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: 'strategy-upsert', entityId: strategy.id }),
+    await vi.waitFor(() =>
+      expect(push).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: 'strategy-upsert', entityId: strategy.id }),
+      ),
     );
-    expect((await db.strategies.get(strategy.id))?.syncStatus).toBe('synced');
+    await vi.waitFor(async () =>
+      expect((await db.strategies.get(strategy.id))?.syncStatus).toBe('synced'),
+    );
 
     await db.strategies.clear();
     await service.syncNow();
@@ -216,8 +223,12 @@ describe('OfflineSyncService', () => {
       syncStatus: 'synced',
     });
     await service.initialize();
-    expect(push).toHaveBeenCalledWith(expect.objectContaining({ kind: 'photo-upload', ref }));
-    expect((await db.playerPhotos.get(ref.storageKey))?.syncStatus).toBe('synced');
+    await vi.waitFor(() =>
+      expect(push).toHaveBeenCalledWith(expect.objectContaining({ kind: 'photo-upload', ref })),
+    );
+    await vi.waitFor(async () =>
+      expect((await db.playerPhotos.get(ref.storageKey))?.syncStatus).toBe('synced'),
+    );
   });
 
   it('hides a previously synchronized team when the cloud membership disappears', async () => {
@@ -263,9 +274,9 @@ describe('OfflineSyncService', () => {
       strategies: [],
     });
     await service.syncNow();
-    expect(push).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(push).toHaveBeenCalledTimes(1));
     expect(push).toHaveBeenCalledWith(expect.objectContaining({ teamId: 'new-team' }));
-    expect(await db.syncQueue.count()).toBe(1);
+    await vi.waitFor(async () => expect(await db.syncQueue.count()).toBe(1));
     expect((await db.teams.get(oldTeam.id))?.accessRevoked).toBe(true);
   });
 

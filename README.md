@@ -101,6 +101,7 @@ tiempo del tramo actual y el reparto por periodos.
 - Fotografías seleccionadas desde archivo JPEG, PNG o WebP, con previsualización, sustitución,
   eliminación y validación de contenido y tamaño.
 - Histórico individual y métricas separadas por temporada.
+- El perfil muestra Paradas y Faltas recibidas en tarjetas independientes; distingue cero de métricas no registradas en la temporada seleccionada.
 - Roles `OWNER` y `EDITOR` con edición; rol `VIEWER` con acceso de solo lectura en Plantilla y Perfil.
 
 ## Gestión de partidos
@@ -109,6 +110,7 @@ tiempo del tramo actual y el reparto por periodos.
 - Continuación de un partido en curso después de cerrar o recargar la aplicación.
 - Histórico de partidos finalizados con fecha y resultado.
 - Tarjetas de historial adaptables a tablet y escritorio: el contenido y las acciones conservan zonas separadas incluso con nombres largos.
+- En escritorio la barra lateral permanece visible mientras se desplaza el contenido de la vista; en móvil se conserva la navegación inferior.
 - Filtros por temporada, competición y estado.
 - Detalle de partido en modo consulta con cronología y estadísticas reproducibles desde eventos.
 - Eliminación transaccional de partidos y sus eventos asociados.

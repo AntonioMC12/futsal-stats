@@ -179,11 +179,16 @@
   .shell:not(.shell--live-match) {
     display: grid;
     grid-template-columns: 15rem minmax(0, 1fr);
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
   }
   .shell:not(.shell--live-match) .shell__header {
-    position: sticky;
-    top: 0;
+    position: relative;
     height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
     padding: var(--ds-space-6) var(--ds-space-4);
     border-right: 1px solid var(--ds-border-subtle);
     border-bottom: 0;
@@ -205,8 +210,14 @@
     justify-content: flex-start;
     min-height: 3rem;
   }
-  .shell:not(.shell--live-match) .shell__main {
+  .shell:not(.shell--live-match):not(.shell--strategy-designer) .shell__main {
     margin: 0;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
   .shell--strategies:not(.shell--live-match) .shell__main {
     max-width: none;

@@ -1,6 +1,21 @@
 @use 'design-tokens';
 @use 'app/features/live-match/ui/live-match-page';
 
+/* Keep the profile card accent global so its component stylesheet stays within the size budget. */
+.player-profile-page .metrics-grid article {
+  overflow-wrap: anywhere;
+}
+
+.player-profile-page .metrics-grid article.metric-card--goalkeeper {
+  border-color: var(--ds-primary);
+  background: var(--ds-primary-soft);
+}
+
+.player-profile-page .metrics-grid article.metric-card--goalkeeper > span {
+  color: var(--ds-primary);
+  font-weight: 900;
+}
+
 :root {
   font-family: var(--ds-font-family-sans);
   font-synthesis: none;

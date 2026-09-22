@@ -64,6 +64,7 @@
             aparecen en el histórico con sus datos parciales.
           </p>
         }
+        @let trackedMatches = store.statistics().statisticsV2Matches;
         <section class="metrics-grid" aria-label="Métricas del jugador">
           <article>
             <span>Partidos</span><strong>{{ store.statistics().appearances }}</strong
@@ -78,11 +79,6 @@
             ><small>{{ decimal(store.statistics().goalsPerAppearance) }} por partido</small>
           </article>
           <article>
-            <span>Goles / 40'</span
-            ><strong>{{ decimal(store.statistics().goalsPer40Minutes) }}</strong
-            ><small>ratio por tiempo jugado</small>
-          </article>
-          <article>
             <span>Balance +/−</span
             ><strong
               [class.positive]="store.statistics().plusMinus > 0"
@@ -95,31 +91,31 @@
             >
           </article>
           <article>
-            <span>Disciplina</span><strong>{{ store.statistics().fouls }}</strong
-            ><small
-              >{{ store.statistics().yellowCards }} amarillas ·
-              {{ store.statistics().sendOffs }} expulsiones</small
-            >
+            <span>Goles / 40'</span
+            ><strong>{{ decimal(store.statistics().goalsPer40Minutes) }}</strong
+            ><small>ratio por tiempo jugado</small>
           </article>
           <article>
             <span>Disparos</span
-            ><strong>{{
-              store.statistics().trackedMatches ? store.statistics().shotsTotal : '—'
-            }}</strong>
-            <small
-              >{{ store.statistics().shotsOnTarget }} a puerta ·
-              {{ store.statistics().shotsOffTarget }} fuera</small
-            >
+            ><strong>{{ trackedMatches ? store.statistics().shotsTotal : '—' }}</strong>
+            <small>
+              @if (trackedMatches) {
+                {{ store.statistics().shotsOnTarget }} a puerta ·
+                {{ store.statistics().shotsOffTarget }} fuera
+              } @else {
+                Sin registro en esta selección
+              }
+            </small>
+          </article>
+          <article [class.metric-card--goalkeeper]="isGoalkeeper(player.position)">
+            <span>Paradas</span>
+            <strong>{{ trackedMatches ? store.statistics().saves : '—' }}</strong>
+            <small>{{ trackingLabel(trackedMatches) }}</small>
           </article>
           <article>
-            <span>Paradas / faltas recibidas</span>
-            <strong>{{
-              store.statistics().trackedMatches ? store.statistics().saves : '—'
-            }}</strong>
-            <small
-              >{{ store.statistics().foulsReceived }} faltas recibidas ·
-              {{ store.statistics().trackedMatches }} partidos con registro</small
-            >
+            <span>Faltas recibidas</span>
+            <strong>{{ trackedMatches ? store.statistics().foulsReceived : '—' }}</strong>
+            <small>{{ trackingLabel(trackedMatches) }}</small>
           </article>
           <article>
             <span>Resultados</span><strong>{{ percentage(store.statistics().winRate) }}</strong
@@ -131,6 +127,13 @@
           <article>
             <span>Convocatorias</span><strong>{{ store.statistics().squadSelections }}</strong
             ><small>{{ store.statistics().entries }} entradas en pista</small>
+          </article>
+          <article>
+            <span>Disciplina</span><strong>{{ store.statistics().fouls }}</strong
+            ><small
+              >{{ store.statistics().yellowCards }} amarillas ·
+              {{ store.statistics().sendOffs }} expulsiones</small
+            >
           </article>
         </section>
         <section class="history-panel" aria-labelledby="player-history-title">
@@ -177,8 +180,14 @@
                         item.statistics.shotsTotal === null
                           ? 'Disparos: sin registro'
                           : item.statistics.shotsTotal + ' disparos'
-                      }}</span
-                      ><span
+                      }}</span>
+                      @if (isGoalkeeper(player.position) && item.statistics.saves !== null) {
+                        <span
+                          >{{ item.statistics.saves }}
+                          {{ item.statistics.saves === 1 ? 'parada' : 'paradas' }}</span
+                        >
+                      }
+                      <span
                         >{{ item.statistics.plusMinus > 0 ? '+' : ''
                         }}{{ item.statistics.plusMinus }} +/−</span
                       >
