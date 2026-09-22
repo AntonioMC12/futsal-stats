@@ -120,6 +120,8 @@ Minutos = integral del tiempo de partido **en marcha** entre `PLAYER_ENTERED` / 
 
 Gol: periodo, `gameClockMs`, snapshot de 5 ids, marcador antes/después (el marcador también es derivable; el snapshot evita recálculos ambiguos si hay undo).
 
+En partidos con `statisticsSchemaVersion: 2`, un `GOAL_FOR` atribuido a un jugador cuenta como gol, disparo total y tiro a puerta del goleador. La proyección usa el mismo evento activo, por lo que undo, reapertura, importación, CSV y sincronización recalculan los mismos valores sin crear otro `SHOT`. Los goles sin goleador no se asignan a un jugador; los partidos anteriores mantienen las métricas de disparo sin registrar.
+
 Faltas: por periodo según reglas; acumulado de periodo se deriva. Jugador opcional.
 
 ## LiveMatchStore

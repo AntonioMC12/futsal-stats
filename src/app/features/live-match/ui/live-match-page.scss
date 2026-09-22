@@ -903,6 +903,41 @@
   color: var(--ds-primary);
 }
 
+.shot-save-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-3);
+}
+
+.shot-save-sheet h2,
+.shot-save-sheet .sheet-kicker {
+  margin: 0;
+}
+
+.shot-save-sheet .bench-options {
+  grid-auto-rows: minmax(3rem, auto);
+}
+
+.shot-save-sheet .bench-option.is-selected::after {
+  content: '✓';
+  margin-left: auto;
+  font-weight: 900;
+}
+
+.shot-save-sheet .disciplinary-options .btn {
+  min-height: 3rem;
+}
+
+.shot-save-sheet > .btn:last-child {
+  min-height: 3rem;
+}
+
+@media (max-width: 420px) {
+  .shot-save-sheet {
+    gap: var(--ds-space-2);
+  }
+}
+
 .record-mode-options {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

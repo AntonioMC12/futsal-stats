@@ -6,6 +6,8 @@ Las acciones rápidas registran `SHOT` (resultado `on_target` u `off_target`), `
 
 Las estadísticas de partido y perfil derivan de eventos activos. `shotsTotal = shotsOnTarget + shotsOffTarget`; las faltas sin receptor no cuentan. Undo crea `EVENT_UNDONE`, sin modificar el evento original. La cronología y CSV muestran los nuevos datos.
 
+Desde la iteración del 22 de septiembre, cada `GOAL_FOR` con goleador en un partido v2 aporta también un disparo total y un tiro a puerta al goleador desde la misma proyección. No se crea un evento `SHOT` adicional. Véase [la auditoría de la iteración](2026-09-22-goal-shot-on-target-and-shot-modal-spacing.md).
+
 ## Compatibilidad histórica
 
 `Match.statisticsSchemaVersion = 2` se asigna al crear nuevos partidos. Un valor ausente significa métricas no registradas (`null` en dominio, celda vacía o raya en presentación). No se rellena ni se infiere para partidos anteriores. Los agregados de perfil suman solo partidos v2 y exponen `trackedMatches`; los CSV antiguos se importan sin marca. El CSV actual incluye `statisticsSchemaVersion` en metadatos, separado de la versión del formato CSV, que permanece en 2.

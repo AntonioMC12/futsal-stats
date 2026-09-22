@@ -1767,6 +1767,7 @@
               class="bench-option"
               type="button"
               [class.is-selected]="shotSavePlayerId() === player.id"
+              [attr.aria-pressed]="shotSavePlayerId() === player.id"
               [disabled]="shotSaveSaving()"
               (click)="shotSavePlayerId.set(player.id)"
             >

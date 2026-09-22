@@ -877,6 +877,49 @@ describe('LiveMatchPage', () => {
     fixture.destroy();
   });
 
+  it('requires a player for both shot outcomes and cancels without an event', async () => {
+    const { fixture, committedEvents } = await createPage();
+    const openShot = () => {
+      (
+        fixture.nativeElement.querySelectorAll('.foul-actions button')[2] as HTMLButtonElement
+      ).click();
+      fixture.detectChanges();
+    };
+    const shotButtons = () =>
+      [
+        ...fixture.nativeElement.querySelectorAll('.shot-save-sheet .disciplinary-options button'),
+      ] as HTMLButtonElement[];
+
+    openShot();
+    const options = fixture.nativeElement.querySelectorAll(
+      '.shot-save-sheet .bench-option',
+    ) as NodeListOf<HTMLButtonElement>;
+    expect(options).toHaveLength(5);
+    expect(shotButtons().map((button) => button.disabled)).toEqual([true, true]);
+    options[1]!.click();
+    fixture.detectChanges();
+    expect(options[1]!.getAttribute('aria-pressed')).toBe('true');
+    expect(shotButtons().map((button) => button.disabled)).toEqual([false, false]);
+    shotButtons()[1]!.click();
+    await fixture.whenStable();
+    expect(committedEvents.at(-1)).toMatchObject({
+      type: 'SHOT',
+      playerId: 'p2',
+      outcome: 'off_target',
+    });
+
+    fixture.detectChanges();
+    const count = committedEvents.length;
+    openShot();
+    (
+      fixture.nativeElement.querySelector('.shot-save-sheet > .btn:last-child') as HTMLButtonElement
+    ).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.shot-save-sheet')).toBeNull();
+    expect(committedEvents).toHaveLength(count);
+    fixture.destroy();
+  });
+
   it('registers a goal without scorer from the same selector', async () => {
     const { fixture, store } = await createPage();
     const registerGoalFor = vi.spyOn(store, 'registerGoalFor').mockResolvedValue(true);
