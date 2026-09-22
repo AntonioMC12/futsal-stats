@@ -135,4 +135,65 @@ describe('MatchesPage', () => {
     expect(navigate).toHaveBeenCalledWith(['/matches/new']);
     fixture.destroy();
   });
+
+  it('keeps long and short history entries in separate content and action regions', async () => {
+    const long = {
+      ...match('long', 'finished', 20),
+      awayTeam: {
+        name: 'Club Deportivo de Fútbol Sala con un Nombre Excepcionalmente Largo',
+        shortName: 'RIV',
+      },
+      season: '2026/27',
+      competition: 'Competición Metropolitana de Fútbol Sala de Categoría Preferente',
+      description: 'Partido de preparación con observaciones extensas para el cuerpo técnico',
+    };
+    const short = { ...match('short', 'finished', 10), description: '' };
+    await TestBed.configureTestingModule({
+      imports: [MatchesPage],
+      providers: [
+        provideZonelessChangeDetection(),
+        provideRouter([]),
+        { provide: MatchRepository, useValue: { list: async () => [long, short] } },
+        { provide: MatchEventRepository, useValue: { listByMatch: async () => [] } },
+        { provide: DeleteMatchService, useValue: { execute: async () => undefined } },
+        {
+          provide: MatchCsvExportService,
+          useValue: { isExporting: signal(false), error: signal(null), export: vi.fn() },
+        },
+        {
+          provide: MatchIntegrityService,
+          useValue: {
+            getIntegrityStatus: async () => 'unknown',
+            verify: async () => ({ status: 'unknown' }),
+          },
+        },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(MatchesPage);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const cards = fixture.nativeElement.querySelectorAll(
+      '.history-item',
+    ) as NodeListOf<HTMLElement>;
+    expect(cards).toHaveLength(2);
+    for (const card of cards) {
+      expect(card.querySelector('.history-item__content')).toBeTruthy();
+      const actions = card.querySelector('.history-actions') as HTMLElement;
+      expect(actions.querySelector('a')?.textContent).toContain('Ver detalle');
+      expect(actions.querySelector('summary')?.getAttribute('aria-label')).toBe(
+        'Opciones del partido',
+      );
+    }
+    expect(cards[0]!.querySelector('.history-item__content')?.textContent).toContain(
+      long.awayTeam.name,
+    );
+    expect(cards[0]!.querySelector('.history-item__content')?.textContent).toContain(
+      long.competition,
+    );
+    expect(cards[1]!.querySelector('.history-item__content')?.textContent).toContain(
+      'Sin descripción',
+    );
+    fixture.destroy();
+  });
 });
