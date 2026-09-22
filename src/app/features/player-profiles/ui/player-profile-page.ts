@@ -1,4 +1,4 @@
-import { Component, effect, inject, input, signal } from '@angular/core';
+import { Component, effect, ElementRef, HostListener, inject, input, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { formatGameClock } from '../../../core/clock/match-clock';
@@ -23,8 +23,13 @@ export class PlayerProfilePage {
   readonly playerId = input.required<string>();
   protected readonly store = inject(PlayerProfileStore);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly element: ElementRef<HTMLElement> = inject(ElementRef);
+  protected readonly isEditing = signal(false);
+  protected readonly discardOpen = signal(false);
   protected readonly pendingPhoto = signal<Blob | null>(null);
+  protected readonly removePhoto = signal(false);
   protected readonly previewUrl = signal<string | null>(null);
+  private resolveNavigation: ((allow: boolean) => void) | null = null;
   protected readonly form = this.formBuilder.nonNullable.group({
     number: ['', [Validators.required, Validators.pattern(/^\d{1,2}$/)]],
     name: ['', [Validators.required, Validators.maxLength(40)]],
@@ -40,6 +45,7 @@ export class PlayerProfilePage {
       const player = this.store.player();
       const profile = this.store.profile();
       if (!player || !profile) return;
+      if (this.isEditing()) return;
       this.form.setValue({
         number: String(player.number),
         name: player.name,
@@ -51,7 +57,9 @@ export class PlayerProfilePage {
       this.form.markAsPristine();
     });
     effect((onCleanup) => {
-      const blob = this.pendingPhoto() ?? this.store.photoBlob();
+      const blob = this.isEditing()
+        ? (this.pendingPhoto() ?? this.store.photoBlob())
+        : this.store.photoBlob();
       if (!blob) {
         this.previewUrl.set(null);
         return;
@@ -61,13 +69,97 @@ export class PlayerProfilePage {
       onCleanup(() => URL.revokeObjectURL(url));
     });
   }
+  protected edit(): void {
+    if (!this.store.canWrite() || !this.store.player() || !this.store.profile()) return;
+    this.store.error.set(null);
+    this.store.notice.set(null);
+    this.isEditing.set(true);
+    setTimeout(() =>
+      this.element.nativeElement
+        .querySelector<HTMLInputElement>('[formControlName="number"]')
+        ?.focus(),
+    );
+  }
+  protected cancel(): void {
+    if (this.hasUnsavedChanges()) this.openDiscard();
+    else this.closeEditor();
+  }
+  protected keepEditing(): void {
+    this.discardOpen.set(false);
+    this.resolveNavigation?.(false);
+    this.resolveNavigation = null;
+    setTimeout(() =>
+      this.element.nativeElement
+        .querySelector<HTMLInputElement>('[formControlName="number"]')
+        ?.focus(),
+    );
+  }
+  protected discard(): void {
+    this.discardOpen.set(false);
+    this.closeEditor();
+    this.resolveNavigation?.(true);
+    this.resolveNavigation = null;
+  }
+  canDeactivate(): boolean | Promise<boolean> {
+    if (!this.hasUnsavedChanges()) return true;
+    this.openDiscard();
+    return new Promise<boolean>((resolve) => (this.resolveNavigation = resolve));
+  }
+  private openDiscard(): void {
+    this.discardOpen.set(true);
+    setTimeout(() =>
+      this.element.nativeElement
+        .querySelector<HTMLButtonElement>('.profile-discard-dialog .btn--secondary')
+        ?.focus(),
+    );
+  }
+  @HostListener('document:keydown.escape')
+  protected escapeDiscard(): void {
+    if (this.discardOpen()) this.keepEditing();
+  }
+  @HostListener('window:beforeunload', ['$event'])
+  protected beforeUnload(event: BeforeUnloadEvent): void {
+    if (this.hasUnsavedChanges()) event.preventDefault();
+  }
+  private hasUnsavedChanges(): boolean {
+    return this.isEditing() && (this.form.dirty || !!this.pendingPhoto() || this.removePhoto());
+  }
+  private closeEditor(): void {
+    const player = this.store.player();
+    const profile = this.store.profile();
+    if (player && profile) {
+      this.form.setValue({
+        number: String(player.number),
+        name: player.name,
+        position: player.position ?? '',
+        active: player.active,
+        preferredFoot: profile.preferredFoot,
+        notes: profile.notes,
+      });
+      this.form.markAsPristine();
+    }
+    this.pendingPhoto.set(null);
+    this.removePhoto.set(false);
+    this.store.error.set(null);
+    this.isEditing.set(false);
+    setTimeout(() =>
+      this.element.nativeElement.querySelector<HTMLButtonElement>('.profile-edit-button')?.focus(),
+    );
+  }
   protected async save(): Promise<void> {
+    if (!this.isEditing() || !this.store.canWrite()) return;
     this.form.markAllAsTouched();
     if (this.form.invalid) return;
-    const { preferredFoot, notes, ...player } = this.form.getRawValue();
-    if (await this.store.save({ preferredFoot, notes }, player)) this.form.markAsPristine();
+    if (this.form.dirty) {
+      const { preferredFoot, notes, ...player } = this.form.getRawValue();
+      if (!(await this.store.save({ preferredFoot, notes }, player))) return;
+    }
+    if (this.pendingPhoto() && !(await this.store.uploadPhoto(this.pendingPhoto()!))) return;
+    if (this.removePhoto() && !(await this.store.deletePhoto())) return;
+    this.closeEditor();
   }
   protected async selectPhoto(event: Event): Promise<void> {
+    if (!this.isEditing() || !this.store.canWrite()) return;
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
@@ -81,16 +173,15 @@ export class PlayerProfilePage {
     this.store.error.set(null);
     this.store.notice.set(null);
     this.pendingPhoto.set(file);
-  }
-  protected async savePhoto(): Promise<void> {
-    const blob = this.pendingPhoto();
-    if (blob && (await this.store.uploadPhoto(blob))) this.pendingPhoto.set(null);
+    this.removePhoto.set(false);
   }
   protected cancelPhoto(): void {
     this.pendingPhoto.set(null);
   }
-  protected async deletePhoto(): Promise<void> {
-    if (await this.store.deletePhoto()) this.pendingPhoto.set(null);
+  protected deletePhoto(): void {
+    if (!this.isEditing() || !this.store.canWrite()) return;
+    this.pendingPhoto.set(null);
+    this.removePhoto.set(true);
   }
   protected initials(name: string): string {
     return name

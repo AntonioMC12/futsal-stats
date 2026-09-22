@@ -97,7 +97,7 @@ tiempo del tramo actual y el reparto por periodos.
 - Búsqueda por nombre o dorsal, filtros por estado y posición, y ordenación por las métricas
   principales.
 - Selección de convocatoria y elección del quinteto inicial desde la pista antes de iniciar.
-- Perfil deportivo editable con dorsal, nombre, posición, estado, pierna dominante y notas.
+- Perfil deportivo en modo consulta por defecto, con edición explícita de dorsal, nombre, posición, estado, pierna dominante y notas.
 - Fotografías seleccionadas desde archivo JPEG, PNG o WebP, con previsualización, sustitución,
   eliminación y validación de contenido y tamaño.
 - Histórico individual y métricas separadas por temporada.
@@ -173,8 +173,10 @@ Los equipos y jugadores se guardan automáticamente en el dispositivo mediante I
 
 ### Consultar el perfil de un jugador
 
-Desde **Plantilla**, pulsa **Ver perfil** en un jugador. El perfil permite guardar foto, pierna
-dominante y notas deportivas, consultar sus partidos terminados y cambiar entre la vista de carrera
+Desde **Plantilla**, pulsa **Ver perfil** en un jugador. El perfil muestra su ficha y fotografía en modo
+consulta. Si tienes permisos de escritura, pulsa **Editar** para cambiar datos o foto, y después
+**Guardar cambios**. **Cancelar** descarta el borrador; si hay cambios pendientes, la aplicación pide
+confirmación al cancelar o salir del perfil. Puedes consultar sus partidos terminados y cambiar entre la vista de carrera
 y cada temporada. Las métricas se recalculan desde los eventos de partido y no se almacenan como
 totales duplicados.
 

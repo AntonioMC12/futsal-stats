@@ -9,8 +9,13 @@
     </div>
   } @else if (store.player(); as player) {
     <header class="profile-hero">
-      <div class="avatar" [class.has-photo]="previewUrl() || store.profile()?.photoUrl">
-        @if (previewUrl(); as photo) {
+      <div
+        class="avatar"
+        [class.has-photo]="!removePhoto() && (previewUrl() || store.profile()?.photoUrl)"
+      >
+        @if (removePhoto()) {
+          <span>{{ initials(player.name) }}</span>
+        } @else if (previewUrl(); as photo) {
           <img [src]="photo" [alt]="'Foto de ' + player.name" />
         } @else if (store.profile()?.photoUrl; as legacyPhoto) {
           <img [src]="legacyPhoto" [alt]="'Foto de ' + player.name" />
@@ -35,6 +40,16 @@
         <span>Carrera</span><strong>{{ store.careerStatistics().appearances }}</strong
         ><small>partidos · {{ store.careerStatistics().goals }} goles</small>
       </div>
+      @if (store.canWrite()) {
+        <button
+          class="btn btn--secondary profile-edit-button"
+          type="button"
+          (click)="edit()"
+          [hidden]="isEditing()"
+        >
+          Editar
+        </button>
+      }
     </header>
     <div class="profile-layout">
       <main class="performance-column">
@@ -199,14 +214,14 @@
           }
         </section>
       </main>
-      @if (store.canWrite()) {
-        <aside class="profile-editor">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Ficha persistente</p>
-              <h2>Perfil deportivo</h2>
-            </div>
+      <aside class="profile-editor">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Ficha persistente</p>
+            <h2>Perfil deportivo</h2>
           </div>
+        </div>
+        @if (isEditing() && store.canWrite()) {
           <section class="photo-editor" aria-labelledby="photo-title">
             <strong id="photo-title">Fotografía</strong
             ><label class="btn btn--secondary photo-picker"
@@ -221,18 +236,13 @@
             ><small>JPEG, PNG o WebP · máximo 5 MB</small>
             @if (pendingPhoto()) {
               <div class="photo-actions">
-                <button
-                  class="btn btn--primary"
-                  type="button"
-                  (click)="savePhoto()"
-                  [disabled]="store.saving()"
-                >
-                  Guardar foto</button
-                ><button class="btn btn--secondary" type="button" (click)="cancelPhoto()">
-                  Cancelar
+                <button class="btn btn--secondary" type="button" (click)="cancelPhoto()">
+                  Deshacer selección
                 </button>
               </div>
-            } @else if (store.profile()?.photoRef || store.profile()?.photoUrl) {
+            } @else if (
+              (store.profile()?.photoRef || store.profile()?.photoUrl) && !removePhoto()
+            ) {
               <button
                 class="btn btn--danger"
                 type="button"
@@ -243,6 +253,8 @@
               </button>
             }
           </section>
+        }
+        @if (isEditing() && store.canWrite()) {
           <form [formGroup]="form" (ngSubmit)="save()">
             <div class="profile-fields">
               <label class="field field--narrow"
@@ -280,20 +292,78 @@
             @if (store.notice(); as message) {
               <p class="banner banner--ok" role="status">{{ message }}</p>
             }
-            <button
-              class="btn btn--primary"
-              type="submit"
-              [disabled]="store.saving() || form.invalid || !form.dirty"
-            >
-              {{ store.saving() ? 'Guardando…' : 'Guardar perfil' }}
-            </button>
+            <div class="profile-form-actions">
+              <button
+                type="button"
+                class="btn btn--secondary"
+                (click)="cancel()"
+                [disabled]="store.saving()"
+              >
+                Cancelar</button
+              ><button
+                class="btn btn--primary"
+                type="submit"
+                [disabled]="
+                  store.saving() ||
+                  form.invalid ||
+                  (!form.dirty && !pendingPhoto() && !removePhoto())
+                "
+              >
+                {{ store.saving() ? 'Guardando…' : 'Guardar cambios' }}
+              </button>
+            </div>
           </form>
-        </aside>
-      } @else {
-        <aside class="profile-editor">
-          <p class="banner" role="status">Perfil en modo solo lectura.</p>
-        </aside>
-      }
+        } @else {
+          <dl class="profile-details">
+            <div>
+              <dt>Dorsal</dt>
+              <dd>{{ player.number }}</dd>
+            </div>
+            <div>
+              <dt>Nombre</dt>
+              <dd>{{ player.name }}</dd>
+            </div>
+            <div>
+              <dt>Posición</dt>
+              <dd>{{ player.position || '—' }}</dd>
+            </div>
+            <div>
+              <dt>Pie preferente</dt>
+              <dd>{{ footLabel(store.profile()?.preferredFoot ?? 'unknown') }}</dd>
+            </div>
+            <div>
+              <dt>Estado</dt>
+              <dd>{{ player.active ? 'Activo' : 'Inactivo' }}</dd>
+            </div>
+            <div class="profile-details-notes">
+              <dt>Notas técnicas</dt>
+              <dd>{{ store.profile()?.notes || '—' }}</dd>
+            </div>
+          </dl>
+        }
+      </aside>
+    </div>
+  }
+  @if (discardOpen()) {
+    <div class="profile-dialog-backdrop">
+      <div
+        class="profile-discard-dialog"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="discard-title"
+        aria-describedby="discard-description"
+      >
+        <h2 id="discard-title">Cambios sin guardar</h2>
+        <p id="discard-description">Tienes cambios sin guardar. ¿Quieres descartarlos?</p>
+        <div class="profile-form-actions">
+          <button class="btn btn--secondary" type="button" (click)="keepEditing()">
+            Seguir editando
+          </button>
+          <button class="btn btn--danger" type="button" (click)="discard()">
+            Descartar cambios
+          </button>
+        </div>
+      </div>
     </div>
   }
 </section>
