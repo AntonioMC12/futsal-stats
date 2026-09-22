@@ -164,6 +164,11 @@ describe('PlayerProfilePage', () => {
     ]);
     expect(page.textContent).not.toContain('Paradas / faltas recibidas');
     expect(page.querySelector('.player-match-card')?.textContent).toContain('1 parada');
+    expect(page.querySelector('form')).toBeNull();
+    expect(page.querySelector('.profile-details')?.textContent).toContain('Ana Ruiz');
+    expect(page.querySelector('.photo-picker')).toBeNull();
+    const edit = page.querySelector<HTMLButtonElement>('.profile-edit-button')!;
+    expect(edit.textContent).toContain('Editar');
 
     const season = page.querySelector('.season-toolbar select') as HTMLSelectElement;
     season.value = '2026/27';
@@ -182,15 +187,81 @@ describe('PlayerProfilePage', () => {
     expect(metric('Paradas')?.querySelector('strong')?.textContent?.trim()).toBe('0');
     expect(metric('Faltas recibidas')?.querySelector('strong')?.textContent?.trim()).toBe('0');
 
+    edit.click();
+    fixture.detectChanges();
+    expect(page.querySelector<HTMLInputElement>('[formControlName="name"]')?.value).toBe(
+      'Ana Ruiz',
+    );
     const notes = page.querySelector('[formControlName="notes"]') as HTMLTextAreaElement;
     notes.value = 'Mejora en finalización';
     notes.dispatchEvent(new Event('input'));
+    page.querySelector<HTMLButtonElement>('.profile-form-actions button[type="button"]')!.click();
+    fixture.detectChanges();
+    expect(page.querySelector('[role="alertdialog"]')).not.toBeNull();
+    expect(page.querySelector('form')).not.toBeNull();
+    page.querySelector<HTMLButtonElement>('.profile-discard-dialog .btn--secondary')!.click();
+    fixture.detectChanges();
+    expect(page.querySelector('[role="alertdialog"]')).toBeNull();
+    const navigation = fixture.componentInstance.canDeactivate() as Promise<boolean>;
+    fixture.detectChanges();
+    page.querySelector<HTMLButtonElement>('.profile-discard-dialog .btn--danger')!.click();
+    expect(await navigation).toBe(true);
+    fixture.detectChanges();
+    expect(page.querySelector('form')).toBeNull();
+    expect(page.querySelector('.profile-details')?.textContent).not.toContain(
+      'Mejora en finalización',
+    );
+    expect(put).not.toHaveBeenCalled();
+
+    edit.click();
+    fixture.detectChanges();
+    const nextNotes = page.querySelector('[formControlName="notes"]') as HTMLTextAreaElement;
+    nextNotes.value = 'Mejora en finalización';
+    nextNotes.dispatchEvent(new Event('input'));
+    put.mockRejectedValueOnce(new Error('offline'));
     (page.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await fixture.whenStable();
+    fixture.detectChanges();
+    expect(page.querySelector('form')).not.toBeNull();
+    expect(nextNotes.value).toBe('Mejora en finalización');
+    expect(page.querySelector('[role="alert"]')?.textContent).toContain('No se ha podido guardar');
+    (page.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+    fixture.detectChanges();
 
     expect(put).toHaveBeenCalledWith(
       expect.objectContaining({ playerId: 'p1', notes: 'Mejora en finalización' }),
     );
+    expect(page.querySelector('form')).toBeNull();
+    expect(page.querySelector('.profile-details')?.textContent).toContain('Mejora en finalización');
+
+    const store = fixture.debugElement.injector.get(PlayerProfileStore);
+    store.profile.update((profile) => ({
+      ...profile!,
+      photoUrl: 'https://example.invalid/photo.jpg',
+    }));
+    fixture.detectChanges();
+    const deletePhoto = vi.spyOn(store, 'deletePhoto');
+    edit.click();
+    fixture.detectChanges();
+    page.querySelector<HTMLButtonElement>('.photo-editor .btn--danger')!.click();
+    fixture.detectChanges();
+    expect(deletePhoto).not.toHaveBeenCalled();
+    expect(page.querySelector('.avatar img')).toBeNull();
+    page.querySelector<HTMLButtonElement>('.profile-form-actions button[type="button"]')!.click();
+    fixture.detectChanges();
+    page.querySelector<HTMLButtonElement>('.profile-discard-dialog .btn--danger')!.click();
+    fixture.detectChanges();
+    expect(deletePhoto).not.toHaveBeenCalled();
+    expect(store.profile()?.photoUrl).toBe('https://example.invalid/photo.jpg');
+    expect(page.querySelector('.avatar img')).not.toBeNull();
+
+    store.canWrite.set(false);
+    fixture.detectChanges();
+    expect(page.querySelector('.profile-edit-button')).toBeNull();
+    (fixture.componentInstance as unknown as { edit: () => void }).edit();
+    fixture.detectChanges();
+    expect(page.querySelector('form')).toBeNull();
     fixture.destroy();
   });
 });

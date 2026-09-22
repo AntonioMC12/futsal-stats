@@ -18,7 +18,8 @@ export const routes: Routes = [
   },
   {
     path: 'access',
-    loadComponent: () => import('./features/auth/ui/team-access-page').then((m) => m.TeamAccessPage),
+    loadComponent: () =>
+      import('./features/auth/ui/team-access-page').then((m) => m.TeamAccessPage),
   },
   {
     path: 'dashboard',
@@ -36,6 +37,10 @@ export const routes: Routes = [
   {
     path: 'players/:playerId',
     canActivate: [authGuard, playerTeamWorkspaceGuard],
+    canDeactivate: [
+      (component: import('./features/player-profiles/ui/player-profile-page').PlayerProfilePage) =>
+        component.canDeactivate(),
+    ],
     loadComponent: () =>
       import('./features/player-profiles/ui/player-profile-page').then((m) => m.PlayerProfilePage),
   },
