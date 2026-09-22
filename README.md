@@ -120,6 +120,7 @@ tiempo del tramo actual y el reparto por periodos.
 - Control flotante del reloj optimizado para uso táctil.
 - Sustituciones rápidas pulsando sobre el jugador que sale y seleccionando al jugador que entra.
 - Registro de goles a favor y en contra.
+- En partidos con estadísticas v2, un gol con goleador suma automáticamente un tiro a puerta y un disparo total a ese jugador; no requiere registrar otro disparo.
 - Selección opcional del goleador entre los jugadores en pista, con goles individuales derivados del historial.
 - Registro de faltas propias y del rival por periodo.
 - Registro diferenciado de faltas acumulativas e infracciones disciplinarias que no incrementan el
@@ -289,7 +290,7 @@ Pulsa **Falta rival**.
 Las faltas del rival se contabilizan por periodo y se reflejan en el estado del partido.
 La acción rápida **Falta a favor** permite elegir al jugador que recibió la falta entre quienes están en pista, o **Ninguno / No aplica**. Esta acción conserva el estado del cronómetro.
 
-Para registrar un **Disparo a favor**, elige al jugador en pista y después **Tiro a puerta** o **Tiro fuera**. Para una **Parada**, elige al jugador en pista y confirma. Ambas acciones conservan el estado del cronómetro y se pueden deshacer.
+Para registrar un **Disparo a favor**, elige al jugador en pista y después **Tiro a puerta** o **Tiro fuera**. El modal mantiene la selección del quinteto, los dos resultados y **Cancelar** en bloques separados; cancelar no registra eventos. Para una **Parada**, elige al jugador en pista y confirma. Ambas acciones conservan el estado del cronómetro y se pueden deshacer. Si el disparo termina en gol, registra el gol con goleador: ese evento ya aporta el tiro a puerta.
 
 Cuando sea necesario identificar a un rival sancionado, la aplicación permite reutilizar su dorsal durante el encuentro.
 

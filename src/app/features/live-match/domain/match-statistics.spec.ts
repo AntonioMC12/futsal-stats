@@ -75,6 +75,58 @@ function scenario(): MatchEvent[] {
 }
 
 describe('match statistics', () => {
+  it('derives one on-target shot from each attributed goal and reverses it on undo', () => {
+    const trackedMatch = { ...match, statisticsSchemaVersion: 2 as const };
+    const scored = goal('scored', 1, 1_100_000, 'GOAL_FOR', ['a', 'b', 'c', 'd', 'e'], 'a');
+    const onTarget: MatchEvent = {
+      ...base('shot-on', 2, 1_050_000),
+      type: 'SHOT',
+      playerId: 'a',
+      outcome: 'on_target',
+    };
+    const offTarget: MatchEvent = {
+      ...base('shot-off', 3, 1_000_000),
+      type: 'SHOT',
+      playerId: 'a',
+      outcome: 'off_target',
+    };
+    const events = [scored, onTarget, offTarget];
+    const expected = { goals: 1, shotsTotal: 3, shotsOnTarget: 2, shotsOffTarget: 1 };
+    expect(deriveMatchStatistics(trackedMatch, events, 900_000).players['a']).toMatchObject(
+      expected,
+    );
+    expect(deriveMatchStatistics(trackedMatch, [...events], 900_000).players['a']).toMatchObject(
+      expected,
+    );
+
+    const undone: MatchEvent = {
+      ...base('undo-goal', 4, 900_000),
+      type: 'EVENT_UNDONE',
+      targetEventId: scored.id,
+    };
+    expect(
+      deriveMatchStatistics(trackedMatch, [...events, undone], 900_000).players['a'],
+    ).toMatchObject({
+      goals: 0,
+      shotsTotal: 2,
+      shotsOnTarget: 1,
+      shotsOffTarget: 1,
+    });
+  });
+
+  it('does not infer a player shot for an unattributed goal or legacy untracked metrics', () => {
+    const unassigned = goal('unassigned', 1, 1_100_000, 'GOAL_FOR', ['a', 'b', 'c', 'd', 'e']);
+    expect(
+      deriveMatchStatistics({ ...match, statisticsSchemaVersion: 2 }, [unassigned], 900_000)
+        .players['a'],
+    ).toMatchObject({ goals: 0, shotsTotal: 0, shotsOnTarget: 0 });
+    expect(deriveMatchStatistics(match, [scenario()[6]!], 900_000).players['a']).toMatchObject({
+      goals: 1,
+      shotsTotal: null,
+      shotsOnTarget: null,
+    });
+  });
+
   it('calculates minutes, on-court goals and plus/minus by player', () => {
     const statistics = deriveMatchStatistics(match, scenario(), 300_000);
     expect(statistics.players['a']).toEqual({

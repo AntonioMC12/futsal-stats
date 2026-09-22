@@ -115,8 +115,8 @@ describe('player profile statistics', () => {
     expect(result).toMatchObject({
       squadSelections: 2,
       trackedMatches: 1,
-      shotsTotal: 1,
-      shotsOnTarget: 1,
+      shotsTotal: 2,
+      shotsOnTarget: 2,
       shotsOffTarget: 0,
     });
   });

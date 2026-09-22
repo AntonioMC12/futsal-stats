@@ -846,7 +846,7 @@ describe('LiveMatchStore', () => {
   it('undoes goals and fouls in reverse order with compensating events', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(10_000);
-    const original = readyMatch();
+    const original = { ...readyMatch(), statisticsSchemaVersion: 2 as const };
     const storedEvents: MatchEvent[] = [];
     TestBed.configureTestingModule({
       providers: [
@@ -871,6 +871,8 @@ describe('LiveMatchStore', () => {
 
     expect(store.score().home).toBe(1);
     expect(store.statistics().players['p1']?.goals).toBe(1);
+    expect(store.statistics().players['p1']).toMatchObject({ shotsTotal: 1, shotsOnTarget: 1 });
+    expect(storedEvents.filter((event) => event.type === 'SHOT')).toHaveLength(0);
     expect(store.currentPeriodFouls().home).toBe(1);
     const foulId = storedEvents.at(-1)?.id;
     expect(await store.undoLastEvent()).toBe(true);
@@ -884,6 +886,7 @@ describe('LiveMatchStore', () => {
     expect(await store.undoLastEvent()).toBe(true);
     expect(store.score()).toEqual({ home: 0, away: 0 });
     expect(store.statistics().players['p1']?.goals).toBe(0);
+    expect(store.statistics().players['p1']).toMatchObject({ shotsTotal: 0, shotsOnTarget: 0 });
     expect(storedEvents.at(-1)).toMatchObject({
       type: 'EVENT_UNDONE',
       targetEventId: goalId,

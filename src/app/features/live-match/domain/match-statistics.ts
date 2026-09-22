@@ -118,7 +118,12 @@ export function createMatchStatisticsProjection(
         event.type === 'GOAL_FOR' ? 'for' : 'against',
       );
       if (event.type === 'GOAL_FOR' && event.scorerPlayerId && players[event.scorerPlayerId]) {
-        players[event.scorerPlayerId].goals += 1;
+        const scorer = players[event.scorerPlayerId];
+        scorer.goals += 1;
+        if (match.statisticsSchemaVersion === 2) {
+          scorer.shotsTotal! += 1;
+          scorer.shotsOnTarget! += 1;
+        }
       }
     }
   }
