@@ -134,7 +134,12 @@ describe('PlayerProfilePage', () => {
 
     const page = fixture.nativeElement as HTMLElement;
     expect(page.querySelector('h1')?.textContent).toContain('Ana Ruiz');
-    expect(page.querySelector('.career-summary')?.textContent).toContain('1 goles');
+    expect(page.querySelector('.player-overview')?.textContent).toContain('Dorsal 7');
+    expect(page.querySelector('.player-overview')?.textContent).toContain('Portero');
+    expect(page.querySelector('.player-overview')?.textContent).toContain('Sin especificar');
+    expect(page.querySelector('.player-overview')?.textContent).toContain('Activo');
+    expect(page.querySelector('.career-summary')?.textContent).toContain('Goles');
+    expect(page.querySelector('.career-summary')?.textContent).toContain('1');
     expect(page.querySelector('.player-match-card')?.getAttribute('href')).toBe('/matches/match-1');
     expect(page.textContent).toContain('2026/27');
     const metric = (label: string) =>
@@ -143,7 +148,7 @@ describe('PlayerProfilePage', () => {
       );
     expect(metric('Paradas')?.querySelector('strong')?.textContent?.trim()).toBe('1');
     expect(metric('Faltas recibidas')?.querySelector('strong')?.textContent?.trim()).toBe('1');
-    expect(metric('Paradas')?.textContent).toContain('2 partidos con registro');
+    expect(metric('Paradas')?.textContent).toContain('2 partidos registrados');
     expect(metric('Paradas')?.classList.contains('metric-card--goalkeeper')).toBe(true);
     expect(
       [...page.querySelectorAll('.metrics-grid article > span:first-child')].map((title) =>
@@ -151,21 +156,22 @@ describe('PlayerProfilePage', () => {
       ),
     ).toEqual([
       'Partidos',
-      'Tiempo',
+      'Tiempo jugado',
       'Goles',
       'Balance +/−',
       "Goles / 40'",
-      'Disparos',
-      'Paradas',
-      'Faltas recibidas',
-      'Resultados',
       'Convocatorias',
+      'Titularidades',
+      'Entradas en pista',
       'Disciplina',
+      'Disparos',
+      'Faltas recibidas',
+      'Paradas',
     ]);
     expect(page.textContent).not.toContain('Paradas / faltas recibidas');
     expect(page.querySelector('.player-match-card')?.textContent).toContain('1 parada');
     expect(page.querySelector('form')).toBeNull();
-    expect(page.querySelector('.profile-details')?.textContent).toContain('Ana Ruiz');
+    expect(page.querySelector('.profile-details')?.textContent).toContain('Portero');
     expect(page.querySelector('.photo-picker')).toBeNull();
     const edit = page.querySelector<HTMLButtonElement>('.profile-edit-button')!;
     expect(edit.textContent).toContain('Editar');
@@ -174,13 +180,14 @@ describe('PlayerProfilePage', () => {
     season.value = '2026/27';
     season.dispatchEvent(new Event('change'));
     fixture.detectChanges();
-    expect(metric('Paradas')?.textContent).toContain('1 partido con registro');
+    expect(metric('Paradas')?.textContent).toContain('1 partido registrado');
     season.value = '2025/26';
     season.dispatchEvent(new Event('change'));
     fixture.detectChanges();
-    expect(metric('Paradas')?.querySelector('strong')?.textContent?.trim()).toBe('—');
-    expect(metric('Faltas recibidas')?.querySelector('strong')?.textContent?.trim()).toBe('—');
-    expect(metric('Paradas')?.textContent).toContain('Sin registro en esta selección');
+    expect(metric('Paradas')?.querySelector('strong')?.textContent?.trim()).toBe('Sin registro');
+    expect(metric('Faltas recibidas')?.querySelector('strong')?.textContent?.trim()).toBe(
+      'Sin registro',
+    );
     season.value = '2024/25';
     season.dispatchEvent(new Event('change'));
     fixture.detectChanges();

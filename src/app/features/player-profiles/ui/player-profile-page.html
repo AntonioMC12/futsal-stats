@@ -1,5 +1,8 @@
 <section class="player-profile-page">
-  <a class="profile-back" routerLink="/players">← Volver a la plantilla</a>
+  <a class="profile-back" routerLink="/players"
+    ><span aria-hidden="true">←</span> Volver a plantilla</a
+  >
+
   @if (store.loading()) {
     <p class="empty" role="status">Cargando perfil…</p>
   } @else if (store.error() && !store.player()) {
@@ -8,241 +11,96 @@
       <a class="btn btn--secondary" routerLink="/players">Ir a la plantilla</a>
     </div>
   } @else if (store.player(); as player) {
-    <header class="profile-hero">
-      <div
-        class="avatar"
-        [class.has-photo]="!removePhoto() && (previewUrl() || store.profile()?.photoUrl)"
-      >
-        @if (removePhoto()) {
-          <span>{{ initials(player.name) }}</span>
-        } @else if (previewUrl(); as photo) {
-          <img [src]="photo" [alt]="'Foto de ' + player.name" />
-        } @else if (store.profile()?.photoUrl; as legacyPhoto) {
-          <img [src]="legacyPhoto" [alt]="'Foto de ' + player.name" />
-        } @else {
-          <span>{{ initials(player.name) }}</span>
-        }
-      </div>
-      <div class="profile-identity">
-        <p class="eyebrow">Dorsal {{ player.number }}</p>
-        <h1>{{ player.name }}</h1>
-        <div class="identity-meta">
-          <span>{{ player.position || 'Posición sin especificar' }}</span
-          ><span
-            >Pie {{ footLabel(store.profile()?.preferredFoot ?? 'unknown').toLowerCase() }}</span
-          >
-          @if (!player.active) {
-            <span class="inactive">Inactivo</span>
-          }
-        </div>
-      </div>
-      <div class="career-summary" aria-label="Resumen de carrera">
-        <span>Carrera</span><strong>{{ store.careerStatistics().appearances }}</strong
-        ><small>partidos · {{ store.careerStatistics().goals }} goles</small>
-      </div>
-      @if (store.canWrite()) {
-        <button
-          class="btn btn--secondary profile-edit-button"
-          type="button"
-          (click)="edit()"
-          [hidden]="isEditing()"
+    @let profile = store.profile();
+    @let career = store.careerStatistics();
+    @let statistics = store.statistics();
+    @let trackedMatches = statistics.statisticsV2Matches;
+
+    <section class="player-overview" aria-labelledby="player-name">
+      <div class="overview-main">
+        <div
+          class="avatar"
+          [class.has-photo]="!removePhoto() && (previewUrl() || profile?.photoUrl)"
         >
-          Editar
-        </button>
-      }
-    </header>
-    <div class="profile-layout">
-      <main class="performance-column">
-        <section class="season-toolbar" aria-labelledby="performance-title">
-          <div>
-            <p class="eyebrow">Seguimiento individual</p>
-            <h2 id="performance-title">
-              {{ store.season() === 'all' ? 'Toda la carrera' : 'Temporada ' + store.season() }}
-            </h2>
-          </div>
-          <label
-            ><span>Temporada</span
-            ><select
-              [value]="store.season()"
-              (change)="store.season.set($any($event.target).value)"
-            >
-              <option value="all">Toda la carrera</option>
-              @for (season of store.seasons(); track season) {
-                <option [value]="season">{{ season }}</option>
-              }
-            </select></label
-          >
-        </section>
-        @if (store.filteredHistory().some((item) => item.match.importMetadata?.legacySnapshot)) {
-          <p class="banner">
-            Los totales incluyen solo partidos con cronología completa. Los snapshots legacy
-            aparecen en el histórico con sus datos parciales.
-          </p>
-        }
-        @let trackedMatches = store.statistics().statisticsV2Matches;
-        <section class="metrics-grid" aria-label="Métricas del jugador">
-          <article>
-            <span>Partidos</span><strong>{{ store.statistics().appearances }}</strong
-            ><small>{{ store.statistics().starts }} titular</small>
-          </article>
-          <article>
-            <span>Tiempo</span><strong>{{ duration(store.statistics().playedMs) }}</strong
-            ><small>{{ decimal(store.statistics().minutesPerAppearance) }} min/partido</small>
-          </article>
-          <article>
-            <span>Goles</span><strong>{{ store.statistics().goals }}</strong
-            ><small>{{ decimal(store.statistics().goalsPerAppearance) }} por partido</small>
-          </article>
-          <article>
-            <span>Balance +/−</span
-            ><strong
-              [class.positive]="store.statistics().plusMinus > 0"
-              [class.negative]="store.statistics().plusMinus < 0"
-              >{{ store.statistics().plusMinus > 0 ? '+' : ''
-              }}{{ store.statistics().plusMinus }}</strong
-            ><small
-              >{{ store.statistics().goalsForOnCourt }} GF ·
-              {{ store.statistics().goalsAgainstOnCourt }} GC</small
-            >
-          </article>
-          <article>
-            <span>Goles / 40'</span
-            ><strong>{{ decimal(store.statistics().goalsPer40Minutes) }}</strong
-            ><small>ratio por tiempo jugado</small>
-          </article>
-          <article>
-            <span>Disparos</span
-            ><strong>{{ trackedMatches ? store.statistics().shotsTotal : '—' }}</strong>
-            <small>
-              @if (trackedMatches) {
-                {{ store.statistics().shotsOnTarget }} a puerta ·
-                {{ store.statistics().shotsOffTarget }} fuera
-              } @else {
-                Sin registro en esta selección
-              }
-            </small>
-          </article>
-          <article [class.metric-card--goalkeeper]="isGoalkeeper(player.position)">
-            <span>Paradas</span>
-            <strong>{{ trackedMatches ? store.statistics().saves : '—' }}</strong>
-            <small>{{ trackingLabel(trackedMatches) }}</small>
-          </article>
-          <article>
-            <span>Faltas recibidas</span>
-            <strong>{{ trackedMatches ? store.statistics().foulsReceived : '—' }}</strong>
-            <small>{{ trackingLabel(trackedMatches) }}</small>
-          </article>
-          <article>
-            <span>Resultados</span><strong>{{ percentage(store.statistics().winRate) }}</strong
-            ><small
-              >{{ store.statistics().wins }}V · {{ store.statistics().draws }}E ·
-              {{ store.statistics().losses }}D</small
-            >
-          </article>
-          <article>
-            <span>Convocatorias</span><strong>{{ store.statistics().squadSelections }}</strong
-            ><small>{{ store.statistics().entries }} entradas en pista</small>
-          </article>
-          <article>
-            <span>Disciplina</span><strong>{{ store.statistics().fouls }}</strong
-            ><small
-              >{{ store.statistics().yellowCards }} amarillas ·
-              {{ store.statistics().sendOffs }} expulsiones</small
-            >
-          </article>
-        </section>
-        <section class="history-panel" aria-labelledby="player-history-title">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Partidos terminados</p>
-              <h2 id="player-history-title">Histórico</h2>
-            </div>
-            <span>{{ store.filteredHistory().length }}</span>
-          </div>
-          @if (store.filteredHistory().length === 0) {
-            <p class="empty">No hay partidos finalizados para esta selección.</p>
+          @if (removePhoto()) {
+            <span>{{ initials(player.name) }}</span>
+          } @else if (previewUrl(); as photo) {
+            <img [src]="photo" [alt]="'Foto de ' + player.name" />
+          } @else if (profile?.photoUrl; as legacyPhoto) {
+            <img [src]="legacyPhoto" [alt]="'Foto de ' + player.name" />
           } @else {
-            <div class="player-match-list">
-              @for (item of store.filteredHistory(); track item.match.id) {
-                <a [routerLink]="['/matches', item.match.id]" class="player-match-card"
-                  ><div class="match-date">
-                    <time>{{ formatDate(item.match.date) }}</time
-                    ><span>{{ matchCompetition(item.match) }} · {{ matchSeason(item.match) }}</span>
-                  </div>
-                  <div class="match-result">
-                    <span>{{ item.match.awayTeam.name }}</span
-                    ><strong>
-                      @if (item.match.importMetadata?.legacySnapshot; as snapshot) {
-                        {{ snapshot.observedScore?.home ?? '—' }} –
-                        {{ snapshot.observedScore?.away ?? '—' }}
-                      } @else {
-                        {{ item.score.home }} – {{ item.score.away }}
-                      }
-                    </strong>
-                  </div>
-                  <span class="outcome" [class]="'outcome outcome--' + item.outcome">{{
-                    outcomeLabel(item.outcome)
-                  }}</span>
-                  <div class="match-player-stats">
-                    @if (item.match.importMetadata?.legacySnapshot) {
-                      <span>{{ legacyDuration(item.legacySnapshot?.secondsPlayed) }}</span
-                      ><span>Goles: sin dato</span
-                      ><span>{{ legacyMetric(item.legacySnapshot?.goalDifference) }} +/−</span>
-                    } @else {
-                      <span>{{ duration(item.statistics.playedMs) }}</span
-                      ><span>{{ item.statistics.goals }} goles</span
-                      ><span>{{
-                        item.statistics.shotsTotal === null
-                          ? 'Disparos: sin registro'
-                          : item.statistics.shotsTotal + ' disparos'
-                      }}</span>
-                      @if (isGoalkeeper(player.position) && item.statistics.saves !== null) {
-                        <span
-                          >{{ item.statistics.saves }}
-                          {{ item.statistics.saves === 1 ? 'parada' : 'paradas' }}</span
-                        >
-                      }
-                      <span
-                        >{{ item.statistics.plusMinus > 0 ? '+' : ''
-                        }}{{ item.statistics.plusMinus }} +/−</span
-                      >
-                    }
-                  </div></a
-                >
-              }
-            </div>
+            <span>{{ initials(player.name) }}</span>
           }
-        </section>
-      </main>
-      <aside class="profile-editor">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Ficha persistente</p>
-            <h2>Perfil deportivo</h2>
+        </div>
+
+        <div class="profile-identity">
+          <p class="eyebrow">Dorsal {{ player.number }}</p>
+          <h1 id="player-name">{{ player.name }}</h1>
+          <p class="identity-position">{{ player.position || 'Posición sin especificar' }}</p>
+          <div class="identity-badges" aria-label="Datos del jugador">
+            <app-profile-status-badge [label]="player.position || 'Sin posición'" />
+            <app-profile-status-badge
+              [label]="footLabel(profile?.preferredFoot ?? 'unknown')"
+              [tone]="profile?.preferredFoot === 'unknown' ? 'no-data' : 'neutral'"
+            />
+            <app-profile-status-badge
+              [label]="player.active ? 'Activo' : 'Inactivo'"
+              [tone]="player.active ? 'positive' : 'negative'"
+            />
           </div>
         </div>
-        @if (isEditing() && store.canWrite()) {
+
+        <dl class="career-summary" aria-label="Resumen de carrera">
+          <div>
+            <dt>Partidos</dt>
+            <dd>{{ career.appearances }}</dd>
+          </div>
+          <div>
+            <dt>Tiempo</dt>
+            <dd>{{ duration(career.playedMs) }}</dd>
+          </div>
+          <div>
+            <dt>Goles</dt>
+            <dd>{{ career.goals }}</dd>
+          </div>
+          <div>
+            <dt>Balance</dt>
+            <dd [class.positive]="career.plusMinus > 0" [class.negative]="career.plusMinus < 0">
+              {{ career.plusMinus > 0 ? '+' : '' }}{{ career.plusMinus }}
+            </dd>
+          </div>
+        </dl>
+
+        @if (store.canWrite()) {
+          <button
+            class="btn btn--secondary profile-edit-button"
+            type="button"
+            (click)="edit()"
+            [hidden]="isEditing()"
+          >
+            Editar
+          </button>
+        }
+      </div>
+
+      @if (isEditing() && store.canWrite()) {
+        <div class="overview-editor">
           <section class="photo-editor" aria-labelledby="photo-title">
-            <strong id="photo-title">Fotografía</strong
-            ><label class="btn btn--secondary photo-picker"
-              >{{
-                store.profile()?.photoRef || store.profile()?.photoUrl
-                  ? 'Reemplazar foto'
-                  : 'Seleccionar foto'
-              }}<input
+            <strong id="photo-title">Fotografía</strong>
+            <label class="btn btn--secondary photo-picker">
+              {{ profile?.photoRef || profile?.photoUrl ? 'Reemplazar foto' : 'Seleccionar foto' }}
+              <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
-                (change)="selectPhoto($event)" /></label
-            ><small>JPEG, PNG o WebP · máximo 5 MB</small>
+                (change)="selectPhoto($event)"
+              />
+            </label>
+            <small>JPEG, PNG o WebP · máximo 5 MB</small>
             @if (pendingPhoto()) {
-              <div class="photo-actions">
-                <button class="btn btn--secondary" type="button" (click)="cancelPhoto()">
-                  Deshacer selección
-                </button>
-              </div>
-            } @else if (
-              (store.profile()?.photoRef || store.profile()?.photoUrl) && !removePhoto()
-            ) {
+              <button class="btn btn--secondary" type="button" (click)="cancelPhoto()">
+                Deshacer selección
+              </button>
+            } @else if ((profile?.photoRef || profile?.photoUrl) && !removePhoto()) {
               <button
                 class="btn btn--danger"
                 type="button"
@@ -253,39 +111,42 @@
               </button>
             }
           </section>
-        }
-        @if (isEditing() && store.canWrite()) {
+
           <form [formGroup]="form" (ngSubmit)="save()">
             <div class="profile-fields">
-              <label class="field field--narrow"
-                ><span>Dorsal</span
-                ><input formControlName="number" inputmode="numeric" maxlength="2" /></label
-              ><label class="field"
-                ><span>Nombre</span><input formControlName="name" maxlength="40"
-              /></label>
+              <label class="field field--narrow">
+                <span>Dorsal</span
+                ><input formControlName="number" inputmode="numeric" maxlength="2" />
+              </label>
+              <label class="field">
+                <span>Nombre</span><input formControlName="name" maxlength="40" />
+              </label>
+              <label class="field">
+                <span>Posición</span><input formControlName="position" maxlength="20" />
+              </label>
+              <label class="field">
+                <span>Pie preferente</span>
+                <select formControlName="preferredFoot">
+                  <option value="unknown">Sin especificar</option>
+                  <option value="right">Derecho</option>
+                  <option value="left">Izquierdo</option>
+                  <option value="both">Ambidiestro</option>
+                </select>
+              </label>
             </div>
-            <label class="field"
-              ><span>Posición</span><input formControlName="position" maxlength="20" /></label
-            ><label class="check"
+            <label class="check"
               ><input type="checkbox" formControlName="active" /> Jugador activo</label
-            ><label class="field"
-              ><span>Pie preferente</span
-              ><select formControlName="preferredFoot">
-                <option value="unknown">Sin especificar</option>
-                <option value="right">Derecho</option>
-                <option value="left">Izquierdo</option>
-                <option value="both">Ambidiestro</option>
-              </select></label
-            ><label class="field"
-              ><span>Notas técnicas</span
-              ><textarea
+            >
+            <label class="field notes-field">
+              <span>Notas técnicas</span>
+              <textarea
                 formControlName="notes"
                 maxlength="2000"
-                rows="8"
+                rows="4"
                 placeholder="Observaciones, objetivos, evolución…"
-              ></textarea
-              ><small>{{ form.controls.notes.value.length }}/2000</small></label
-            >
+              ></textarea>
+              <small>{{ form.controls.notes.value.length }}/2000</small>
+            </label>
             @if (store.error(); as message) {
               <p class="banner banner--warn" role="alert">{{ message }}</p>
             }
@@ -299,8 +160,9 @@
                 (click)="cancel()"
                 [disabled]="store.saving()"
               >
-                Cancelar</button
-              ><button
+                Cancelar
+              </button>
+              <button
                 class="btn btn--primary"
                 type="submit"
                 [disabled]="
@@ -313,37 +175,210 @@
               </button>
             </div>
           </form>
-        } @else {
-          <dl class="profile-details">
+        </div>
+      } @else {
+        <dl class="profile-details">
+          <div>
+            <dt>Dorsal</dt>
+            <dd>{{ player.number }}</dd>
+          </div>
+          <div>
+            <dt>Estado</dt>
+            <dd>{{ player.active ? 'Activo' : 'Inactivo' }}</dd>
+          </div>
+          <div>
+            <dt>Posición</dt>
+            <dd>{{ player.position || '—' }}</dd>
+          </div>
+          <div>
+            <dt>Temporada</dt>
+            <dd>{{ store.season() === 'all' ? 'Toda la carrera' : store.season() }}</dd>
+          </div>
+          <div>
+            <dt>Pie</dt>
+            <dd>{{ footLabel(profile?.preferredFoot ?? 'unknown') }}</dd>
+          </div>
+          <div class="profile-details-notes">
+            <dt>Notas</dt>
+            <dd>{{ profile?.notes || '—' }}</dd>
+          </div>
+        </dl>
+      }
+    </section>
+
+    <main class="profile-content">
+      <section class="season-toolbar" aria-labelledby="performance-title">
+        <div>
+          <p class="eyebrow">Seguimiento individual</p>
+          <h2 id="performance-title">
+            {{ store.season() === 'all' ? 'Toda la carrera' : 'Temporada ' + store.season() }}
+          </h2>
+        </div>
+        <app-season-selector
+          [value]="store.season()"
+          [seasons]="store.seasons()"
+          (valueChange)="store.season.set($event)"
+        />
+      </section>
+
+      @if (store.filteredHistory().some((item) => item.match.importMetadata?.legacySnapshot)) {
+        <p class="banner legacy-notice">
+          Los totales incluyen solo partidos con cronología completa. Los snapshots legacy aparecen
+          en el histórico con sus datos parciales.
+        </p>
+      }
+
+      <section class="metrics-grid metrics-grid--primary" aria-label="Métricas principales">
+        <app-profile-metric
+          label="Partidos"
+          [value]="statistics.appearances"
+          [detail]="statistics.starts + ' titularidades'"
+        />
+        <app-profile-metric
+          label="Tiempo jugado"
+          [value]="duration(statistics.playedMs)"
+          [detail]="decimal(statistics.minutesPerAppearance) + ' min/partido'"
+        />
+        <app-profile-metric
+          label="Goles"
+          [value]="statistics.goals"
+          [detail]="decimal(statistics.goalsPerAppearance) + ' por partido'"
+        />
+        <app-profile-metric
+          label="Balance +/−"
+          [value]="(statistics.plusMinus > 0 ? '+' : '') + statistics.plusMinus"
+          [detail]="statistics.goalsForOnCourt + ' GF · ' + statistics.goalsAgainstOnCourt + ' GC'"
+          [tone]="
+            statistics.plusMinus > 0
+              ? 'positive'
+              : statistics.plusMinus < 0
+                ? 'negative'
+                : 'neutral'
+          "
+        />
+      </section>
+
+      <section class="tracking-lower" aria-label="Métricas complementarias y rendimiento">
+        <div class="metrics-grid metrics-grid--compact">
+          <app-profile-metric
+            [compact]="true"
+            label="Goles / 40'"
+            [value]="decimal(statistics.goalsPer40Minutes)"
+            detail="Por tiempo jugado"
+          />
+          <app-profile-metric
+            [compact]="true"
+            label="Convocatorias"
+            [value]="statistics.squadSelections"
+          />
+          <app-profile-metric [compact]="true" label="Titularidades" [value]="statistics.starts" />
+          <app-profile-metric
+            [compact]="true"
+            label="Entradas en pista"
+            [value]="statistics.entries"
+          />
+          <app-profile-metric
+            [compact]="true"
+            label="Disciplina"
+            [value]="statistics.fouls"
+            [detail]="
+              statistics.yellowCards + ' amarillas · ' + statistics.sendOffs + ' expulsiones'
+            "
+          />
+          <app-profile-metric
+            [compact]="true"
+            label="Disparos"
+            [value]="trackedMatches ? statistics.shotsTotal : 'Sin registro'"
+            [detail]="
+              trackedMatches
+                ? statistics.shotsOnTarget + ' a puerta · ' + statistics.shotsOffTarget + ' fuera'
+                : ''
+            "
+            [tone]="trackedMatches ? 'neutral' : 'no-data'"
+          />
+          <app-profile-metric
+            [compact]="true"
+            label="Faltas recibidas"
+            [value]="trackedMatches ? statistics.foulsReceived : 'Sin registro'"
+            [detail]="
+              trackedMatches
+                ? trackedMatches +
+                  (trackedMatches === 1 ? ' partido registrado' : ' partidos registrados')
+                : ''
+            "
+            [tone]="trackedMatches ? 'neutral' : 'no-data'"
+          />
+          <app-profile-metric
+            [compact]="true"
+            label="Paradas"
+            [value]="trackedMatches ? statistics.saves : 'Sin registro'"
+            [detail]="
+              trackedMatches
+                ? trackedMatches +
+                  (trackedMatches === 1 ? ' partido registrado' : ' partidos registrados')
+                : ''
+            "
+            [tone]="trackedMatches ? 'neutral' : 'no-data'"
+            [goalkeeper]="isGoalkeeper(player.position)"
+          />
+        </div>
+
+        <section class="performance-insights" aria-labelledby="insights-title">
+          <div class="section-heading">
             <div>
-              <dt>Dorsal</dt>
-              <dd>{{ player.number }}</dd>
+              <p class="eyebrow">Rendimiento</p>
+              <h3 id="insights-title">Indicadores</h3>
+            </div>
+          </div>
+          <dl>
+            <div>
+              <dt>Participación</dt>
+              <dd>{{ percentage(participation()) }}</dd>
             </div>
             <div>
-              <dt>Nombre</dt>
-              <dd>{{ player.name }}</dd>
+              <dt>Impacto +/−</dt>
+              <dd
+                [class.positive]="statistics.plusMinus > 0"
+                [class.negative]="statistics.plusMinus < 0"
+              >
+                {{ statistics.plusMinus > 0 ? '+' : '' }}{{ statistics.plusMinus }}
+              </dd>
             </div>
             <div>
-              <dt>Posición</dt>
-              <dd>{{ player.position || '—' }}</dd>
-            </div>
-            <div>
-              <dt>Pie preferente</dt>
-              <dd>{{ footLabel(store.profile()?.preferredFoot ?? 'unknown') }}</dd>
-            </div>
-            <div>
-              <dt>Estado</dt>
-              <dd>{{ player.active ? 'Activo' : 'Inactivo' }}</dd>
-            </div>
-            <div class="profile-details-notes">
-              <dt>Notas técnicas</dt>
-              <dd>{{ store.profile()?.notes || '—' }}</dd>
+              <dt>Resultados</dt>
+              <dd>{{ percentage(statistics.winRate) }}</dd>
             </div>
           </dl>
+          <p>{{ statistics.wins }}V · {{ statistics.draws }}E · {{ statistics.losses }}D</p>
+        </section>
+      </section>
+
+      <section class="history-panel" aria-labelledby="player-history-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Partidos</p>
+            <h2 id="player-history-title">Histórico</h2>
+          </div>
+          <span>{{ store.filteredHistory().length }}</span>
+        </div>
+        @if (store.filteredHistory().length === 0) {
+          <p class="empty">No hay partidos finalizados para esta selección.</p>
+        } @else {
+          <div class="history-columns" aria-hidden="true">
+            <span>Fecha</span><span>Rival / competición</span><span>Resultado</span
+            ><span>Tiempo</span><span>Aportación</span><span>+/−</span><span>Estado</span
+            ><span></span>
+          </div>
+          <div class="player-match-list">
+            @for (item of store.filteredHistory(); track item.match.id) {
+              <app-match-history-row [item]="item" [goalkeeper]="isGoalkeeper(player.position)" />
+            }
+          </div>
         }
-      </aside>
-    </div>
+      </section>
+    </main>
   }
+
   @if (discardOpen()) {
     <div class="profile-dialog-backdrop">
       <div

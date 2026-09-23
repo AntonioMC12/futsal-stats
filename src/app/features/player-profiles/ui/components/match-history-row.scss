@@ -1,0 +1,94 @@
+:host {
+  display: block;
+}
+.player-match-card {
+  min-height: 3.75rem;
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid var(--ds-border-subtle);
+  color: var(--ds-text-secondary);
+  display: grid;
+  grid-template-columns: 6.6rem minmax(8rem, 1.5fr) 4.4rem 4.2rem minmax(7rem, 1fr) 4rem 6rem 1rem;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.76rem;
+  text-decoration: none;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease-standard);
+}
+.player-match-card:hover {
+  background: var(--ds-surface-secondary);
+}
+.player-match-card:active {
+  background: var(--ds-surface-interactive);
+}
+time {
+  color: var(--ds-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.match-opponent {
+  min-width: 0;
+}
+.match-opponent strong,
+.match-opponent small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.match-opponent strong {
+  color: var(--ds-text);
+  font-size: 0.86rem;
+}
+.match-opponent small {
+  margin-top: 0.08rem;
+  color: var(--ds-text-muted);
+}
+.match-score {
+  color: var(--ds-text);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.match-score span {
+  color: var(--ds-text-muted);
+}
+.match-stat {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.match-chevron {
+  color: var(--ds-primary);
+  font-size: 1.2rem;
+  text-align: right;
+}
+@media (max-width: 840px) {
+  .player-match-card {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 0.2rem 0.7rem;
+    padding: 0.75rem;
+  }
+  time {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .match-opponent {
+    grid-column: 1;
+    grid-row: 2 / 4;
+  }
+  .match-score {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  app-profile-status-badge {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+  }
+  .match-chevron {
+    grid-column: 3;
+    grid-row: 1 / 4;
+  }
+  .match-stat {
+    display: none;
+  }
+}

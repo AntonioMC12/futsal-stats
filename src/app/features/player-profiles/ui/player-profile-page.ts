@@ -2,22 +2,26 @@ import { Component, effect, ElementRef, HostListener, inject, input, signal } fr
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { formatGameClock } from '../../../core/clock/match-clock';
-import {
-  MatchDate,
-  matchCompetition,
-  matchDateTimestamp,
-  matchSeason,
-} from '../../../shared/models/match';
 import { PreferredFoot } from '../../../shared/models/player-profile';
 import { PlayerProfileStore } from '../application/player-profile.store';
 import { validatePlayerPhoto } from '../domain/player-photo';
+import { MatchHistoryRowComponent } from './components/match-history-row';
+import { ProfileMetricComponent } from './components/profile-metric';
+import { ProfileStatusBadgeComponent } from './components/profile-status-badge';
+import { SeasonSelectorComponent } from './components/season-selector';
 
 @Component({
   selector: 'app-player-profile-page',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    MatchHistoryRowComponent,
+    ProfileMetricComponent,
+    ProfileStatusBadgeComponent,
+    SeasonSelectorComponent,
+  ],
   providers: [PlayerProfileStore],
   templateUrl: './player-profile-page.html',
-  styleUrl: './player-profile-page.scss',
 })
 export class PlayerProfilePage {
   readonly playerId = input.required<string>();
@@ -192,16 +196,6 @@ export class PlayerProfilePage {
       .join('')
       .toUpperCase();
   }
-  protected formatDate(value: MatchDate): string {
-    const timestamp = matchDateTimestamp(value);
-    return timestamp
-      ? new Intl.DateTimeFormat('es-ES', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-        }).format(timestamp)
-      : '—';
-  }
   protected duration(value: number): string {
     return formatGameClock(value);
   }
@@ -214,25 +208,15 @@ export class PlayerProfilePage {
   protected isGoalkeeper(position: string | undefined): boolean {
     return /^(?:porter[oa]|gk|goalkeeper)\b/i.test(position?.trim() ?? '');
   }
-  protected trackingLabel(count: number): string {
-    return count
-      ? `${count} ${count === 1 ? 'partido' : 'partidos'} con registro`
-      : 'Sin registro en esta selección';
-  }
   protected footLabel(value: PreferredFoot): string {
     return { unknown: 'Sin especificar', right: 'Derecho', left: 'Izquierdo', both: 'Ambidiestro' }[
       value
     ];
   }
-  protected outcomeLabel(value: 'win' | 'draw' | 'loss' | 'unknown'): string {
-    return { win: 'Victoria', draw: 'Empate', loss: 'Derrota', unknown: 'Snapshot legacy' }[value];
+  protected participation(): number {
+    const statistics = this.store.statistics();
+    return statistics.squadSelections
+      ? (statistics.appearances / statistics.squadSelections) * 100
+      : 0;
   }
-  protected legacyDuration(seconds: number | undefined): string {
-    return seconds === undefined ? '—' : formatGameClock(seconds * 1000);
-  }
-  protected legacyMetric(value: number | undefined): string {
-    return value === undefined ? '—' : String(value);
-  }
-  protected readonly matchSeason = matchSeason;
-  protected readonly matchCompetition = matchCompetition;
 }

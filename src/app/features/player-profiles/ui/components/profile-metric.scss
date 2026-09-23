@@ -1,0 +1,63 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+.profile-metric {
+  min-height: 6.4rem;
+  padding: 1rem;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface);
+  display: flex;
+  flex-direction: column;
+}
+.profile-metric > span {
+  color: var(--ds-text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.profile-metric strong {
+  margin: auto 0 0.15rem;
+  color: var(--ds-text);
+  font-size: clamp(1.55rem, 3vw, 2rem);
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+.profile-metric small {
+  overflow: hidden;
+  color: var(--ds-text-muted);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.profile-metric--compact {
+  min-height: 4.8rem;
+  padding: 0.75rem 0.85rem;
+  background: var(--ds-surface-secondary);
+}
+.profile-metric--compact strong {
+  margin-top: 0.45rem;
+  font-size: 1.1rem;
+  letter-spacing: -0.01em;
+}
+.profile-metric--positive strong {
+  color: var(--ds-success-strong);
+}
+.profile-metric--negative strong {
+  color: var(--ds-danger-strong);
+}
+.profile-metric--no-data strong {
+  color: var(--ds-text-muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.profile-metric--no-data small {
+  color: var(--ds-text-muted);
+}
+.metric-card--goalkeeper {
+  border-color: color-mix(in srgb, var(--ds-primary) 55%, var(--ds-border));
+  background: var(--ds-primary-soft);
+}

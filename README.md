@@ -100,10 +100,13 @@ tiempo del tramo actual y el reparto por periodos.
   principales.
 - Selección de convocatoria y elección del quinteto inicial desde la pista antes de iniciar.
 - Perfil deportivo en modo consulta por defecto, con edición explícita de dorsal, nombre, posición, estado, pierna dominante y notas.
+- Perfil compacto orientado a scouting: identidad, ficha, resumen de carrera, seguimiento
+  jerarquizado e histórico deportivo en una sola composición responsive.
 - Fotografías seleccionadas desde archivo JPEG, PNG o WebP, con previsualización, sustitución,
   eliminación y validación de contenido y tamaño.
 - Histórico individual y métricas separadas por temporada.
-- El perfil muestra Paradas y Faltas recibidas en tarjetas independientes; distingue cero de métricas no registradas en la temporada seleccionada.
+- El perfil diferencia métricas principales y secundarias; muestra `Sin registro` con menor peso
+  visual y conserva el cero cuando existe cobertura estadística real.
 - Roles `OWNER` y `EDITOR` con edición; rol `VIEWER` con acceso de solo lectura en Plantilla y Perfil.
 
 ## Gestión de partidos

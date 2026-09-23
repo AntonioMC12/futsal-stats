@@ -1,6 +1,7 @@
 @use 'tailwindcss';
 @use 'design-tokens';
 @use 'app/features/workspace/ui/team-dashboard-page';
+@use 'app/features/player-profiles/ui/player-profile-page';
 @use 'app/features/live-match/ui/live-match-page';
 
 /* Keep the profile card accent global so its component stylesheet stays within the size budget. */
@@ -679,79 +680,5 @@ h2 {
   .substitution-sheet {
     animation: none;
     transition: none;
-  }
-}
-/* Player profile consultation and discard dialog. */
-.player-profile-page .profile-edit-button[hidden] {
-  display: none;
-}
-.player-profile-page .photo-picker:focus-within {
-  outline: 3px solid var(--ds-primary);
-  outline-offset: 2px;
-}
-.player-profile-page .profile-details {
-  margin: var(--ds-space-4) 0 0;
-  display: grid;
-  gap: var(--ds-space-3);
-}
-.player-profile-page .profile-details > div {
-  display: grid;
-  grid-template-columns: 6.5rem minmax(0, 1fr);
-  gap: var(--ds-space-2);
-}
-.player-profile-page .profile-details dt {
-  color: var(--color-text-muted);
-  font-size: var(--ds-font-sm);
-}
-.player-profile-page .profile-details dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-.player-profile-page .profile-details-notes dd {
-  white-space: pre-wrap;
-}
-.player-profile-page .profile-form-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ds-space-2);
-}
-.player-profile-page .profile-dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: grid;
-  place-items: center;
-  padding: var(--ds-space-4);
-  background: rgb(0 0 0 / 55%);
-}
-.player-profile-page .profile-discard-dialog {
-  width: min(100%, 28rem);
-  padding: var(--ds-space-5);
-  border-radius: var(--ds-radius-lg);
-  background: var(--color-surface);
-  box-shadow: 0 1rem 3rem rgb(0 0 0 / 25%);
-}
-@media (max-width: 1280px) {
-  .player-profile-page .profile-hero.profile-hero {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-  }
-  .player-profile-page .profile-edit-button {
-    grid-column: 3;
-    grid-row: 1;
-  }
-  .player-profile-page .career-summary.career-summary {
-    grid-column: 1 / -1;
-    padding: var(--ds-space-3) 0 0;
-    border-top: 1px solid var(--ds-border-subtle);
-    border-left: 0;
-  }
-}
-@media (max-width: 560px) {
-  .player-profile-page .profile-hero.profile-hero {
-    grid-template-columns: auto 1fr;
-  }
-  .player-profile-page .profile-edit-button {
-    grid-column: 1 / -1;
-    grid-row: auto;
   }
 }

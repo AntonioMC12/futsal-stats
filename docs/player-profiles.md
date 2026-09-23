@@ -33,9 +33,17 @@ anulados se excluyen mediante `EVENT_UNDONE`, igual que en el detalle de partido
 Los partidos con `statisticsSchemaVersion: 2` habilitan conjuntamente disparos, paradas y faltas
 recibidas. `statisticsV2Matches` cuenta explícitamente esos partidos para la selección de temporada;
 las tres métricas se agregan por separado desde sus eventos. La interfaz muestra `0` cuando hay
-partidos v2 sin eventos de una métrica y `—` cuando no hay cobertura v2. Paradas y Faltas recibidas
-ocupan tarjetas independientes; la primera se destaca cuando la posición libre del jugador indica
-portero. El histórico compacto de un portero incluye paradas solo si están registradas.
+partidos v2 sin eventos de una métrica y `Sin registro` cuando no hay cobertura v2. Paradas y Faltas
+recibidas ocupan métricas compactas independientes; la primera se destaca cuando la posición libre
+del jugador indica portero. El histórico compacto conserva goles, disparos y, para porteros,
+paradas registradas.
+
+## Composición visual
+
+El perfil integra avatar, identidad, badges, ficha deportiva, resumen de carrera y edición en un
+único Player Overview. El seguimiento separa partidos, tiempo, goles y balance como métricas
+principales; el resto se presenta en una rejilla secundaria junto con indicadores de rendimiento.
+El histórico usa filas deportivas navegables y se adapta a formato compacto en pantallas estrechas.
 
 ## Compatibilidad y recuperación
 
