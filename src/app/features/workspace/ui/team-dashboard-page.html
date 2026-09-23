@@ -1,45 +1,211 @@
-<section class="workspace-dashboard">
-  @if (workspace.activeTeam(); as team) {
-    <header class="workspace-hero">
-      <span class="team-badge">{{ team.shortName }}</span>
-      <div>
-        <p class="eyebrow">Espacio de equipo</p>
-        <h1>{{ team.name }}</h1>
-        <p>Plantilla, partidos y trabajo técnico dentro de un único equipo.</p>
-      </div>
-    </header>
+<section class="dashboard grid gap-5">
+  <header class="dashboard-header flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="eyebrow">Inicio</p>
+      <h1>Resumen</h1>
+      <p class="lede">Vista general del equipo y actividad reciente</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-3">
+      <span class="sync-state" role="status">
+        <span aria-hidden="true"></span>{{ sync?.statusLabel() ?? 'Guardado localmente' }}
+      </span>
+      <a class="btn btn--primary" routerLink="/matches/new"
+        ><span aria-hidden="true">+</span> Nuevo partido</a
+      >
+    </div>
+  </header>
 
-    @if (error(); as message) {
-      <p class="banner banner--warn" role="alert">{{ message }}</p>
+  @if (error(); as message) {
+    <div class="banner banner--warn flex flex-wrap items-center justify-between gap-3" role="alert">
+      <span>{{ message }}</span>
+      <button class="retry-button" type="button" (click)="retry()">Reintentar</button>
+    </div>
+  }
+
+  @if (loading() && !viewModel()) {
+    <div class="kpi-grid grid grid-cols-2 gap-3" aria-busy="true" aria-label="Cargando resumen">
+      @for (item of [1, 2, 3, 4]; track item) {
+        <div class="panel skeleton-card"><span></span><strong></strong><small></small></div>
+      }
+    </div>
+    <div class="team-dashboard-grid grid gap-4">
+      <div class="panel skeleton-panel minutes-panel"></div>
+      <div class="panel skeleton-panel latest-panel"></div>
+    </div>
+  } @else if (viewModel(); as vm) {
+    <section class="kpi-grid grid grid-cols-2 gap-3" aria-label="Indicadores del equipo">
+      <article class="panel kpi-card">
+        <span>Partidos</span><strong>{{ vm.matchesPlayed }}</strong>
+        <small>{{
+          vm.matchesThisMonth
+            ? '+' + vm.matchesThisMonth + ' este mes'
+            : (vm.season ?? 'Sin temporada')
+        }}</small>
+      </article>
+      <article class="panel kpi-card">
+        <span>Balance</span><strong>{{ vm.wins }} - {{ vm.draws }} - {{ vm.losses }}</strong
+        ><small>{{ vm.winPercentage }}% victorias</small>
+      </article>
+      <article class="panel kpi-card">
+        <span>Goles</span><strong>{{ vm.goalsFor }} <i>:</i> {{ vm.goalsAgainst }}</strong
+        ><small>{{ signed(vm.goalDifference) }} diferencial</small>
+      </article>
+      <article class="panel kpi-card">
+        <span>Jugadores</span><strong>{{ vm.activePlayers }}</strong
+        ><small>{{ vm.playersWithMinutes }} con minutos</small>
+      </article>
+    </section>
+
+    @if (!vm.matchesPlayed) {
+      <section class="panel empty-dashboard">
+        <div>
+          <h2>Todavía no hay partidos registrados</h2>
+          <p>Crea un partido para empezar a construir el histórico del equipo.</p>
+        </div>
+        <a class="btn btn--primary" routerLink="/matches/new">Nuevo partido</a>
+      </section>
     }
 
-    <div class="summary-grid" [attr.aria-busy]="loading()">
-      <a class="summary-card" routerLink="/players">
-        <span>Plantilla</span><strong>{{ playerCount() }}</strong
-        ><small>jugadores activos</small>
-      </a>
-      <a class="summary-card" routerLink="/matches">
-        <span>Histórico</span><strong>{{ finishedCount() }}</strong
-        ><small>partidos finalizados</small>
-      </a>
-      <a class="summary-card" routerLink="/matches">
-        <span>Partido actual</span>
-        <strong class="summary-card__state">{{ activeMatch() ? 'En curso' : 'Disponible' }}</strong>
-        <small>{{ activeMatch() ? 'Continúa el registro' : 'Puedes crear uno nuevo' }}</small>
-      </a>
-    </div>
-
-    <section class="workspace-actions" aria-labelledby="workspace-actions-title">
-      <h2 id="workspace-actions-title">Acciones rápidas</h2>
-      <div>
-        @if (activeMatch(); as match) {
-          <a class="btn btn--primary" [routerLink]="['/live', match.id]">Continuar partido</a>
+    <div class="team-dashboard-grid grid gap-4">
+      <section class="panel minutes-panel" aria-labelledby="minutes-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="minutes-title">Minutos acumulados</h2>
+            <p>Jugadores con más minutos · últimos 6 partidos</p>
+          </div>
+          @if (vm.season) {
+            <span class="season-pill">{{ vm.season }}</span>
+          }
+        </div>
+        @if (vm.topPlayersByMinutes.length) {
+          <ol class="minutes-list">
+            @for (player of vm.topPlayersByMinutes; track player.playerId; let position = $index) {
+              <li>
+                <span class="rank">{{ position + 1 }}</span
+                ><span class="player-number">#{{ player.number }}</span
+                ><span class="player-name">{{ player.name }}</span>
+                <span class="bar-track" aria-hidden="true"
+                  ><span [style.width.%]="player.percentage"></span
+                ></span>
+                <strong>{{ player.minutes }} min</strong
+                ><span class="percentage">{{ player.percentage }}%</span>
+              </li>
+            }
+          </ol>
         } @else {
-          <a class="btn btn--primary" routerLink="/matches/new">Nuevo partido</a>
+          <p class="widget-empty">Aún no hay minutos registrados en los últimos partidos.</p>
         }
-        <a class="btn btn--secondary" routerLink="/players">Gestionar plantilla</a>
-        <a class="btn btn--secondary" routerLink="/strategies">Abrir estrategias</a>
-      </div>
-    </section>
+      </section>
+
+      <section class="panel latest-panel" aria-labelledby="latest-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Actividad reciente</p>
+            <h2 id="latest-title">Último partido</h2>
+          </div>
+        </div>
+        @if (vm.latestMatch; as match) {
+          <p class="match-meta">
+            {{ match.competition || 'Sin competición' }} · {{ match.dateLabel }}
+          </p>
+          <div class="latest-score">
+            <div class="team-mark">{{ workspace.activeTeam()?.shortName }}</div>
+            <div>
+              <strong>{{ match.goalsFor }} <span>-</span> {{ match.goalsAgainst }}</strong
+              ><small [class]="'outcome outcome--' + match.outcome">{{ match.outcomeLabel }}</small>
+            </div>
+            <div class="team-mark team-mark--rival">{{ match.opponentShortName }}</div>
+          </div>
+          <p class="opponent-name">{{ workspace.activeTeam()?.name }} vs {{ match.opponent }}</p>
+          <dl class="match-statistics">
+            @for (statistic of match.statistics; track statistic.label) {
+              <div>
+                <dt>{{ statistic.label }}</dt>
+                <dd>{{ statistic.value }}</dd>
+              </div>
+            }
+          </dl>
+          <a
+            class="text-link"
+            [routerLink]="['/matches', match.id]"
+            [attr.aria-label]="'Ver resumen del partido contra ' + match.opponent"
+            >Ver resumen del partido <span aria-hidden="true">→</span></a
+          >
+        } @else {
+          <p class="widget-empty">El último partido aparecerá aquí cuando finalices uno.</p>
+        }
+      </section>
+
+      <section class="panel recent-panel" aria-labelledby="recent-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="recent-title">Últimos partidos</h2>
+            <p>Resultados más recientes del equipo</p>
+          </div>
+          <a class="text-link" routerLink="/matches">Ver todos <span aria-hidden="true">→</span></a>
+        </div>
+        @if (vm.recentMatches.length) {
+          <div class="match-table" role="table" aria-label="Últimos partidos">
+            <div class="match-table__header" role="row">
+              <span role="columnheader">Fecha</span><span role="columnheader">Rival</span
+              ><span role="columnheader">Resultado</span><span role="columnheader">Estado</span
+              ><span role="columnheader">Competición</span>
+            </div>
+            @for (match of vm.recentMatches; track match.id) {
+              <a
+                class="match-row"
+                role="row"
+                [routerLink]="['/matches', match.id]"
+                [attr.aria-label]="'Abrir partido contra ' + match.opponent"
+              >
+                <span role="cell">{{ match.dateLabel }}</span
+                ><strong role="cell">{{ match.opponent }}</strong
+                ><span class="row-score" role="cell"
+                  >{{ match.goalsFor }} - {{ match.goalsAgainst }}</span
+                >
+                <span role="cell"
+                  ><span [class]="'outcome outcome--' + match.outcome">{{
+                    match.outcomeLabel
+                  }}</span></span
+                ><span role="cell">{{ match.competition || 'Sin competición' }}</span>
+              </a>
+            }
+          </div>
+        } @else {
+          <p class="widget-empty">No hay partidos finalizados que mostrar.</p>
+        }
+      </section>
+
+      <section class="panel squad-panel" aria-labelledby="squad-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="squad-title">Plantilla</h2>
+            <p>Estado rápido</p>
+          </div>
+          <a class="text-link" routerLink="/players"
+            >Ver plantilla <span aria-hidden="true">→</span></a
+          >
+        </div>
+        @if (vm.squadPreview.length) {
+          <ul class="squad-list">
+            @for (player of vm.squadPreview; track player.playerId) {
+              <li>
+                <span class="player-number">#{{ player.number }}</span>
+                <div>
+                  <strong>{{ player.name }}</strong
+                  ><small>{{ player.position || 'Sin posición' }}</small>
+                </div>
+                <span
+                  [class]="player.active ? 'availability availability--active' : 'availability'"
+                  >{{ player.active ? 'Activo' : 'Inactivo' }}</span
+                >
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="widget-empty">Todavía no hay jugadores en la plantilla.</p>
+        }
+      </section>
+    </div>
   }
 </section>

@@ -40,6 +40,8 @@ Futsal Stats concentra en una única interfaz las operaciones principales de un 
 - perfiles de jugador con métricas de temporada y carrera;
 - diseñador y biblioteca de estrategias;
 - persistencia offline mediante IndexedDB y cola de sincronización durable.
+- Home operativa por equipo con KPIs de temporada, balance y goles, ranking de minutos de los
+  últimos seis partidos, último resultado, histórico reciente y estado rápido de la plantilla.
 
 La experiencia visual está diseñada alrededor de un **tema oscuro azulado**, alto contraste y controles grandes pensados para uso táctil durante el partido.
 
@@ -107,6 +109,8 @@ tiempo del tramo actual y el reparto por periodos.
 ## Gestión de partidos
 
 - Un único partido activo simultáneamente.
+- Resumen de inicio calculado desde partidos, eventos y plantilla del equipo activo, con accesos al
+  detalle del último partido, al histórico completo y a la plantilla.
 - Continuación de un partido en curso después de cerrar o recargar la aplicación.
 - Histórico de partidos finalizados con fecha y resultado.
 - Tarjetas de historial adaptables a tablet y escritorio: el contenido y las acciones conservan zonas separadas incluso con nombres largos.
