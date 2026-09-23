@@ -1,4 +1,6 @@
+@use 'tailwindcss';
 @use 'design-tokens';
+@use 'app/features/workspace/ui/team-dashboard-page';
 @use 'app/features/live-match/ui/live-match-page';
 
 /* Keep the profile card accent global so its component stylesheet stays within the size budget. */

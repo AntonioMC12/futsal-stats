@@ -1,25 +1,23 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { MATCH_REPOSITORY, PLAYER_REPOSITORY } from '../../../core/persistence/persistence.tokens';
 import { TeamWorkspaceContext } from '../../../core/team-workspace/team-workspace.context';
-import { isMatchActive, isMatchFinished, Match } from '../../../shared/models/match';
+import { OfflineSyncService } from '../../../core/sync/offline-sync.service';
+import { DashboardFacade, DashboardViewModel } from '../application/dashboard.facade';
 
 @Component({
   selector: 'app-team-dashboard-page',
   imports: [RouterLink],
   templateUrl: './team-dashboard-page.html',
-  styleUrl: './team-dashboard-page.scss',
 })
 export class TeamDashboardPage {
   protected readonly workspace = inject(TeamWorkspaceContext);
-  private readonly players = inject(PLAYER_REPOSITORY);
-  private readonly matches = inject(MATCH_REPOSITORY);
+  protected readonly sync = inject(OfflineSyncService, { optional: true });
+  private readonly dashboard = inject(DashboardFacade);
 
-  protected readonly playerCount = signal(0);
-  protected readonly activeMatch = signal<Match | null>(null);
-  protected readonly finishedCount = signal(0);
+  protected readonly viewModel = signal<DashboardViewModel | null>(null);
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
+  private requestId = 0;
 
   constructor() {
     effect(() => {
@@ -28,22 +26,27 @@ export class TeamDashboardPage {
     });
   }
 
+  protected retry(): void {
+    const teamId = this.workspace.activeTeamId();
+    if (teamId) void this.load(teamId);
+  }
+
+  protected signed(value: number): string {
+    return value > 0 ? `+${value}` : String(value);
+  }
+
   private async load(teamId: string): Promise<void> {
+    const requestId = ++this.requestId;
     this.loading.set(true);
     this.error.set(null);
     try {
-      const [players, matches] = await Promise.all([
-        this.players.listActiveByTeam(teamId),
-        this.matches.listByTeam(teamId),
-      ]);
-      if (this.workspace.activeTeamId() !== teamId) return;
-      this.playerCount.set(players.length);
-      this.activeMatch.set(matches.find(isMatchActive) ?? null);
-      this.finishedCount.set(matches.filter(isMatchFinished).length);
+      const viewModel = await this.dashboard.load(teamId);
+      if (this.workspace.activeTeamId() !== teamId || requestId !== this.requestId) return;
+      this.viewModel.set(viewModel);
     } catch {
       this.error.set('No se ha podido cargar el resumen del equipo.');
     } finally {
-      this.loading.set(false);
+      if (requestId === this.requestId) this.loading.set(false);
     }
   }
 }
