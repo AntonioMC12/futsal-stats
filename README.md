@@ -49,40 +49,89 @@ La experiencia visual está diseñada alrededor de un **tema oscuro azulado**, a
 
 ## Capturas de pantalla
 
-### Gestor de partidos
+### Inicio
 
-Desde esta pantalla se puede continuar un partido activo, consultar partidos finalizados o iniciar uno nuevo.
+El resumen del equipo reúne los indicadores de la temporada, el ranking de minutos, el último
+resultado, los partidos recientes y el estado de la plantilla.
 
-![Gestor de partidos](docs/screenshots/01-partidos.png)
+![Resumen del equipo](docs/screenshots/home.png)
+
+### Partidos
+
+El alta de un partido concentra sus datos y la convocatoria. El gestor permite iniciar encuentros,
+importarlos y consultar el histórico con filtros por temporada, competición y estado.
+
+![Creación de un partido y selección de la convocatoria](docs/screenshots/create-match.png)
+
+![Gestor e histórico de partidos](docs/screenshots/matches.png)
+
+### Plantilla y perfiles
+
+La plantilla ofrece métricas acumuladas, búsqueda, filtros y accesos al perfil de cada jugador. El
+perfil combina su ficha, estadísticas de carrera o temporada, indicadores de rendimiento e
+histórico de partidos.
+
+![Plantilla del equipo](docs/screenshots/plantilla.png)
+
+![Perfil de jugador](docs/screenshots/player-profile.png)
+
+### Estrategias
+
+El diseñador permite colocar jugadores y balón, construir secuencias con pases y movimientos y
+reproducir la jugada. Las estrategias guardadas quedan disponibles en la biblioteca del equipo.
+
+![Diseñador de estrategias](docs/screenshots/strategy-create.png)
+
+![Biblioteca de estrategias](docs/screenshots/strategy-library.png)
+
+### Ajustes del equipo
+
+Desde Ajustes se actualizan los datos del equipo, se gestionan miembros y equipos y se comprueba si
+hay una nueva versión de la aplicación.
+
+![Ajustes del equipo](docs/screenshots/settings.png)
 
 ### Partido en directo
 
-Vista principal para operar durante el encuentro: estadísticas, marcador, cronómetro, quinteto en pista, últimos eventos y acciones rápidas.
+La vista principal reúne estadísticas, marcador y cronómetro, quinteto en pista, últimos eventos y
+acciones rápidas sin abandonar el contexto del encuentro.
 
-![Partido en directo](docs/screenshots/02-partido-en-directo.png)
+![Partido en directo](docs/screenshots/live-match.png)
 
-### Estadísticas detalladas
+### Faltas y disciplina
 
-Panel de estadísticas por jugador con minutos, goles, goles a favor/en contra, plus/minus, faltas, tarjetas y expulsiones, además de exportación CSV. Los partidos creados con el esquema estadístico v2 también muestran disparos, tiros a puerta y fuera, paradas y faltas recibidas. Los partidos anteriores muestran estas métricas como no registradas.
+Los flujos de falta propia y rival separan las infracciones acumulativas de las sanciones que solo
+registran tarjeta. También permiten identificar al jugador implicado y, para el rival, reutilizar su
+dorsal durante el partido.
 
-![Estadísticas detalladas](docs/screenshots/03-estadisticas.png)
+| Falta propia | Falta rival |
+| --- | --- |
+| ![Registro de una falta propia](docs/screenshots/own-foul.png) | ![Registro de una falta rival](docs/screenshots/rival-foul.png) |
 
-### Registro de faltas y sanciones
+La disciplina de banquillo distingue equipo, jugador o miembro del cuerpo técnico, rol y sanción.
+El panel disciplinario resume faltas y tarjetas y permite corregir el jugador o dorsal asociado.
 
-Flujo contextual para seleccionar al jugador que comete la falta y, cuando corresponde, registrar la sanción disciplinaria asociada.
+| Disciplina de banquillo | Resumen disciplinario |
+| --- | --- |
+| ![Registro de disciplina de banquillo](docs/screenshots/bench-discipline.png) | ![Panel de disciplina del partido](docs/screenshots/discipline.png) |
 
-![Registro de falta](docs/screenshots/04-registrar-falta.png)
+### Seguimiento del partido
 
-### Detalle del tiempo en pista
+Durante el encuentro se puede abrir el detalle de tiempo en pista de cada jugador, consultar todas
+las métricas disponibles y revisar la cronología completa de eventos.
 
-El detalle de jugador reconstruye entradas, salidas y tramos efectivos en pista, incluyendo el
-tiempo del tramo actual y el reparto por periodos.
+![Detalle del tiempo en pista de un jugador](docs/screenshots/live-match-player-detail.png)
 
-![Detalle del tiempo en pista en escritorio](docs/screenshots/player-detail-desktop.png)
+![Estadísticas detalladas del partido](docs/screenshots/live-match-stats.png)
 
-| Tablet                                                                              | Móvil                                                                              |
-| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| ![Detalle del tiempo en pista en tablet](docs/screenshots/player-detail-tablet.png) | ![Detalle del tiempo en pista en móvil](docs/screenshots/player-detail-mobile.png) |
+![Cronología completa de eventos](docs/screenshots/events.png)
+
+### Exportación y cierre
+
+El menú de opciones agrupa la exportación CSV, la vuelta al gestor y las acciones sensibles para
+finalizar o abandonar el partido.
+
+![Opciones de exportación y cierre del partido](docs/screenshots/match-export.png)
 
 ---
 
