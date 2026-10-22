@@ -947,6 +947,7 @@
 
 .edit-yellow-card-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--ds-space-3);
@@ -1032,6 +1033,7 @@
 
 .edit-yellow-card-actions .btn {
   flex: 1;
+  min-width: 8rem;
   min-height: 3rem;
 }
 

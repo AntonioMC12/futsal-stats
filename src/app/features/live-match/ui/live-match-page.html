@@ -1029,6 +1029,42 @@
                     </section>
                   </div>
 
+                  <section class="discipline-side" aria-labelledby="discipline-fouls-title">
+                    <header>
+                      <div>
+                        <span class="section-label">Correcciones</span>
+                        <h3 id="discipline-fouls-title">Historial de faltas</h3>
+                      </div>
+                      <small>Todos los periodos</small>
+                    </header>
+                    <p>Puedes corregir una falta aunque hayas registrado otras acciones después.</p>
+                    <div class="discipline-player-list">
+                      @for (foul of disciplineFouls(); track foul.id) {
+                        <article class="discipline-player-row">
+                          <div class="discipline-player-identity">
+                            <strong>{{ foulLabel(foul) }}</strong
+                            ><span
+                              >{{ formatDuration(foul.gameClockMs) }} · P{{ foul.period }}</span
+                            >
+                          </div>
+                          <button
+                            class="btn btn--secondary"
+                            type="button"
+                            [disabled]="store.saving() || store.match()?.status === 'finished'"
+                            (click)="openFoulEditor(foul, $event)"
+                            [attr.aria-label]="
+                              'Editar falta de ' + foulLabel(foul) + ', periodo ' + foul.period
+                            "
+                          >
+                            Editar falta
+                          </button>
+                        </article>
+                      } @empty {
+                        <p class="discipline-empty">Sin faltas registradas.</p>
+                      }
+                    </div>
+                  </section>
+
                   <div class="bench-discipline-history">
                     <section class="discipline-side" aria-labelledby="home-bench-discipline-title">
                       <header>
@@ -1340,6 +1376,93 @@
     </div>
   }
 
+  @if (editingFoul(); as foul) {
+    <div class="substitution-backdrop" (click)="closeFoulEditor()">
+      <dialog
+        class="substitution-sheet edit-yellow-card-sheet"
+        open
+        aria-labelledby="edit-foul-title"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <h2 id="edit-foul-title" tabindex="-1" autofocus>Editar falta</h2>
+        <p>{{ foulLabel(foul) }} · {{ formatDuration(foul.gameClockMs) }} · P{{ foul.period }}</p>
+        @if (foul.team === 'home') {
+          <label class="field edit-yellow-card-search"
+            >Jugador
+            <select
+              [value]="correctedFoulPlayer()"
+              [disabled]="store.saving()"
+              (change)="correctedFoulPlayer.set($any($event.target).value)"
+            >
+              <option value="" disabled>Selecciona un jugador</option>
+              @for (player of store.players(); track player.id) {
+                <option [value]="player.id">#{{ player.number }} {{ player.name }}</option>
+              }
+            </select>
+          </label>
+        } @else {
+          <label class="edit-yellow-card-search"
+            >Dorsal rival
+            <input
+              type="number"
+              inputmode="numeric"
+              min="1"
+              max="999"
+              step="1"
+              [value]="correctedFoulNumber()"
+              [disabled]="store.saving()"
+              (input)="correctedFoulNumber.set($any($event.target).value)"
+            />
+            <small>Entre 1 y 999. Vacío si no se conoce y no hay tarjeta asociada.</small>
+          </label>
+        }
+        <label
+          ><input
+            type="checkbox"
+            [checked]="correctedFoulAccumulated()"
+            [disabled]="store.saving()"
+            (change)="correctedFoulAccumulated.set($any($event.target).checked)"
+          />
+          Cuenta como falta acumulada</label
+        >
+        <p>
+          Los cambios afectan solo a la falta. Las tarjetas asociadas y las acciones posteriores se
+          conservan.
+        </p>
+        @if (store.error(); as message) {
+          <p class="banner banner--warn" role="alert">{{ message }}</p>
+        }
+        <div class="edit-yellow-card-actions">
+          <button
+            class="btn btn--secondary"
+            type="button"
+            [disabled]="store.saving()"
+            (click)="closeFoulEditor()"
+          >
+            Cancelar
+          </button>
+          <button
+            class="btn btn--secondary"
+            type="button"
+            [disabled]="store.saving()"
+            (click)="saveFoulCorrection(true)"
+          >
+            Anular solo falta
+          </button>
+          <button
+            class="btn btn--primary"
+            type="button"
+            [disabled]="store.saving() || !foulCorrectionValid()"
+            (click)="saveFoulCorrection()"
+          >
+            {{ store.saving() ? 'Guardando…' : 'Guardar falta' }}
+          </button>
+        </div>
+      </dialog>
+    </div>
+  }
+
   @if (editingYellowCard(); as card) {
     <div class="substitution-backdrop" (click)="cancelYellowCardEditor()">
       <dialog
@@ -1435,6 +1558,14 @@
           <p class="banner banner--warn" role="alert">{{ message }}</p>
         }
         <div class="edit-yellow-card-actions">
+          <button
+            class="btn btn--secondary"
+            type="button"
+            [disabled]="store.saving()"
+            (click)="removeYellowCard()"
+          >
+            Retirar solo amarilla
+          </button>
           <button
             class="btn btn--secondary"
             type="button"

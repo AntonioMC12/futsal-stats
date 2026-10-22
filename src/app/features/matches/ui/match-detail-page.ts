@@ -1,4 +1,5 @@
-import { Component, effect, inject, input } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { PlayerMatchStatistics } from '../../live-match/domain/match-statistics';
 import { RouterLink } from '@angular/router';
 import { formatGameClock } from '../../../core/clock/match-clock';
 import {
@@ -21,6 +22,67 @@ export class MatchDetailPage {
   protected readonly store = inject(MatchDetailStore);
   protected readonly csvExporter = inject(MatchCsvExportService);
   readonly matchId = input.required<string>();
+  protected readonly activeStats = signal<'attack' | 'discipline' | 'participation'>('attack');
+  protected readonly detailKind = signal<'timeline' | 'integrity' | null>(null);
+  protected readonly selectedPlayerId = signal<string | null>(null);
+  protected readonly selectedPlayer = computed(() =>
+    this.store.playerRows().find((row) => row.player.id === this.selectedPlayerId()),
+  );
+  protected readonly statGroups = [
+    { id: 'attack' as const, label: 'Ataque y portería' },
+    { id: 'discipline' as const, label: 'Disciplina' },
+    { id: 'participation' as const, label: 'Participación' },
+  ];
+  protected readonly columns = computed(() => this.allColumns(this.activeStats()));
+  protected allColumns(
+    group: 'attack' | 'discipline' | 'participation',
+  ): { key: keyof PlayerMatchStatistics; label: string }[] {
+    switch (group) {
+      case 'attack':
+        return [
+          { key: 'playedMs', label: 'Tiempo' },
+          { key: 'goals', label: 'Goles' },
+          { key: 'shotsTotal', label: 'Tiros' },
+          { key: 'shotsOnTarget', label: 'A puerta' },
+          { key: 'shotsOffTarget', label: 'Fuera' },
+          { key: 'saves', label: 'Paradas' },
+        ];
+      case 'discipline':
+        return [
+          { key: 'fouls', label: 'Faltas' },
+          { key: 'accumulatedFouls', label: 'Acum.' },
+          { key: 'nonAccumulatedInfringements', label: 'No acum.' },
+          { key: 'foulsReceived', label: 'Recibidas' },
+          { key: 'yellowCards', label: 'Amarillas' },
+          { key: 'secondYellowSendOffs', label: '2.ª amarilla' },
+          { key: 'directRedCards', label: 'Rojas' },
+        ];
+      default:
+        return [
+          { key: 'playedMs', label: 'Tiempo' },
+          { key: 'percentage', label: '% partido' },
+          { key: 'entries', label: 'Entradas' },
+          { key: 'goalsForOnCourt', label: 'GF en pista' },
+          { key: 'goalsAgainstOnCourt', label: 'GC en pista' },
+          { key: 'plusMinus', label: '+/−' },
+        ];
+    }
+  }
+  protected statValue(stats: PlayerMatchStatistics, key: keyof PlayerMatchStatistics): string {
+    const value = stats[key];
+    if (value === null) return '—';
+    if (key.endsWith('Ms')) return formatGameClock(value);
+    if (key === 'percentage') return `${Math.round(value)} %`;
+    return key === 'plusMinus' && value > 0 ? `+${value}` : String(value);
+  }
+  protected openDetails(dialog: HTMLDialogElement, kind: 'timeline' | 'integrity'): void {
+    this.detailKind.set(kind);
+    dialog.showModal();
+  }
+  protected openPlayer(dialog: HTMLDialogElement, id: string): void {
+    this.selectedPlayerId.set(id);
+    dialog.showModal();
+  }
 
   constructor() {
     effect(() => void this.store.load(this.matchId()));
@@ -41,8 +103,8 @@ export class MatchDetailPage {
     return value === undefined ? '—' : formatGameClock(value * 1000);
   }
 
-  protected metric(value?: number): string {
-    return value === undefined ? '—' : String(value);
+  protected metric(value?: number | null): string {
+    return value == null ? '—' : String(value);
   }
 
   protected readonly matchSeason = matchSeason;

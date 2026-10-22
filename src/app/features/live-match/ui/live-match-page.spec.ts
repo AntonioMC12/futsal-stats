@@ -1179,7 +1179,7 @@ describe('LiveMatchPage', () => {
     navButtons[2]?.click();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelectorAll('.discipline-empty')).toHaveLength(4);
+    expect(fixture.nativeElement.querySelectorAll('.discipline-empty')).toHaveLength(5);
     expect(fixture.nativeElement.querySelector('.discipline-panel').textContent).toContain(
       'Sin faltas ni tarjetas registradas.',
     );
@@ -1279,6 +1279,181 @@ describe('LiveMatchPage', () => {
       countsAsAccumulatedFoul: false,
       restart: 'indirect-free-kick',
     });
+    fixture.destroy();
+  });
+
+  it('corrects an earlier foul from Discipline and retains its card and later actions after reload', async () => {
+    const earlier = foulEvent('earlier', 6, 'home', { playerId: 'p1', action: 'yellow' });
+    const later = foulEvent('later', 7, 'away', { opponentPlayerNumber: 12 });
+    const { fixture, store } = await createPage(activeMatch(), [...lineupEvents(), earlier, later]);
+    await store.startClock();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelectorAll('.match-nav button')[2] as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const history = fixture.nativeElement
+      .querySelector('#discipline-fouls-title')
+      .closest('section') as HTMLElement;
+    (history.querySelectorAll('button')[1] as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const editor = fixture.nativeElement.querySelector(
+      '[aria-labelledby="edit-foul-title"]',
+    ) as HTMLElement;
+    const select = editor.querySelector('select')!;
+    select.value = 'p2';
+    select.dispatchEvent(new Event('change'));
+    const checkbox = editor.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    checkbox.click();
+    fixture.detectChanges();
+    (editor.querySelector('.btn--primary') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[aria-labelledby="edit-foul-title"]')).toBeNull();
+    await store.load('match-1');
+    expect(store.clockRunning()).toBe(true);
+    expect(store.currentPeriodFouls()).toEqual({ home: 0, away: 1 });
+    expect(store.disciplinaryState().players['p1']).toMatchObject({ fouls: 0, yellowCards: 1 });
+    expect(store.disciplinaryState().players['p2']).toMatchObject({
+      fouls: 1,
+      nonAccumulatedInfringements: 1,
+      yellowCards: 0,
+    });
+    expect(store.events().find(({ id }) => id === 'later')).toEqual(later);
+    expect(store.events().find(({ id }) => id === 'earlier')).toMatchObject({
+      gameClockMs: earlier.gameClockMs,
+      sequence: 6,
+      foulPlayerId: 'p2',
+      playerId: 'p1',
+    });
+    fixture.destroy();
+  });
+
+  it.each(['home', 'away'] as const)(
+    'removes an earlier %s foul while preserving its card and later actions',
+    async (team) => {
+      const earlier = foulEvent('earlier', 6, team, {
+        playerId: team === 'home' ? 'p1' : undefined,
+        opponentPlayerNumber: team === 'away' ? 12 : undefined,
+        action: 'yellow',
+      });
+      const later = foulEvent('later', 7, 'home', { playerId: 'p3' });
+      const { fixture, store } = await createPage(activeMatch(), [
+        ...lineupEvents(),
+        earlier,
+        later,
+      ]);
+      expect(await store.editDiscipline({ eventId: 'earlier', action: 'removeFoul' })).toBe(true);
+      await store.load('match-1');
+      expect(store.disciplinaryState().teams[team].yellowCards).toBe(1);
+      expect(store.currentPeriodFouls()).toEqual({ home: 1, away: 0 });
+      expect(store.events().find(({ id }) => id === 'earlier')).toMatchObject({
+        type: 'DISCIPLINE',
+        disciplinaryAction: 'yellow',
+        sequence: 6,
+      });
+      expect(store.events().find(({ id }) => id === 'later')).toEqual(later);
+      fixture.destroy();
+    },
+  );
+
+  it('corrects an unattributed rival foul and can clear its number again', async () => {
+    const source = foulEvent('unknown', 6, 'away');
+    const { fixture, store } = await createPage(activeMatch(), [...lineupEvents(), source]);
+    expect(
+      await store.editDiscipline({
+        eventId: source.id,
+        action: 'editFoul',
+        opponentPlayerNumber: 0,
+        accumulated: true,
+      }),
+    ).toBe(false);
+    expect(
+      await store.editDiscipline({
+        eventId: source.id,
+        action: 'editFoul',
+        opponentPlayerNumber: 12,
+        accumulated: true,
+      }),
+    ).toBe(true);
+    expect(store.disciplinaryState().opponentPlayers[0]).toMatchObject({
+      jerseyNumber: 12,
+      fouls: 1,
+    });
+    expect(
+      await store.editDiscipline({ eventId: source.id, action: 'editFoul', accumulated: true }),
+    ).toBe(true);
+    await store.load('match-1');
+    expect(store.disciplineView().away.unattributedFouls).toBe(1);
+    expect(await store.editDiscipline({ eventId: source.id, action: 'removeFoul' })).toBe(true);
+    expect(store.currentPeriodFouls().away).toBe(0);
+    expect(store.lastUndoableEvent()?.id).not.toBe(source.id);
+    fixture.destroy();
+  });
+
+  it('removes a standalone yellow through its editor after a later action', async () => {
+    const { fixture, store } = await createPage();
+    expect(await store.registerStandaloneDiscipline('home', 'yellow', 'protest', 'p1')).toBe(true);
+    await store.registerOpponentFoul();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelectorAll('.match-nav button')[2] as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.edit-yellow-card') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const editor = fixture.nativeElement.querySelector(
+      '[aria-labelledby="edit-yellow-card-title"]',
+    ) as HTMLElement;
+    const remove = [...editor.querySelectorAll('button')].find((button) =>
+      button.textContent?.includes('Retirar solo'),
+    )!;
+    remove.click();
+    await fixture.whenStable();
+    await store.load('match-1');
+    expect(store.disciplinaryState().teams.home.yellowCards).toBe(0);
+    expect(store.currentPeriodFouls().away).toBe(1);
+    fixture.destroy();
+  });
+
+  it('retires an embedded yellow without removing the corrected foul', async () => {
+    const earlier = foulEvent('earlier', 6, 'home', { playerId: 'p1', action: 'yellow' });
+    const { fixture, store } = await createPage(activeMatch(), [...lineupEvents(), earlier]);
+    expect(
+      await store.editDiscipline({
+        eventId: 'earlier',
+        action: 'editFoul',
+        playerId: 'p2',
+        accumulated: true,
+      }),
+    ).toBe(true);
+    expect(await store.editDiscipline({ eventId: 'earlier', action: 'removeYellow' })).toBe(true);
+    await store.load('match-1');
+    expect(store.currentPeriodFouls().home).toBe(1);
+    expect(store.disciplinaryState().teams.home.yellowCards).toBe(0);
+    expect(store.disciplinaryState().players['p2'].fouls).toBe(1);
+    fixture.destroy();
+  });
+
+  it('rejects invalid corrections, undone events, finished matches and removal before a second yellow', async () => {
+    const earlier = foulEvent('earlier', 6, 'home', { playerId: 'p1', action: 'yellow' });
+    const second = foulEvent('second', 7, 'home', { playerId: 'p1', action: 'secondYellow' });
+    const { fixture, store } = await createPage(activeMatch(), [
+      ...lineupEvents(),
+      earlier,
+      second,
+      { ...foulEvent('undone', 8, 'away'), undone: true },
+    ]);
+    expect(await store.editDiscipline({ eventId: 'earlier', action: 'removeYellow' })).toBe(false);
+    expect(store.error()).toContain('segunda amarilla');
+    expect(
+      await store.editDiscipline({
+        eventId: 'earlier',
+        action: 'editFoul',
+        playerId: 'missing',
+        accumulated: true,
+      }),
+    ).toBe(false);
+    expect(await store.editDiscipline({ eventId: 'undone', action: 'removeFoul' })).toBe(false);
+    await store.finishMatch();
+    expect(await store.editDiscipline({ eventId: 'earlier', action: 'removeFoul' })).toBe(false);
+    expect(store.events().find(({ id }) => id === 'earlier')).toEqual(earlier);
     fixture.destroy();
   });
 

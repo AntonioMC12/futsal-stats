@@ -59,6 +59,26 @@
         </p>
       }
       <div class="hero-actions">
+        <button
+          class="btn btn--secondary"
+          type="button"
+          (click)="openDetails(infoDialog, 'timeline')"
+        >
+          Ver cronología
+        </button>
+        @if (match.status === 'finished' && !store.legacySnapshot()) {
+          <button
+            class="btn btn--secondary"
+            type="button"
+            (click)="openDetails(infoDialog, 'integrity')"
+          >
+            Integridad de datos
+            @if (store.integrityReport()?.status === 'mismatch') {
+              <span aria-label="Requiere atención">⚠</span>
+            }
+          </button>
+        }
+
         @if (match.status !== 'finished' && !store.legacySnapshot()) {
           <a class="btn btn--primary" [routerLink]="['/live', match.id]">Continuar partido</a>
         }
@@ -78,89 +98,132 @@
       }
     </header>
 
-    @if (match.status === 'finished') {
-      <section class="detail-panel" aria-labelledby="integrity-title">
-        <h2 id="integrity-title">Integridad de datos</h2>
-        <p>Partido finalizado · datos guardados en este dispositivo.</p>
-        @if (store.integrityReport(); as report) {
-          <p role="status">
-            @switch (report.status) {
-              @case ('verified') {
-                ✓ Datos verificados en la nube
-              }
-              @case ('mismatch') {
-                ⚠ Inconsistencia detectada
-              }
-              @case ('unreachable') {
-                ○ No se puede verificar ahora; los datos locales siguen disponibles
-              }
-              @default {
-                ○ Integridad sin verificar
-              }
+    @if (!store.legacySnapshot()) {
+      <section class="match-kpis" aria-label="Rendimiento del equipo propio">
+        <article class="kpi kpi--accent">
+          <span>Tiros totales</span><strong>{{ metric(store.summary().shots) }}</strong
+          ><small>Equipo propio</small>
+        </article>
+        <article class="kpi">
+          <span>A puerta</span><strong>{{ metric(store.summary().onTarget) }}</strong
+          ><small>{{ metric(store.summary().offTarget) }} fuera</small>
+        </article>
+        <article class="kpi">
+          <span>Precisión</span><strong>{{ metric(store.summary().accuracy) }}<em>%</em></strong
+          ><small>A puerta / tiros</small>
+          @if (store.summary().accuracy !== null) {
+            <meter
+              min="0"
+              max="100"
+              [value]="store.summary().accuracy!"
+              aria-label="Precisión de tiro"
+            ></meter>
+          }
+        </article>
+        <article class="kpi">
+          <span>Eficacia de gol</span
+          ><strong>{{ metric(store.summary().conversion) }}<em>%</em></strong
+          ><small>Goles de jugador / tiros</small>
+          @if (store.summary().conversion !== null) {
+            <meter
+              min="0"
+              max="100"
+              [value]="store.summary().conversion!"
+              aria-label="Eficacia de gol"
+            ></meter>
+          }
+        </article>
+        <article class="kpi">
+          <span>Paradas</span><strong>{{ metric(store.summary().saves) }}</strong
+          ><small>Portería propia</small>
+        </article>
+        <article class="kpi">
+          <span>Faltas recibidas</span><strong>{{ metric(store.summary().foulsReceived) }}</strong
+          ><small>Con receptor registrado</small>
+        </article>
+      </section>
+      @if (match.statisticsSchemaVersion !== 2) {
+        <p class="data-note">
+          — Los tiros, paradas y faltas recibidas no se registraban en este partido.
+        </p>
+      }
+      <div class="overview-grid">
+        <section class="detail-panel" aria-labelledby="periods-title">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">Evolución</p>
+              <h2 id="periods-title">Por periodos</h2>
+            </div>
+            <span>Nosotros / Rival</span>
+          </div>
+          <div class="period-cards">
+            @for (period of store.periodSummary(); track period.period) {
+              <article>
+                <span class="eyebrow">{{ period.period }}.ª parte</span
+                ><strong>{{ period.goalsFor }} <i>–</i> {{ period.goalsAgainst }}</strong
+                ><small>Goles</small>
+                <p>
+                  <span>Faltas acumuladas</span><b>{{ period.home }} – {{ period.away }}</b>
+                </p>
+              </article>
             }
-          </p>
-          <p>
-            Eventos: {{ report.local.eventIds.length }} locales /
-            {{ report.cloud.reachable ? report.cloud.eventIds.length : '—' }} cloud
-          </p>
-          <p>
-            Quintetos: {{ report.local.lineupEventIds.length }} locales /
-            {{ report.cloud.reachable ? report.cloud.lineupEventIds.length : '—' }} cloud
-          </p>
-          <p>
-            Jugadores: {{ report.local.matchPlayerIds.length }} locales /
-            {{ report.cloud.reachable ? report.cloud.matchPlayerIds.length : '—' }} cloud
-          </p>
-          <p>
-            Cola: {{ report.sync.pendingCount }} pendientes · {{ report.sync.failedCount }} fallidos
-          </p>
-          <p>Última comprobación: {{ formatDateTime(report.checkedAt) }}</p>
-          @if (report.status === 'mismatch' && report.repairAvailable) {
-            <button
-              class="btn btn--primary"
-              type="button"
-              [disabled]="store.integrityBusy()"
-              (click)="store.repairIntegrity()"
+          </div>
+        </section>
+        <section class="detail-panel" aria-labelledby="discipline-title">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">Balance</p>
+              <h2 id="discipline-title">Disciplina</h2>
+            </div>
+          </div>
+          <div class="team-comparison">
+            <div class="comparison-heading">
+              <b>{{ match.homeTeam.shortName }}</b
+              ><span>Partido completo</span><b>{{ match.awayTeam.shortName || 'Rival' }}</b>
+            </div>
+            <div>
+              <strong>{{ store.discipline().teams.home.accumulatedFouls }}</strong
+              ><span>Faltas acumuladas</span
+              ><strong>{{ store.discipline().teams.away.accumulatedFouls }}</strong>
+            </div>
+            <div>
+              <strong>{{ store.discipline().teams.home.nonAccumulatedInfringements }}</strong
+              ><span>No acumulables</span
+              ><strong>{{ store.discipline().teams.away.nonAccumulatedInfringements }}</strong>
+            </div>
+            <div class="comparison-yellow">
+              <strong>{{ store.discipline().teams.home.yellowCards }}</strong
+              ><span>Amarillas</span
+              ><strong>{{ store.discipline().teams.away.yellowCards }}</strong>
+            </div>
+            <div class="comparison-red">
+              <strong>{{ store.discipline().teams.home.sendOffs }}</strong
+              ><span>Expulsiones</span><strong>{{ store.discipline().teams.away.sendOffs }}</strong>
+            </div>
+          </div>
+        </section>
+      </div>
+      <section class="scorers-strip" aria-label="Goleadores del equipo propio">
+        <span class="eyebrow">Nuestros goles</span>
+        @for (row of store.summary().scorers; track row.player.id) {
+          <button type="button" (click)="openPlayer(playerDialog, row.player.id)">
+            <span class="player-number">{{ row.player.number }}</span
+            ><span>{{ row.player.name }}</span
+            ><strong
+              >{{ row.statistics!.goals }}
+              <small>{{ row.statistics!.goals === 1 ? 'gol' : 'goles' }}</small></strong
             >
-              Reparar sincronización
-            </button>
-          }
-          @if (report.status === 'mismatch' && !report.repairAvailable) {
-            <p>
-              La reparación requiere el dispositivo que conserva el cierre original o una revisión
-              de los datos remotos.
-            </p>
-          }
-          <details>
-            <summary>Ver diagnóstico</summary>
-            <p>Match ID: {{ report.matchId }} · Team ID: {{ report.teamId }}</p>
-            <p>
-              Faltan {{ report.missingEventIds.length }} eventos y
-              {{ report.missingLineupEventIds.length }} quintetos en cloud.
-            </p>
-            @if (report.sync.lastError) {
-              <p>Último error: {{ report.sync.lastError }}</p>
-            }
-          </details>
-        } @else {
-          <p role="status">
-            {{ store.integrityBusy() ? 'Comprobando integridad…' : 'Integridad sin verificar' }}
-          </p>
+          </button>
+        } @empty {
+          <span class="data-note">Sin goleadores registrados.</span>
         }
-        @if (store.integrityError(); as message) {
-          <p class="banner banner--warn" role="alert">{{ message }}</p>
+        @if (store.summary().unattributedGoals > 0) {
+          <span class="data-note"
+            >{{ store.summary().unattributedGoals }} gol(es) sin autor registrado</span
+          >
         }
-        <button
-          class="btn btn--secondary"
-          type="button"
-          [disabled]="store.integrityBusy()"
-          (click)="store.checkIntegrity()"
-        >
-          Comprobar integridad
-        </button>
       </section>
     }
-
     <div class="detail-grid">
       <section class="detail-panel" aria-labelledby="statistics-title">
         <div class="panel-title">
@@ -177,17 +240,20 @@
         </div>
 
         @if (!store.legacySnapshot()) {
-          <div class="foul-summary" aria-label="Faltas por periodo">
-            @for (period of store.foulsByPeriod(); track period.period) {
-              <div>
-                <span>{{ period.period }}.ª parte</span
-                ><strong>{{ period.home }} – {{ period.away }}</strong
-                ><small>faltas</small>
-              </div>
+          <div class="stats-tabs" role="group" aria-label="Grupo de estadísticas">
+            @for (group of statGroups; track group.id) {
+              <button
+                type="button"
+                [class.is-active]="activeStats() === group.id"
+                [attr.aria-pressed]="activeStats() === group.id"
+                (click)="activeStats.set(group.id)"
+              >
+                {{ group.label }}
+              </button>
             }
           </div>
+          <p class="data-note">Toca un jugador para ver su ficha completa. — Dato no registrado.</p>
         }
-
         @if (store.legacySnapshot(); as legacy) {
           <p>Valores observados en el CSV. «—» significa que el dato no estaba disponible.</p>
           <div class="statistics-table-wrap">
@@ -235,38 +301,45 @@
         } @else if (store.playerRows().length === 0) {
           <p class="empty">No hay estadísticas de jugadores para este partido.</p>
         } @else {
-          <div class="statistics-table-wrap">
+          <div
+            class="statistics-table-wrap"
+            tabindex="0"
+            role="region"
+            aria-label="Estadísticas de jugadores; desliza para ver todas las columnas"
+          >
             <table class="statistics-table">
               <thead>
                 <tr>
-                  <th>Jugador</th>
-                  <th>Tiempo</th>
-                  <th>Goles</th>
-                  <th>+/−</th>
-                  <th>Faltas</th>
-                  <th>Acumulables</th>
-                  <th>No acumulables</th>
-                  <th>Tarjetas</th>
+                  <th scope="col">Jugador</th>
+                  @for (column of columns(); track column.key) {
+                    <th scope="col">{{ column.label }}</th>
+                  }
                 </tr>
               </thead>
               <tbody>
                 @for (row of store.playerRows(); track row.player.id) {
                   <tr>
-                    <th>
-                      <span>#{{ row.player.number }}</span> {{ row.player.name }}
+                    <th scope="row">
+                      <button
+                        class="player-link"
+                        type="button"
+                        (click)="openPlayer(playerDialog, row.player.id)"
+                      >
+                        <span>#{{ row.player.number }}</span> {{ row.player.name }}
+                      </button>
                     </th>
-                    <td>{{ formatDuration(row.statistics!.playedMs) }}</td>
-                    <td>{{ row.statistics!.goals }}</td>
-                    <td
-                      [class.positive]="row.statistics!.plusMinus > 0"
-                      [class.negative]="row.statistics!.plusMinus < 0"
-                    >
-                      {{ row.statistics!.plusMinus > 0 ? '+' : '' }}{{ row.statistics!.plusMinus }}
-                    </td>
-                    <td>{{ row.statistics!.fouls }}</td>
-                    <td>{{ row.statistics!.accumulatedFouls }}</td>
-                    <td>{{ row.statistics!.nonAccumulatedInfringements }}</td>
-                    <td>{{ row.statistics!.yellowCards }}A · {{ row.statistics!.sendOffs }}R</td>
+                    @for (column of columns(); track column.key) {
+                      <td
+                        [class.positive]="
+                          column.key === 'plusMinus' && row.statistics!.plusMinus > 0
+                        "
+                        [class.negative]="
+                          column.key === 'plusMinus' && row.statistics!.plusMinus < 0
+                        "
+                      >
+                        {{ statValue(row.statistics!, column.key) }}
+                      </td>
+                    }
                   </tr>
                 }
               </tbody>
@@ -274,37 +347,211 @@
           </div>
         }
       </section>
-
-      <section class="detail-panel timeline-panel" aria-labelledby="timeline-title">
+    </div>
+    @if (!store.legacySnapshot() && store.lineupRows().length > 0) {
+      <section class="detail-panel" aria-labelledby="lineups-title">
         <div class="panel-title">
           <div>
-            <p class="eyebrow">Fuente de verdad</p>
-            <h2 id="timeline-title">Cronología</h2>
+            <p class="eyebrow">Juego colectivo</p>
+            <h2 id="lineups-title">Quintetos más utilizados</h2>
           </div>
-          <span>{{ store.timeline().length }} eventos</span>
+          <span>Tiempo · GF–GC · +/−</span>
         </div>
-        @if (store.timeline().length === 0) {
-          <p class="empty">
-            {{
-              store.legacySnapshot()
-                ? 'No disponible en el fichero legacy.'
-                : 'No hay eventos registrados.'
-            }}
-          </p>
-        } @else {
-          <ol class="timeline-list">
-            @for (item of store.timeline(); track item.eventId) {
-              <li>
-                <div>
-                  <strong>{{ item.gameClock }}</strong
-                  ><span>{{ item.period }}.ª parte</span>
-                </div>
-                <p>{{ item.label }}</p>
-              </li>
-            }
-          </ol>
+        <div class="lineup-cards">
+          @for (lineup of store.lineupRows().slice(0, 3); track lineup.id) {
+            <article>
+              <strong>{{ formatDuration(lineup.playedMs) }}</strong>
+              <p>{{ lineup.label }}</p>
+              <span
+                >{{ lineup.goalsFor }}–{{ lineup.goalsAgainst }} en pista
+                <b [class.positive]="lineup.plusMinus > 0" [class.negative]="lineup.plusMinus < 0"
+                  >{{ lineup.plusMinus > 0 ? '+' : '' }}{{ lineup.plusMinus }}</b
+                ></span
+              >
+            </article>
+          }
+        </div>
+        @if (store.lineupRows().length > 3) {
+          <details class="more-lineups">
+            <summary>Ver los {{ store.lineupRows().length }} quintetos</summary>
+            <div class="lineup-cards">
+              @for (lineup of store.lineupRows().slice(3); track lineup.id) {
+                <article>
+                  <strong>{{ formatDuration(lineup.playedMs) }}</strong>
+                  <p>{{ lineup.label }}</p>
+                  <span
+                    >{{ lineup.goalsFor }}–{{ lineup.goalsAgainst }} en pista ·
+                    {{ lineup.plusMinus > 0 ? '+' : '' }}{{ lineup.plusMinus }}</span
+                  >
+                </article>
+              }
+            </div>
+          </details>
         }
       </section>
-    </div>
+    }
+    <dialog
+      #infoDialog
+      class="detail-dialog"
+      aria-label="Información del partido"
+      (close)="detailKind.set(null)"
+      (click)="$event.target === infoDialog && infoDialog.close()"
+    >
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">Información del partido</p>
+          <h2>{{ detailKind() === 'timeline' ? 'Cronología completa' : 'Integridad de datos' }}</h2>
+        </div>
+        <button type="button" class="btn btn--secondary" autofocus (click)="infoDialog.close()">
+          Cerrar
+        </button>
+      </div>
+      @if (detailKind() === 'timeline') {
+        <section class="detail-panel timeline-panel" aria-labelledby="timeline-title">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">Registro de acciones</p>
+              <h2 id="timeline-title">Cronología</h2>
+            </div>
+            <span>{{ store.timeline().length }} eventos</span>
+          </div>
+          @if (store.timeline().length === 0) {
+            <p class="empty">
+              {{
+                store.legacySnapshot()
+                  ? 'No disponible en el fichero legacy.'
+                  : 'No hay eventos registrados.'
+              }}
+            </p>
+          } @else {
+            <ol class="timeline-list">
+              @for (item of store.timeline(); track item.eventId) {
+                <li>
+                  <div>
+                    <strong>{{ item.gameClock }}</strong
+                    ><span>{{ item.period }}.ª parte</span>
+                  </div>
+                  <p>{{ item.label }}</p>
+                </li>
+              }
+            </ol>
+          }
+        </section>
+      } @else if (detailKind() === 'integrity') {
+        @if (match.status === 'finished') {
+          <section class="detail-panel" aria-labelledby="integrity-title">
+            <h2 id="integrity-title">Integridad de datos</h2>
+            <p>Partido finalizado · datos guardados en este dispositivo.</p>
+            @if (store.integrityReport(); as report) {
+              <p role="status">
+                @switch (report.status) {
+                  @case ('verified') {
+                    ✓ Datos verificados en la nube
+                  }
+                  @case ('mismatch') {
+                    ⚠ Inconsistencia detectada
+                  }
+                  @case ('unreachable') {
+                    ○ No se puede verificar ahora; los datos locales siguen disponibles
+                  }
+                  @default {
+                    ○ Integridad sin verificar
+                  }
+                }
+              </p>
+              <p>
+                Eventos: {{ report.local.eventIds.length }} locales /
+                {{ report.cloud.reachable ? report.cloud.eventIds.length : '—' }} cloud
+              </p>
+              <p>
+                Quintetos: {{ report.local.lineupEventIds.length }} locales /
+                {{ report.cloud.reachable ? report.cloud.lineupEventIds.length : '—' }} cloud
+              </p>
+              <p>
+                Jugadores: {{ report.local.matchPlayerIds.length }} locales /
+                {{ report.cloud.reachable ? report.cloud.matchPlayerIds.length : '—' }} cloud
+              </p>
+              <p>
+                Cola: {{ report.sync.pendingCount }} pendientes ·
+                {{ report.sync.failedCount }} fallidos
+              </p>
+              <p>Última comprobación: {{ formatDateTime(report.checkedAt) }}</p>
+              @if (report.status === 'mismatch' && report.repairAvailable) {
+                <button
+                  class="btn btn--primary"
+                  type="button"
+                  [disabled]="store.integrityBusy()"
+                  (click)="store.repairIntegrity()"
+                >
+                  Reparar sincronización
+                </button>
+              }
+              @if (report.status === 'mismatch' && !report.repairAvailable) {
+                <p>
+                  La reparación requiere el dispositivo que conserva el cierre original o una
+                  revisión de los datos remotos.
+                </p>
+              }
+              <details>
+                <summary>Ver diagnóstico</summary>
+                <p>Match ID: {{ report.matchId }} · Team ID: {{ report.teamId }}</p>
+                <p>
+                  Faltan {{ report.missingEventIds.length }} eventos y
+                  {{ report.missingLineupEventIds.length }} quintetos en cloud.
+                </p>
+                @if (report.sync.lastError) {
+                  <p>Último error: {{ report.sync.lastError }}</p>
+                }
+              </details>
+            } @else {
+              <p role="status">
+                {{ store.integrityBusy() ? 'Comprobando integridad…' : 'Integridad sin verificar' }}
+              </p>
+            }
+            @if (store.integrityError(); as message) {
+              <p class="banner banner--warn" role="alert">{{ message }}</p>
+            }
+            <button
+              class="btn btn--secondary"
+              type="button"
+              [disabled]="store.integrityBusy()"
+              (click)="store.checkIntegrity()"
+            >
+              Comprobar integridad
+            </button>
+          </section>
+        }
+      }
+    </dialog>
+    <dialog
+      #playerDialog
+      class="detail-dialog player-dialog"
+      aria-label="Ficha del jugador"
+      (click)="$event.target === playerDialog && playerDialog.close()"
+    >
+      @if (selectedPlayer(); as row) {
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">Ficha del partido · #{{ row.player.number }}</p>
+            <h2>{{ row.player.name }}</h2>
+          </div>
+          <button class="btn btn--secondary" type="button" autofocus (click)="playerDialog.close()">
+            Cerrar
+          </button>
+        </div>
+        <div class="player-metrics">
+          @for (group of statGroups; track group.id) {
+            <h3>{{ group.label }}</h3>
+            @for (column of allColumns(group.id); track column.key) {
+              <article>
+                <span>{{ column.label }}</span
+                ><strong>{{ statValue(row.statistics!, column.key) }}</strong>
+              </article>
+            }
+          }
+        </div>
+        <p class="data-note">— Dato no registrado en este partido.</p>
+      }
+    </dialog>
   }
 </section>

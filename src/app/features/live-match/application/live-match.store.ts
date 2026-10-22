@@ -1,4 +1,5 @@
 import { shouldAutoStopClock } from '../domain/event-clock-policy';
+import { EditDisciplineInput, EditDisciplineUseCase } from './edit-discipline.use-case';
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import {
   DEFAULT_PERIOD_DURATION_MS,
@@ -68,6 +69,7 @@ export class LiveMatchStore {
   private readonly playerRepository = inject(PLAYER_REPOSITORY);
   private readonly deleteMatchService = inject(DeleteMatchService);
   private readonly editYellowCardUseCase = inject(EditYellowCardUseCase);
+  private readonly editDisciplineUseCase = inject(EditDisciplineUseCase);
   private readonly destroyRef = inject(DestroyRef);
   private readonly now = signal(Date.now());
   private commandInProgress = false;
@@ -564,6 +566,32 @@ export class LiveMatchStore {
       return true;
     } catch {
       this.error.set('No se ha podido guardar la tarjeta.');
+      return false;
+    } finally {
+      this.commandInProgress = false;
+      this.saving.set(false);
+    }
+  }
+
+  async editDiscipline(command: EditDisciplineInput): Promise<boolean> {
+    const match = this.match();
+    if (!match || this.commandInProgress) return false;
+    this.commandInProgress = true;
+    this.saving.set(true);
+    this.error.set(null);
+    this.notice.set(null);
+    try {
+      const result = await this.editDisciplineUseCase.execute({ ...command, matchId: match.id });
+      this.match.set(result.match);
+      this.events.update((events) =>
+        events.map((event) => (event.id === result.event.id ? result.event : event)),
+      );
+      this.notice.set('Disciplina actualizada.');
+      return true;
+    } catch (error) {
+      this.error.set(
+        error instanceof Error ? error.message : 'No se ha podido actualizar la disciplina.',
+      );
       return false;
     } finally {
       this.commandInProgress = false;
