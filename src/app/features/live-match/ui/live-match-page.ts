@@ -1,4 +1,7 @@
 import { shouldAutoStopClock } from '../domain/event-clock-policy';
+import { selectActiveEvents } from '../domain/derived-match-state';
+import { countsAsAccumulatedFoul } from '../domain/futsal-rules';
+import { FoulEvent } from '../../../shared/models/match-event';
 import { Component, computed, effect, HostListener, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { formatGameClock } from '../../../core/clock/match-clock';
@@ -71,6 +74,28 @@ export class LiveMatchPage {
   protected readonly initialLineupCount = computed(() => this.initialLineupIds().size);
   protected readonly detailPlayerId = signal<string | null>(null);
   protected readonly editingYellowCardId = signal<string | null>(null);
+  protected readonly disciplineFouls = computed(() =>
+    selectActiveEvents(this.store.events())
+      .filter((event): event is FoulEvent => event.type === 'FOUL')
+      .reverse(),
+  );
+  protected readonly editingFoulId = signal<string | null>(null);
+  protected readonly editingFoul = computed(() =>
+    this.disciplineFouls().find((event) => event.id === this.editingFoulId()),
+  );
+  protected readonly correctedFoulPlayer = signal('');
+  protected readonly correctedFoulNumber = signal('');
+  protected readonly correctedFoulAccumulated = signal(true);
+  protected readonly foulCorrectionValid = computed(() => {
+    const foul = this.editingFoul();
+    if (!foul) return false;
+    if (foul.team === 'home')
+      return this.store.players().some((player) => player.id === this.correctedFoulPlayer());
+    const number = this.correctedFoulNumber().trim();
+    return number === ''
+      ? !foul.disciplinaryAction || foul.disciplinaryAction === 'none'
+      : Number.isSafeInteger(Number(number)) && Number(number) >= 1 && Number(number) <= 999;
+  });
   protected readonly editYellowCardPlayerId = signal<string | null>(null);
   protected readonly editYellowCardOpponentNumber = signal('');
   protected readonly editYellowCardSearch = signal('');
@@ -370,9 +395,72 @@ export class LiveMatchPage {
     this.closeGoalSelector();
   }
 
+  protected foulLabel(foul: FoulEvent): string {
+    if (foul.team === 'away') {
+      const number = foul.foulOpponentPlayerNumber ?? foul.opponentPlayerNumber;
+      return number === undefined ? 'Rival · Sin dorsal' : `Rival · #${number}`;
+    }
+    const player = this.store
+      .players()
+      .find((item) => item.id === (foul.foulPlayerId ?? foul.playerId));
+    return player ? `Nosotros · #${player.number} ${player.name}` : 'Nosotros · Sin jugador';
+  }
+
+  protected openFoulEditor(foul: FoulEvent, event: Event): void {
+    if (this.store.match()?.status === 'finished' || this.store.saving()) return;
+    this.editYellowCardTrigger = event.currentTarget as HTMLElement;
+    this.store.error.set(null);
+    this.editingFoulId.set(foul.id);
+    this.correctedFoulPlayer.set(foul.foulPlayerId ?? foul.playerId ?? '');
+    const number = foul.foulOpponentPlayerNumber ?? foul.opponentPlayerNumber;
+    this.correctedFoulNumber.set(number === undefined ? '' : String(number));
+    this.correctedFoulAccumulated.set(countsAsAccumulatedFoul(foul));
+  }
+
+  protected closeFoulEditor(): void {
+    if (this.store.saving()) return;
+    this.editingFoulId.set(null);
+    const trigger = this.editYellowCardTrigger;
+    this.editYellowCardTrigger = null;
+    queueMicrotask(() => trigger?.focus());
+  }
+
+  protected async saveFoulCorrection(remove = false): Promise<void> {
+    const foul = this.editingFoul();
+    if (!foul || this.store.saving() || (!remove && !this.foulCorrectionValid())) return;
+    const saved = await this.store.editDiscipline(
+      remove
+        ? { eventId: foul.id, action: 'removeFoul' }
+        : {
+            eventId: foul.id,
+            action: 'editFoul',
+            playerId: this.correctedFoulPlayer(),
+            opponentPlayerNumber:
+              this.correctedFoulNumber().trim() === ''
+                ? undefined
+                : Number(this.correctedFoulNumber()),
+            accumulated: this.correctedFoulAccumulated(),
+          },
+    );
+    if (saved) {
+      this.notifications.success(remove ? 'Falta anulada' : 'Falta actualizada');
+      this.closeFoulEditor();
+    }
+  }
+
+  protected async removeYellowCard(): Promise<void> {
+    const eventId = this.editingYellowCardId();
+    if (!eventId || this.store.saving()) return;
+    if (await this.store.editDiscipline({ eventId, action: 'removeYellow' })) {
+      this.notifications.success('Amarilla retirada');
+      this.closeYellowCardEditor();
+    }
+  }
+
   protected openYellowCardEditor(card: EditableYellowCardViewItem, event: Event): void {
     if (this.store.match()?.status === 'finished' || this.store.saving()) return;
     this.editYellowCardTrigger = event.currentTarget as HTMLElement;
+    this.store.error.set(null);
     this.editingYellowCardId.set(card.eventId);
     this.editYellowCardPlayerId.set(card.playerId ?? null);
     this.editYellowCardOpponentNumber.set(
@@ -670,7 +758,9 @@ export class LiveMatchPage {
 
   @HostListener('document:keydown.escape')
   protected closeSubstitutionOnEscape(): void {
-    if (this.editingYellowCardId() && !this.store.saving()) {
+    if (this.editingFoulId()) {
+      this.closeFoulEditor();
+    } else if (this.editingYellowCardId() && !this.store.saving()) {
       this.cancelYellowCardEditor();
     } else if (this.initialLineupOpen() && !this.store.saving()) {
       this.cancelInitialLineup();
