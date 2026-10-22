@@ -8,7 +8,8 @@ import {
 import { Match } from '../../../shared/models/match';
 import { MatchEvent } from '../../../shared/models/match-event';
 import { Player } from '../../../shared/models/player';
-import { deriveMatchState } from '../../live-match/domain/derived-match-state';
+import { deriveMatchState, selectActiveEvents } from '../../live-match/domain/derived-match-state';
+import { deriveDisciplinaryState } from '../../live-match/domain/discipline';
 import { deriveMatchStatistics } from '../../live-match/domain/match-statistics';
 import { createMatchTimeline } from '../../live-match/domain/match-timeline';
 import { MatchIntegrityService } from '../../../core/sync/match-integrity.service';
@@ -78,6 +79,59 @@ export class MatchDetailStore {
       Object.fromEntries(this.players().map((player) => [player.id, player.number])),
     ),
   );
+  readonly discipline = computed(() => deriveDisciplinaryState(this.events(), 0));
+  readonly summary = computed(() => {
+    const rows = this.playerRows();
+    const recorded = this.match()?.statisticsSchemaVersion === 2;
+    const sum = (
+      key: 'shotsTotal' | 'shotsOnTarget' | 'shotsOffTarget' | 'saves' | 'foulsReceived',
+    ) => (recorded ? rows.reduce((total, row) => total + (row.statistics?.[key] ?? 0), 0) : null);
+    const shots = sum('shotsTotal');
+    const onTarget = sum('shotsOnTarget');
+    const scorerGoals = rows.reduce((total, row) => total + (row.statistics?.goals ?? 0), 0);
+    return {
+      shots,
+      onTarget,
+      offTarget: sum('shotsOffTarget'),
+      saves: sum('saves'),
+      foulsReceived: sum('foulsReceived'),
+      accuracy: shots ? Math.round((onTarget! / shots) * 100) : null,
+      conversion: shots ? Math.round((scorerGoals / shots) * 100) : null,
+      scorers: rows
+        .filter((row) => row.statistics!.goals > 0)
+        .sort(
+          (a, b) => b.statistics!.goals - a.statistics!.goals || a.player.number - b.player.number,
+        ),
+      unattributedGoals: Math.max(0, this.score().home - scorerGoals),
+    };
+  });
+  readonly periodSummary = computed(() => {
+    const active = selectActiveEvents(this.events());
+    return this.foulsByPeriod().map((period) => ({
+      ...period,
+      goalsFor: active.filter(
+        (event) => event.period === period.period && event.type === 'GOAL_FOR',
+      ).length,
+      goalsAgainst: active.filter(
+        (event) => event.period === period.period && event.type === 'GOAL_AGAINST',
+      ).length,
+    }));
+  });
+  readonly lineupRows = computed(() => {
+    const players = new Map(this.players().map((player) => [player.id, player]));
+    return [...this.statistics().lineups]
+      .filter((lineup) => lineup.playedMs > 0)
+      .sort((a, b) => b.playedMs - a.playedMs)
+      .map((lineup) => ({
+        ...lineup,
+        label: lineup.playerIds
+          .map((id) => {
+            const player = players.get(id);
+            return player ? `#${player.number} ${player.name}` : 'Jugador no disponible';
+          })
+          .join(' · '),
+      }));
+  });
 
   async load(matchId: string): Promise<void> {
     this.loading.set(true);
