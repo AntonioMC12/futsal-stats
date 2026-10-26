@@ -109,7 +109,7 @@ describe('discipline view projection', () => {
     ]);
   });
 
-  it('shows bench discipline separately without adding protest cards to current-period totals', () => {
+  it('shows bench protest cautions and adds them to current-period totals', () => {
     const benchCard: MatchEvent = {
       id: 'bench-card',
       matchId: 'match-1',
@@ -131,13 +131,13 @@ describe('discipline view projection', () => {
     };
     const view = project([benchCard]);
 
-    expect(view.home.totals).toMatchObject({ fouls: 0, yellowCards: 1 });
-    expect(view.home.participants[0]).toMatchObject({ name: 'MARA', yellowCards: 1, fouls: 0 });
+    expect(view.home.totals).toMatchObject({ fouls: 1, yellowCards: 1 });
+    expect(view.home.participants[0]).toMatchObject({ name: 'MARA', yellowCards: 1, fouls: 1 });
     expect(view.bench.home).toEqual([
       expect.objectContaining({
         label: '#7 MARA',
         reason: 'protest',
-        countsAsAccumulatedFoul: false,
+        countsAsAccumulatedFoul: true,
       }),
     ]);
   });

@@ -98,6 +98,21 @@ export function deriveDisciplinaryState(
   };
 
   for (const event of selectActiveEvents(events)) {
+    if (
+      (event.type === 'DISCIPLINE' || event.type === 'BENCH_DISCIPLINE') &&
+      countsAsAccumulatedFoul(event)
+    ) {
+      const addFoul = (statistics: PlayerDisciplineStatistics): void => {
+        statistics.fouls += 1;
+        statistics.accumulatedFouls += 1;
+      };
+      addFoul(teams[event.team]);
+      if (event.team === 'home' && event.playerId) {
+        addFoul((players[event.playerId] ??= emptyStatistics()));
+      } else if (event.team === 'away' && event.opponentPlayerNumber !== undefined) {
+        addFoul(ensureOpponentPlayer(opponentPlayers, event.opponentPlayerNumber));
+      }
+    }
     if (event.type === 'FOUL') {
       const action = event.disciplinaryAction ?? 'none';
       const accumulated = countsAsAccumulatedFoul(event);

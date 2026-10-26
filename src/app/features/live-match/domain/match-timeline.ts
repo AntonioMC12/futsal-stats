@@ -83,7 +83,7 @@ export function eventLabel(
           : event.reason === 'delayRestart'
             ? 'Retrasa la reanudación'
             : 'Otra conducta';
-      return `${card} ${who} · ${reason}`;
+      return `${card} ${who} · ${reason}${countsAsAccumulatedFoul(event) ? ' · +1 falta acumulada' : ''}`;
     }
     case 'BENCH_DISCIPLINE':
       return benchDisciplineLabel(event, playerNames, playerNumbers);
@@ -121,7 +121,7 @@ function benchDisciplineLabel(
         ? `#${event.opponentPlayerNumber}`
         : `${staffRoleLabel(event.staffRole)}${event.staffName ? ` · ${event.staffName}` : ''}`;
   const reason = event.reason === 'protest' ? 'Protesta / desobediencia' : 'Otra conducta';
-  return `${card} ${side} · ${subject} · ${reason} · No acumulativa`;
+  return `${card} ${side} · ${subject} · ${reason} · ${countsAsAccumulatedFoul(event) ? '+1 falta acumulada' : 'No acumulativa'}`;
 }
 
 function staffRoleLabel(

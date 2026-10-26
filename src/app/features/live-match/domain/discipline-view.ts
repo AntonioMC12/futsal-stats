@@ -1,7 +1,6 @@
 import {
   BenchDisciplineAction,
   BenchDisciplineReason,
-  FoulEvent,
   FoulTeam,
   MatchEvent,
 } from '../../../shared/models/match-event';
@@ -81,20 +80,31 @@ export function createDisciplineView(
   const playersById = new Map(players.map((player) => [player.id, player]));
   const activeEvents = selectActiveEvents(events);
   const currentFouls = activeEvents.filter(
-    (event): event is FoulEvent =>
-      event.type === 'FOUL' && event.period === currentPeriod && countsAsAccumulatedFoul(event),
+    (event): event is Extract<MatchEvent, { type: 'FOUL' | 'DISCIPLINE' | 'BENCH_DISCIPLINE' }> =>
+      (event.type === 'FOUL' || event.type === 'DISCIPLINE' || event.type === 'BENCH_DISCIPLINE') &&
+      event.period === currentPeriod &&
+      countsAsAccumulatedFoul(event),
   );
   const homeFoulsByPlayer = countBy(
-    currentFouls.filter((event) => event.team === 'home' && (event.foulPlayerId ?? event.playerId)),
-    (event) => (event.foulPlayerId ?? event.playerId)!,
+    currentFouls.filter(
+      (event) =>
+        event.team === 'home' &&
+        (event.type === 'FOUL' ? (event.foulPlayerId ?? event.playerId) : event.playerId),
+    ),
+    (event) => (event.type === 'FOUL' ? (event.foulPlayerId ?? event.playerId) : event.playerId)!,
   );
   const awayFoulsByNumber = countBy(
     currentFouls.filter(
       (event) =>
         event.team === 'away' &&
-        (event.foulOpponentPlayerNumber ?? event.opponentPlayerNumber) !== undefined,
+        (event.type === 'FOUL'
+          ? (event.foulOpponentPlayerNumber ?? event.opponentPlayerNumber)
+          : event.opponentPlayerNumber) !== undefined,
     ),
-    (event) => (event.foulOpponentPlayerNumber ?? event.opponentPlayerNumber)!,
+    (event) =>
+      (event.type === 'FOUL'
+        ? (event.foulOpponentPlayerNumber ?? event.opponentPlayerNumber)
+        : event.opponentPlayerNumber)!,
   );
   const homeTotals = {
     ...state.teams.home,
@@ -143,7 +153,10 @@ export function createDisciplineView(
   const unattributedFouls = currentFouls.filter(
     (event) =>
       event.team === 'away' &&
-      (event.foulOpponentPlayerNumber ?? event.opponentPlayerNumber) === undefined,
+      (event.type === 'FOUL'
+        ? (event.foulOpponentPlayerNumber ?? event.opponentPlayerNumber)
+        : event.opponentPlayerNumber) === undefined &&
+      (event.type !== 'BENCH_DISCIPLINE' || event.subjectKind !== 'staff'),
   ).length;
   const activeSanctions = state.reductions
     .filter(
@@ -278,7 +291,7 @@ function createBenchItems(
           label,
           sanction: event.disciplinaryAction,
           reason: event.reason,
-          countsAsAccumulatedFoul: false,
+          countsAsAccumulatedFoul: countsAsAccumulatedFoul(event),
           sentOff:
             event.disciplinaryAction === 'secondYellow' || event.disciplinaryAction === 'directRed',
         },

@@ -1811,7 +1811,7 @@
             [disabled]="disciplineSaving()"
             (click)="benchDisciplineReason.set('protest')"
           >
-            <strong>Protesta / desobediencia</strong><small>Solo sanción disciplinaria</small>
+            <strong>Protesta / desobediencia</strong><small>La amarilla suma falta acumulada</small>
           </button>
           <button
             class="btn btn--secondary"
@@ -2059,7 +2059,7 @@
               [class.is-selected]="standaloneDisciplineReason() === 'protest'"
               (click)="standaloneDisciplineReason.set('protest')"
             >
-              Protesta
+              Protesta (+1 falta con amarilla)
             </button>
             <button
               class="btn btn--secondary"

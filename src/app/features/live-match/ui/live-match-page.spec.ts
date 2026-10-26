@@ -1080,6 +1080,66 @@ describe('LiveMatchPage', () => {
     fixture.destroy();
   });
 
+  it.each(['directRed', 'secondYellow'] as const)(
+    'offers a replacement immediately after conceding following a %s',
+    async (action) => {
+      const { fixture, store } = await createPage();
+      if (action === 'secondYellow') await store.registerTeamFoul('p3', 'yellow');
+      expect(await store.registerTeamFoul('p3', action)).toBe(true);
+      await store.startClock();
+      fixture.detectChanges();
+
+      (
+        fixture.nativeElement.querySelector('.goal-actions .btn--danger') as HTMLButtonElement
+      ).click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(store.clockRunning()).toBe(false);
+      expect(store.score()).toEqual({ home: 0, away: 1 });
+      expect(store.ourReductions()[0]).toMatchObject({
+        status: 'replacementAllowed',
+        releasedReason: 'opponentGoal',
+        remainingMs: 0,
+      });
+      const sheet = fixture.nativeElement.querySelector('.substitution-sheet') as HTMLElement;
+      expect(sheet?.querySelector('h2')?.textContent).toBe('Reponer jugador');
+      const options = sheet.querySelectorAll<HTMLButtonElement>('.bench-option');
+      expect(options).toHaveLength(1);
+      expect(options[0]?.textContent).toContain('#6');
+      options[0]!.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(store.lineupPlayerIds()).toEqual(['p1', 'p2', 'p4', 'p5', 'p6']);
+      expect(store.ourReductions()).toEqual([]);
+      expect(store.sentOffPlayers().map((player) => player.id)).toEqual(['p3']);
+      expect(fixture.nativeElement.querySelector('.substitution-sheet')).toBeNull();
+      await store.load('match-1');
+      expect(store.lineupPlayerIds()).toEqual(['p1', 'p2', 'p4', 'p5', 'p6']);
+      expect(store.ourReductions()).toEqual([]);
+      fixture.destroy();
+    },
+  );
+
+  it('does not offer a replacement after conceding with both teams at four players', async () => {
+    const { fixture, store } = await createPage();
+    await store.registerTeamFoul('p3', 'directRed');
+    await store.registerOpponentFoul('directRed', 7);
+    fixture.detectChanges();
+
+    (
+      fixture.nativeElement.querySelector('.goal-actions .btn--danger') as HTMLButtonElement
+    ).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(store.score()).toEqual({ home: 0, away: 1 });
+    expect(store.ourReductions()[0]?.status).toBe('active');
+    expect(fixture.nativeElement.querySelector('.substitution-sheet')).toBeNull();
+    fixture.destroy();
+  });
+
   it('adds and reuses a rival jersey number for a second yellow', async () => {
     const { fixture, store } = await createPage();
     const openOpponentFoul = () =>
@@ -1226,7 +1286,7 @@ describe('LiveMatchPage', () => {
     fixture.destroy();
   });
 
-  it('records an isolated card and a non-accumulated infringement without changing the counter', async () => {
+  it('counts an on-court protest caution while keeping an indirect infringement non-accumulated', async () => {
     const { fixture, store } = await createPage();
     const openHomeFoul = () =>
       (
@@ -1251,7 +1311,7 @@ describe('LiveMatchPage', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(store.currentPeriodFouls().home).toBe(0);
+    expect(store.currentPeriodFouls().home).toBe(1);
     expect(store.disciplinaryState().teams.home.yellowCards).toBe(1);
     expect(store.events().some((event) => event.type === 'DISCIPLINE')).toBe(true);
 
@@ -1273,7 +1333,7 @@ describe('LiveMatchPage', () => {
     ).click();
     await fixture.whenStable();
 
-    expect(store.currentPeriodFouls().home).toBe(0);
+    expect(store.currentPeriodFouls().home).toBe(1);
     expect(store.events().at(-1)).toMatchObject({
       type: 'FOUL',
       countsAsAccumulatedFoul: false,

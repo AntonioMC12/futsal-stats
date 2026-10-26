@@ -1,4 +1,5 @@
 import { eventLabel } from '../../live-match/domain/match-timeline';
+import { countsAsAccumulatedFoul } from '../../live-match/domain/futsal-rules';
 import { formatGameClock, projectRemaining } from '../../../core/clock/match-clock';
 import {
   Match,
@@ -230,10 +231,7 @@ export function buildMatchStatisticsExport(
             Object.fromEntries(players.map((p) => [p.id, p.number])),
             discipline.goalReleaseEventIds.has(event.id),
           ),
-          countsAsAccumulatedFoul:
-            event.type === 'FOUL'
-              ? (event.countsAsAccumulatedFoul ?? event.accumulated !== false)
-              : false,
+          countsAsAccumulatedFoul: countsAsAccumulatedFoul(event),
           restartType: event.type === 'FOUL' ? (event.restart ?? '') : '',
           disciplinaryAction:
             event.type === 'FOUL' ||

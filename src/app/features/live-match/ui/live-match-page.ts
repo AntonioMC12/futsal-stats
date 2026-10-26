@@ -527,8 +527,27 @@ export class LiveMatchPage {
   protected registerGoalAgainst(): void | Promise<void> {
     if (!this.store.canRegisterGoal() || this.store.saving()) return;
     return this.runAfterClockStopped('GOAL_AGAINST', async () => {
+      const activeReductionIds = new Set(
+        this.store
+          .ourReductions()
+          .filter((reduction) => reduction.status === 'active')
+          .map((reduction) => reduction.eventId),
+      );
       if (await this.store.registerGoalAgainst()) {
-        this.showActionFeedback('Gol rival registrado');
+        const releasedReduction = this.store
+          .ourReductions()
+          .find(
+            (reduction) =>
+              activeReductionIds.has(reduction.eventId) &&
+              reduction.status === 'replacementAllowed' &&
+              reduction.releasedReason === 'opponentGoal',
+          );
+        if (releasedReduction) {
+          this.replacingReductionId.set(releasedReduction.eventId);
+          this.showActionFeedback('Gol rival registrado. Puedes reponer un jugador');
+        } else {
+          this.showActionFeedback('Gol rival registrado');
+        }
       }
     });
   }

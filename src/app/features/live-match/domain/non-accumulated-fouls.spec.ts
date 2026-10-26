@@ -39,7 +39,32 @@ function event(
 }
 
 describe('non-accumulated fouls and independent cards', () => {
-  it('uses only explicit accumulated FOUL events for the period counter', () => {
+  it.each(['DISCIPLINE', 'BENCH_DISCIPLINE'] as const)(
+    '%s counts protest cautions for either team and undo removes the foul',
+    (type) => {
+      for (const team of ['home', 'away'] as const) {
+        for (const disciplinaryAction of ['yellow', 'secondYellow', 'directRed'] as const) {
+          const card = event(1, {
+            type,
+            team,
+            playerId: team === 'home' ? 'p1' : undefined,
+            opponentPlayerNumber: team === 'away' ? 7 : undefined,
+            disciplinaryAction,
+            reason: 'protest',
+          });
+          const expected = disciplinaryAction === 'directRed' ? 0 : 1;
+          expect(countsAsAccumulatedFoul(card)).toBe(expected === 1);
+          expect(deriveMatchState(match, [card]).foulsByPeriod[1]?.[team] ?? 0).toBe(expected);
+          expect(deriveDisciplinaryState([card], 0).teams[team].accumulatedFouls).toBe(expected);
+          const undo = event(2, { type: 'EVENT_UNDONE', targetEventId: card.id });
+          expect(deriveMatchState(match, [card, undo]).foulsByPeriod[1]).toBeUndefined();
+          expect(deriveDisciplinaryState([card, undo], 0).teams[team].accumulatedFouls).toBe(0);
+        }
+      }
+    },
+  );
+
+  it('counts protest cautions on court and on the bench alongside accumulated fouls', () => {
     const events: MatchEvent[] = [
       event(1, {
         type: 'FOUL',
@@ -89,10 +114,10 @@ describe('non-accumulated fouls and independent cards', () => {
       }),
     ];
 
-    expect(deriveMatchState(match, events).foulsByPeriod[1]?.home).toBe(2);
+    expect(deriveMatchState(match, events).foulsByPeriod[1]?.home).toBe(4);
     expect(deriveDisciplinaryState(events, 0).teams.home).toMatchObject({
-      fouls: 3,
-      accumulatedFouls: 2,
+      fouls: 5,
+      accumulatedFouls: 4,
       nonAccumulatedInfringements: 1,
       yellowCards: 3,
     });

@@ -32,6 +32,13 @@ export function deriveMatchState(match: Match, events: readonly MatchEvent[]): D
   let runningSegmentStartedAtGameClockMs: number | null = null;
 
   for (const event of activeEvents) {
+    if (
+      (event.type === 'FOUL' || event.type === 'DISCIPLINE' || event.type === 'BENCH_DISCIPLINE') &&
+      countsAsAccumulatedFoul(event)
+    ) {
+      const fouls = foulsByPeriod[event.period] ?? { home: 0, away: 0 };
+      foulsByPeriod[event.period] = { ...fouls, [event.team]: fouls[event.team] + 1 };
+    }
     switch (event.type) {
       case 'MATCH_STARTED':
         status = 'firstHalf';
@@ -72,13 +79,6 @@ export function deriveMatchState(match: Match, events: readonly MatchEvent[]): D
         break;
       }
       case 'FOUL': {
-        if (countsAsAccumulatedFoul(event)) {
-          const fouls = foulsByPeriod[event.period] ?? { home: 0, away: 0 };
-          foulsByPeriod[event.period] = {
-            ...fouls,
-            [event.team]: fouls[event.team] + 1,
-          };
-        }
         if (
           event.team === 'home' &&
           event.playerId &&
